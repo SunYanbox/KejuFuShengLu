@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-05
 
-**Status**: Draft
+**Status**: Pending
 
 **Input**: User description: "按《科举浮生录规格书》第 16 节阶段① 起草 001：slnx 解决方案 + Core 实体"
 

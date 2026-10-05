@@ -23,6 +23,12 @@ public sealed class Family
     private readonly Dictionary<PersonId, Person> _byId = [];
     private readonly ReadOnlyCollection<Person> _membersView;
 
+    /// <summary>外来者中**辈分已由家族指定（落定）**者（规格书 §4.4）。</summary>
+    private readonly HashSet<PersonId> _settledOutsiders = [];
+
+    /// <summary>外来者中**首次家族内成婚的对齐已用掉**者——此后辈分终局（规格书 §4.4）。</summary>
+    private readonly HashSet<PersonId> _marriageAlignedOutsiders = [];
+
     /// <summary>构造一个空家族。</summary>
     /// <param name="name">家族姓氏（规格书 §12.4）。</param>
     public Family(string name)
@@ -168,12 +174,15 @@ public sealed class Family
     }
 
     /// <summary>
-    /// 指定/变更**外来者**的辈分。血亲成员的辈分经此入口 MUST 被拒（终身不可变更）；
-    /// 外来者 MUST 在其**尚无子女**时落定（规格书 §4.4）。
+    /// **落定**一名外来者的辈分。血亲成员的辈分经此入口 MUST 被拒（终身不可变更）；
+    /// 外来者 MUST 在其**尚无子女**时落定，且该成员**至多落定一次**——此后其辈分只还能在
+    /// **首次家族内成婚**时被对齐一次，之后终局（规格书 §4.4，2026-10-05 裁决）。
     /// </summary>
     /// <param name="id">成员标识。</param>
     /// <param name="generation">新的辈分。</param>
-    /// <exception cref="InvalidOperationException">该成员是血亲，或已有子女。</exception>
+    /// <exception cref="InvalidOperationException">
+    /// 该成员是血亲、或已有子女、或辈分已落定、或其首次家族内成婚已发生（辈分终局）。
+    /// </exception>
     public void SetOutsiderGeneration(PersonId id, int generation)
     {
         var person = EnsureMember(id, nameof(id));
@@ -195,12 +204,25 @@ public sealed class Family
                 "外来者的辈分 MUST 在其尚无子女时落定（规格书 §4.4）。");
         }
 
+        if (_marriageAlignedOutsiders.Contains(id))
+        {
+            throw new InvalidOperationException(
+                "该外来者首次在家族内成婚已发生，其辈分已终局，MUST NOT 再变更（规格书 §4.4）。");
+        }
+
+        if (!_settledOutsiders.Add(id))
+        {
+            throw new InvalidOperationException(
+                "外来者的辈分一经家族指定即落定，MUST NOT 重复指定；此后仅其首次在家族内成婚时可额外变动一次（规格书 §4.4）。");
+        }
+
         person.SetGeneration(generation);
     }
 
     /// <summary>
     /// 结为夫妻。**一夫一妻**：已有配偶者 MUST 被拒（规格书 §9.1）。
-    /// 若一方是外来者、另一方是家族内成员，则外来者的辈分随之对齐（规格书 §4.4）。
+    /// 若一方是外来者、另一方是家族内成员，则外来者的辈分随之对齐（规格书 §4.4）——
+    /// 这只是其**首次家族内成婚**才有的那一次变动，此后终身不再变动。
     /// </summary>
     /// <param name="first">一方标识。</param>
     /// <param name="second">另一方标识。</param>
@@ -321,7 +343,10 @@ public sealed class Family
         return person;
     }
 
-    /// <summary>结婚后把外来者一方的辈分对齐到家族内配偶的辈分（规格书 §4.4）。</summary>
+    /// <summary>
+    /// 结婚后把外来者一方的辈分对齐到家族内配偶的辈分（规格书 §4.4）。
+    /// **只在首次家族内成婚时生效**：此后（如丧偶再婚）该外来者的辈分终局，MUST NOT 再变动。
+    /// </summary>
     private void AlignOutsiderGeneration(Person outsider, Person member)
     {
         if (!outsider.IsOutsider || member.IsOutsider)
@@ -329,17 +354,25 @@ public sealed class Family
             return;
         }
 
-        if (outsider.Generation == member.Generation)
+        if (_marriageAlignedOutsiders.Contains(outsider.Id))
         {
+            // 非首次家族内成婚（如丧偶再婚）：辈分已终局，此处不再变动（规格书 §4.4）。
             return;
         }
 
-        if (ChildrenOf(outsider.Id).Count > 0)
+        if (outsider.Generation != member.Generation)
         {
-            throw new InvalidOperationException(
-                "外来者的辈分 MUST 在其尚无子女时落定，已有子女后 MUST NOT 再变更（规格书 §4.4）。");
+            if (ChildrenOf(outsider.Id).Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "外来者的辈分 MUST 在其尚无子女时落定，已有子女后 MUST NOT 再变更（规格书 §4.4）。");
+            }
+
+            outsider.SetGeneration(member.Generation);
         }
 
-        outsider.SetGeneration(member.Generation);
+        // 无论数值是否真的变了，「首次家族内成婚」这一次机会都已用掉（规格书 §4.4）。
+        _settledOutsiders.Add(outsider.Id);
+        _marriageAlignedOutsiders.Add(outsider.Id);
     }
 }

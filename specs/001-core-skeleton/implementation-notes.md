@@ -78,6 +78,7 @@ System.ComponentModel.Win32Exception (5): 拒绝访问
 | 3 | **`System.Random` 对给定种子的算法不保证跨 .NET 版本稳定** | 001 无落盘，「同种子 → 同结果」在单次运行内成立。若阶段④要求跨版本重放存档，需改用自实现的确定性算法。已写进 `SeededRandomService` 的类型注释 |
 | 4 | **`Family.HeadId` 的「指向在册成员」不变量只在 `SetHead` 时校验** | 家主**上任后**死亡 / 外嫁会让该不变量暂时失效，直到阶段⑧的继任判定修正。001 的**产品代码**无死亡推进路径、不可抵达该状态，但**测试里构造过**（夹具已 `SetHead(founder)`，用例随后把 founder 置 `Deceased`，见 `FamilyTests` 的归档用例）。未做任何隐藏处理 |
 | 5 | **`KFL.Tests.csproj` 为绕开本机 testhost 崩溃，置了 `_MSTestEnableParentProcessQuery=false`**（见上节） | 该属性是 `Microsoft.TestPlatform.TestHost.targets` 的私有开关，会让 testhost 不再监视父进程。**对测试结果零影响**。若不接受仓库里带这个环境性开关，可删掉它并把构建输出挪到工作区外（`-p:BaseOutputPath=<工作区外>`）绕过——但那样必须同时恢复 `RepositoryLocator` 的兜底起点，因为契约 T028 规定它只从 `AppContext.BaseDirectory` 向上查找 |
+| 6 | **外来者辈分的变动次数**（在此之前规格书 §4.4、tasks T020 与代码三处口径不一致） | **2026-10-05 裁决**：一名外来者的辈分**总共只变动两次**——家族指定（落定）一次 + **首次在家族内成婚**时对齐配偶辈分一次，此后终身不可变更。已落到规格书 §4.4、data-model §2.1/§2.2、tasks T020/T021 与 `Family` 的入口校验，并补了三条测试（至多落定一次 / 首次成婚额外变动 / 丧偶再婚不再变动）。未用的那一次机会**不保留**：首次家族内成婚一旦发生，辈分即终局 |
 
 另有三处**代码级**的、为实现而必须做的取舍（理由都写在源码注释里，不是悄悄加的）：
 

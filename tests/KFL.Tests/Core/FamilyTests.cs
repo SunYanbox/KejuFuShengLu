@@ -446,6 +446,64 @@ public class FamilyTests
     }
 
     [Fact]
+    public void 外来者辈分至多落定一次()
+    {
+        var fixture = FamilyFixtures.BoughtCollateral();
+        var family = fixture.Family;
+
+        family.SetOutsiderGeneration(fixture.CollateralId, 2);
+
+        // 尚未成婚、也没有子女，但「落定」只有一次（规格书 §4.4）。
+        Assert.Throws<InvalidOperationException>(() => family.SetOutsiderGeneration(fixture.CollateralId, 3));
+        Assert.Equal(2, family.TryGet(fixture.CollateralId)!.Generation);
+    }
+
+    [Fact]
+    public void 外来者首次家族内成婚时辈分额外变动一次()
+    {
+        var family = new Family("测试");
+
+        var founder = family.AddFoundingMember(FamilyFixtures.NewPerson(450, "鼻祖", Gender.Male, 1, 1, generation: 0));
+        var son = family.AddChild(FamilyFixtures.NewPerson(
+            451, "长子", Gender.Male, 20, 1, generation: 1, fatherId: founder.Id));
+        var marriedIn = family.AddOutsider(FamilyFixtures.NewPerson(452, "娶入", Gender.Female, 18, 2, generation: 5));
+
+        family.Marry(son.Id, marriedIn.Id);
+
+        // 首次家族内成婚 = 落定之外的**额外**那一次变动，对齐到家族内配偶的辈分。
+        Assert.Equal(1, marriedIn.Generation);
+
+        // 这一次用过即终局：不能再由 SetOutsiderGeneration 指定。
+        Assert.Throws<InvalidOperationException>(() => family.SetOutsiderGeneration(marriedIn.Id, 3));
+        Assert.Equal(1, marriedIn.Generation);
+    }
+
+    [Fact]
+    public void 外来者丧偶再婚不再变动辈分()
+    {
+        // 本用例只验辈分规则：外来者先嫁（血亲辈分 1）对齐到 1，丧偶后再嫁（血亲辈分 2）MUST NOT 再变。
+        var family = new Family("测试");
+
+        var founder = family.AddFoundingMember(FamilyFixtures.NewPerson(460, "鼻祖", Gender.Male, 1, 1, generation: 0));
+        var elderSon = family.AddChild(FamilyFixtures.NewPerson(
+            461, "长子", Gender.Male, 20, 1, generation: 1, fatherId: founder.Id));
+        var youngerSon = family.AddChild(FamilyFixtures.NewPerson(
+            462, "次子", Gender.Male, 22, 1, generation: 1, fatherId: founder.Id));
+        var nephew = family.AddChild(FamilyFixtures.NewPerson(
+            463, "侄", Gender.Male, 44, 1, generation: 2, fatherId: youngerSon.Id));
+        var widow = family.AddOutsider(FamilyFixtures.NewPerson(464, "外来寡", Gender.Female, 18, 2, generation: 5));
+
+        family.Marry(elderSon.Id, widow.Id);
+        Assert.Equal(1, widow.Generation);
+
+        family.EndMarriage(widow.Id);
+        family.Marry(widow.Id, nephew.Id);
+
+        Assert.Equal(1, widow.Generation);
+        Assert.Equal(2, nephew.Generation);
+    }
+
+    [Fact]
     public void 开局成员必须无父母且辈分为零()
     {
         var family = new Family("测试");
