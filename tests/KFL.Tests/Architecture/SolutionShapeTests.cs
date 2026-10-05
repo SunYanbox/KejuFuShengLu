@@ -14,27 +14,10 @@ public class SolutionShapeTests
     [Fact]
     public void 解决方案恰好登记六个约定工程()
     {
-        Assert.Empty(RepositoryLocator.EvaluateRepository("G-02"));
-    }
-
-    [Fact]
-    public void 六个工程全部可被解析且含测试工程()
-    {
-        var violations = RepositoryLocator.EvaluateRepository("G-02");
-
-        Assert.Empty(violations);
-
         // 等价于 `dotnet sln KejuFuShengLu.slnx list` 的断言：测试工程尤其不能缺席
         // ——<TestProject> 会被 .slnx 解析器静默忽略（research R-02 的真实陷阱）。
-        var snapshot = RepositoryLocator.Load();
-        var declared = snapshot.SolutionFileText
-            .Split('\n')
-            .Select(line => line.Trim())
-            .Where(line => line.StartsWith("<Project ", StringComparison.Ordinal))
-            .ToList();
-
-        Assert.Equal(6, declared.Count);
-        Assert.Contains(declared, line => line.Contains(@"tests\KFL.Tests\KFL.Tests.csproj", StringComparison.Ordinal));
+        // G-02 的路径集合断言已包含 `tests\KFL.Tests\KFL.Tests.csproj`，故此处不必再自行解析。
+        Assert.Empty(RepositoryLocator.EvaluateRepository("G-02"));
     }
 
     [Fact]

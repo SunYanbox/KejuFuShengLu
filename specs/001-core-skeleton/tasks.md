@@ -13,8 +13,11 @@ description: "Task list for 解决方案骨架与家族领域模型"
 [data-model.md](./data-model.md)、[contracts/](./contracts/)、[quickstart.md](./quickstart.md)
 
 **Tests**: 本阶段**包含测试任务**。依据：spec FR-014 明令交付自动化架构守卫；
-user story 的 Independent Test 与 §16「必测单测清单」中属本阶段的三项（实体不变量、
-亲属引用一致性、解耦守卫）均以测试为验收物；quickstart §4/§5 的演练靠 `--filter` 分步执行。
+user story 的 Independent Test，以及规格书 §4.1/§4.4/§12.1/§1 所要求的三项基础测试
+（实体不变量、亲属引用一致性、解耦守卫）均以测试为验收物——这三项**不来自 §16
+「必测单测清单」**，该清单的 9 项（贿赂累进、12 格惩罚矩阵、连坐、遗传、贷款、饥馑、
+天命寿数分布、俸禄表锚点、绝嗣判定）**全部属阶段②及以后**；quickstart §4/§5 的演练靠
+`--filter` 分步执行。
 
 **Organization**: 按 user story 分组，使每个故事可独立实现、独立验证、独立交付。
 
@@ -127,7 +130,7 @@ US1/US2/US3 全部依赖它。
 - [X] T032 [US2] `tests/KFL.Tests/Architecture/PlatformLeakageTests.cs`：平台泄漏的**两层证据**。① **G-06b（程序集级）**：对 `KFL.Core`/`KFL.Infrastructure`/`KFL.Rules` 各取一个锚点类型，用 `Assembly.GetReferencedAssemblies()` 断言不含 `PresentationCore`、`PresentationFramework`、`WindowsBase`、`System.Drawing*`、`System.Windows.Forms`（比文本扫描更硬：抓的是真实类型引用，含源码里看不见的传递引用）；程序集级证据**不经 `ArchitectureRules`**（纯函数的输入里没有程序集元数据，见契约一 §4 末注）。② **G-06（源码级）**：把真实仓库三工程的源码文本喂给 `ArchitectureRules`，断言零违规——G-06 与 G-06b 是同一违规的两种证据层级，**编号 MUST NOT 混用**（T034 用例③的期望编号固定为 G-06）
 - [X] T033 [US2] `tests/KFL.Tests/Architecture/EnvironmentDependencyTests.cs`：源码级证据，断言 **G-07** 零违规。扫描范围按契约一 G-07 = 非 UI 产品工程（`KFL.Core`/`KFL.Infrastructure`/`KFL.Rules`）**加上** `tests/KFL.Tests/Core`、`tests/KFL.Tests/Infrastructure`、`tests/KFL.Tests/Fixtures`；`tests/KFL.Tests/Architecture/` **显式豁免**（该目录的职责就是读仓库文件，R-13 的收敛在此物化——不把测试侧纳入扫描，FR-015/SC-002 的「领域与规则测试无环境依赖」就没有验证物，`dotnet test` 跑绿并不等于测试自身不碰文件系统）。禁用 token 清单**逐字取自契约一 §2.1（14 个 token）**，本任务 **MUST NOT** 另存清单副本。实现为**词法级子串匹配**，并支持行级豁免注释 `// arch-guard:allow`（豁免行 MUST 在同一行说明理由）。**本任务同时是 US3 AS2 的唯一验证物**，见「User Story Dependencies」
 - [X] T034 [US2] `tests/KFL.Tests/Architecture/GuardSelfTests.cs`：守卫自证，覆盖契约一 §4 全部六用例——① 反向依赖（`KFL.Core` 的 csproj 文本含指向 `KFL.Rules` 的 `ProjectReference`）→ 报 G-05 且信息里出现两个工程名；② 工程级平台泄漏（`KFL.Rules` 带 `<UseWPF>true</UseWPF>`）→ 报 G-04；③ 源码级平台泄漏（`using System.Windows.Media;`）→ 报 **G-06**（该 token 不在契约一 §2.1 的清单里，故 MUST NOT 报成 G-07；期望编号是固定的，不写「或」，以便回归时一眼看出证据层级被弄错）；④ 环境依赖（`var now = DateTime.Now;`）→ 报 G-07；⑤ 测试工程漏登记（`.slnx` 文本只列五个 `<Project>`）→ 报 G-02；⑥ 合法输入（真实仓库内容）→ 零违规。**MUST NOT** 通过真实改写仓库文件来验证
-- [X] T035 [US2] 手工演练验收并记录结果。**唯一可执行的手工演练是 G-02**：临时从 `KejuFuShengLu.slnx` 删掉一行 `<Project>`（例如 `src\KFL.Presentation\KFL.Presentation.csproj`），用 `dotnet test tests\KFL.Tests\KFL.Tests.csproj`（**不经 `.slnx`**，避免被删工程影响测试发现）运行守卫，确认失败信息报出缺失的工程路径；还原后重跑确认全绿，`git status --short` 干净。**反向依赖（G-05）与源码级平台泄漏（G-06）不做手工演练**——本方案的允许边集是全序（Core ← Infrastructure ← Rules ← Presentation / App），任何反向边都闭合成环；`using System.Windows.Media;` 在 `net10.0` 工程里也必然编译失败。二者都会让「守卫失败」与「编译失败」不可区分，所以只能由 T034 的合成输入用例①②③验证。验收记录里 MUST 写明这一点，MUST NOT 把编译失败当作守卫生效的证据
+- [X] T035 [US2] 手工演练验收并记录结果。**最贴近真实违规的手工演练是 G-02**（同类可编译的还有 G-01、G-08：在仓库根放一个同名 `.sln`、把 `global.json` 的 `rollForward` 改成 `disable`，见 quickstart §3）：临时从 `KejuFuShengLu.slnx` 删掉一行 `<Project>`（例如 `src\KFL.Presentation\KFL.Presentation.csproj`），用 `dotnet test tests\KFL.Tests\KFL.Tests.csproj`（**不经 `.slnx`**，避免被删工程影响测试发现）运行守卫，确认失败信息报出缺失的工程路径；还原后重跑确认全绿，`git status --short` 干净。**反向依赖（G-05）与源码级平台泄漏（G-06）不做手工演练**——本方案的允许边集是全序（Core ← Infrastructure ← Rules ← Presentation / App），任何反向边都闭合成环；`using System.Windows.Media;` 在 `net10.0` 工程里也必然编译失败。二者都会让「守卫失败」与「编译失败」不可区分，所以只能由 T034 的合成输入用例①②③验证。验收记录里 MUST 写明这一点，MUST NOT 把编译失败当作守卫生效的证据
 
 **Checkpoint**: US1 与 US2 均可独立验证——解耦不再靠人工评审，而是构建期硬门禁
 
