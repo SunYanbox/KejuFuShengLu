@@ -21,8 +21,9 @@
 | 递归 `*.sln` | 无输出 |
 
 > 上表是**归档当时**的实测值。此后按一致性分析修复了 I4/I5/S1 三项、按 S2 裁决收紧了
-> 外来者辈分，带来用例增删——**当前**总计 **165** 项（Core 116 / Infrastructure 23 /
-> Architecture 26），门禁仍为 0 警告 0 错误、0 skipped。
+> 外来者辈分，带来用例增删；Phase 7 收敛又补了 5 项（成婚半提交回归 1 + G-07 测试目录扫描
+> 对照 4）——**当前**总计 **170** 项（Core 117 / Infrastructure 23 / Architecture 30），
+> 门禁仍为 0 警告 0 错误、0 skipped。
 
 补充证据：
 
@@ -74,6 +75,7 @@ System.ComponentModel.Win32Exception (5): 拒绝访问
 > **2026-10-05 补充**：本节记录的处置**已改为默认关闭**（属性默认注释，见下方第 3 节第 5 条）。
 > 受限宿主下 `dotnet test` 仍会复现本节现象，处置办法与可复现判据已归档到仓库根
 > [`AGENTS.md`](../../AGENTS.md)——那是对**后续 Agent** 的入口，本节保留为首次定位过程的原始记录。
+> 上面第 5 条预言的「孤儿 testhost」代价已在本机实际发生，判据与清理办法见 `AGENTS.md` 坑 3。
 
 ---
 
@@ -85,9 +87,9 @@ System.ComponentModel.Win32Exception (5): 拒绝访问
 | 2 | **`SeededRandomService` 用播种的局部 `Random` 实例**，命中 G-07 字面清单里的 `new Random(` | 按契约一 §2.1 的行级豁免机制在**同一行**标注了理由。语义上它是显式播种的局部实例，不是隐式全局源（契约二 §1 禁的是「全局 `Random` / `Random.Shared` / `Guid.NewGuid()`」）。**是否改成自实现 PRNG 以彻底消除豁免待定** |
 | 3 | **`System.Random` 对给定种子的算法不保证跨 .NET 版本稳定** | 001 无落盘，「同种子 → 同结果」在单次运行内成立。若阶段④要求跨版本重放存档，需改用自实现的确定性算法。已写进 `SeededRandomService` 的类型注释 |
 | 4 | **`Family.HeadId` 的「指向在册成员」不变量只在 `SetHead` 时校验** | 家主**上任后**死亡 / 外嫁会让该不变量暂时失效，直到阶段⑧的继任判定修正。001 的**产品代码**无死亡推进路径、不可抵达该状态，但**测试里构造过**（夹具已 `SetHead(founder)`，用例随后把 founder 置 `Deceased`，见 `FamilyTests` 的归档用例）。未做任何隐藏处理。**2026-10-05 裁决**：按此口径保持不变——001 **不**为此增设归档回调或事件通知（继任判定属阶段⑧，届时由事件驱动修正）。该豁免已**回写权威工件**：`data-model.md` §2.2 不变量 6 与 `spec.md` FR-011（此前只记在本文，而本文自述「不承载任何需求」，等于需求侧没有落点） |
-| 5 | **`KFL.Tests.csproj` 为绕开本机 testhost 崩溃，置了 `_MSTestEnableParentProcessQuery=false`**（见上节） | 该属性是 `Microsoft.TestPlatform.TestHost.targets` 的私有开关，会让 testhost 不再监视父进程。**对测试结果零影响**。若不接受仓库里带这个环境性开关，可删掉它并把构建输出挪到工作区外（`-p:BaseOutputPath=<工作区外>`）绕过——但那样必须同时恢复 `RepositoryLocator` 的兜底起点，因为契约 T028 规定它只从 `AppContext.BaseDirectory` 向上查找。**2026-10-05 裁决（改口径）**：该属性改为**默认注释、MUST NOT 以启用状态提交**——它主要绕的是**受限宿主（Agent 沙箱）**的权限限制，不应把环境补丁固化进仓库。受阻时**首选命令行覆盖**：`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`（实测 165 项全绿，且不必改任何文件）；确需改文件时，跑完门禁 MUST 立即改回注释并在 `git diff` 中确认。同类沙箱权限经验已另存于仓库根 `AGENTS.md` |
+| 5 | **`KFL.Tests.csproj` 为绕开本机 testhost 崩溃，置了 `_MSTestEnableParentProcessQuery=false`**（见上节） | 该属性是 `Microsoft.TestPlatform.TestHost.targets` 的私有开关，会让 testhost 不再监视父进程。**对测试结果零影响**。若不接受仓库里带这个环境性开关，可删掉它并把构建输出挪到工作区外（`-p:BaseOutputPath=<工作区外>`）绕过——但那样必须同时恢复 `RepositoryLocator` 的兜底起点，因为契约 T028 规定它只从 `AppContext.BaseDirectory` 向上查找。**2026-10-05 裁决（改口径）**：该属性改为**默认注释、MUST NOT 以启用状态提交**——它主要绕的是**受限宿主（Agent 沙箱）**的权限限制，不应把环境补丁固化进仓库。受阻时**首选命令行覆盖**：`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`（实测 170 项全绿，且不必改任何文件）；确需改文件时，跑完门禁 MUST 立即改回注释并在 `git diff` 中确认。同类沙箱权限经验已另存于仓库根 `AGENTS.md` |
 | 6 | **外来者辈分的变动次数**（在此之前规格书 §4.4、tasks T020 与代码三处口径不一致） | **2026-10-05 裁决**：一名外来者的辈分**总共只变动两次**——家族指定（落定）一次 + **首次在家族内成婚**时对齐配偶辈分一次，此后终身不可变更。已落到规格书 §4.4、data-model §2.1/§2.2、tasks T020/T021 与 `Family` 的入口校验，并补了三条测试（至多落定一次 / 首次成婚额外变动 / 丧偶再婚不再变动）。未用的那一次机会**不保留**：首次家族内成婚一旦发生，辈分即终局 |
-| 7 | **`Family.Marry` 的写入顺序**：先写双方 `SpouseId`，再对齐外来者辈分 | 对齐那一步若抛异常（外来者已有子女、辈分无法在此时落定），婚姻关系**已经写进双方**——失败的调用留下半提交状态。001 内需要「外来者先有子女、后成婚」才会触发，无产品路径，但这是一处真实的可重入风险。**未修**，等裁决：是否改成「先校验、后写入」（同 `Register` 的做法） |
+| 7 | **`Family.Marry` 的写入顺序**：先写双方 `SpouseId`，再对齐外来者辈分 | 对齐那一步若抛异常（外来者已有子女、辈分无法在此时落定），婚姻关系**已经写进双方**——失败的调用留下半提交状态。001 内需要「外来者先有子女、后成婚」才会触发，无产品路径，但这是一处真实的可重入风险。**2026-10-05 修复**（Phase 7 的 T050）：拆成**校验相** `PlanAlignment`（不改动任何状态，任一方不可对齐即抛）与**写入相** `ApplyAlignment`，`SpouseId` 只在校验全过之后才写。回归测试先在旧代码上复现出 `SpouseId` 已被写入，再据此修复——不再是「等裁决」，与 `Register` 的「先校验、后写入」一致 |
 
 2026-10-05 后续修复：一致性分析报出的 **I1~I6、D1、S1** 均已按裁决改完——I5 删掉了
 `SolutionShapeTests` 里那条自加的行计数断言（G-02 已由权威判定覆盖），S1 改引规格书

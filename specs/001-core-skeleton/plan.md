@@ -98,7 +98,8 @@ specs/001-core-skeleton/
 │   ├── architecture-guard.md        # 契约一：8 条守卫断言 + 守卫自证
 │   └── injection-seams.md           # 契约二：两组接缝的行为契约
 ├── checklists/requirements.md       # 规格质量清单
-└── tasks.md                         # 阶段 2 输出（$speckit-tasks 生成，非本命令产物）
+├── tasks.md                         # 阶段 2 输出（$speckit-tasks 生成，非本命令产物）
+└── implementation-notes.md          # 实现期追加（$speckit-implement 产物）：实施与规格的差额、门禁实测
 ```
 
 ### Source Code (repository root)
