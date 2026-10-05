@@ -204,6 +204,30 @@ public class FamilyTests
     }
 
     [Fact]
+    public void 辈分无法对齐导致成婚被拒时不留下半提交的婚姻关系()
+    {
+        var family = new Family("测试");
+
+        var founder = family.AddFoundingMember(FamilyFixtures.NewPerson(470, "鼻祖", Gender.Male, 1, 1, generation: 0));
+        var firstSon = family.AddChild(FamilyFixtures.NewPerson(
+            471, "长子", Gender.Male, 20, 1, generation: 1, fatherId: founder.Id));
+        var secondSon = family.AddChild(FamilyFixtures.NewPerson(
+            472, "次子", Gender.Male, 22, 1, generation: 1, fatherId: founder.Id));
+        var outsider = family.AddOutsider(FamilyFixtures.NewPerson(473, "外来女", Gender.Female, 18, 2, generation: 5));
+
+        // 外来者先有子女：其辈分此后 MUST NOT 再变，成婚时的对齐必然失败。
+        family.AddChild(FamilyFixtures.NewPerson(
+            474, "其子", Gender.Male, 40, 1, generation: 2, fatherId: firstSon.Id, motherId: outsider.Id));
+
+        Assert.Throws<InvalidOperationException>(() => family.Marry(outsider.Id, secondSon.Id));
+
+        // 「校验失败即拒绝，不产生非法档案」（data-model §5）：被拒的成婚 MUST NOT 留下任何已生效状态。
+        Assert.Null(family.TryGet(outsider.Id)!.SpouseId);
+        Assert.Null(family.TryGet(secondSon.Id)!.SpouseId);
+        Assert.Equal(5, family.TryGet(outsider.Id)!.Generation);
+    }
+
+    [Fact]
     public void 丧偶再婚时前任进既往配偶且子女父母引用不变()
     {
         var fixture = FamilyFixtures.ParentChild();

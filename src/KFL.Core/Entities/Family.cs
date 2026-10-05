@@ -223,6 +223,8 @@ public sealed class Family
     /// 结为夫妻。**一夫一妻**：已有配偶者 MUST 被拒（规格书 §9.1）。
     /// 若一方是外来者、另一方是家族内成员，则外来者的辈分随之对齐（规格书 §4.4）——
     /// 这只是其**首次家族内成婚**才有的那一次变动，此后终身不再变动。
+    /// **全有或全无**：任一方辈分不可对齐时整体拒绝，双方 <see cref="Person.SpouseId"/> 均保持原值
+    /// （data-model §5「校验失败即拒绝，不产生非法档案」）。
     /// </summary>
     /// <param name="first">一方标识。</param>
     /// <param name="second">另一方标识。</param>
@@ -243,11 +245,16 @@ public sealed class Family
                 "一夫一妻：已有配偶者 MUST NOT 被指定第二个配偶（规格书 §9.1）。");
         }
 
+        // 先在**不改动任何状态**的前提下算出双方的对齐结果；任一方不可对齐即整体拒绝，
+        // 从而不留下「配偶已写、辈分未对齐」的半提交状态（data-model §5）。
+        var planA = PlanAlignment(a, b);
+        var planB = PlanAlignment(b, a);
+
         a.SetSpouse(b.Id);
         b.SetSpouse(a.Id);
 
-        AlignOutsiderGeneration(a, b);
-        AlignOutsiderGeneration(b, a);
+        ApplyAlignment(a, planA);
+        ApplyAlignment(b, planB);
     }
 
     /// <summary>
@@ -347,32 +354,55 @@ public sealed class Family
     /// 结婚后把外来者一方的辈分对齐到家族内配偶的辈分（规格书 §4.4）。
     /// **只在首次家族内成婚时生效**：此后（如丧偶再婚）该外来者的辈分终局，MUST NOT 再变动。
     /// </summary>
-    private void AlignOutsiderGeneration(Person outsider, Person member)
+    /// <param name="outsider">可能是外来者的一方。</param>
+    /// <param name="member">其家族内配偶。</param>
+    /// <returns>对齐结果；<see cref="AlignmentPlan.Applies"/> 为 <c>false</c> 表示此处无变动。</returns>
+    /// <exception cref="InvalidOperationException">外来者已有子女，辈分 MUST NOT 再变更。</exception>
+    /// <remarks>本方法**MUST NOT 改动任何状态**——它是 <see cref="Marry"/> 的校验相，使成婚可以整体前置校验、失败即拒绝。</remarks>
+    private AlignmentPlan PlanAlignment(Person outsider, Person member)
     {
         if (!outsider.IsOutsider || member.IsOutsider)
         {
-            return;
+            return AlignmentPlan.None;
         }
 
         if (_marriageAlignedOutsiders.Contains(outsider.Id))
         {
             // 非首次家族内成婚（如丧偶再婚）：辈分已终局，此处不再变动（规格书 §4.4）。
+            return AlignmentPlan.None;
+        }
+
+        if (outsider.Generation != member.Generation && ChildrenOf(outsider.Id).Count > 0)
+        {
+            throw new InvalidOperationException(
+                "外来者的辈分 MUST 在其尚无子女时落定，已有子女后 MUST NOT 再变更（规格书 §4.4）。");
+        }
+
+        return new AlignmentPlan(true, member.Generation);
+    }
+
+    /// <summary>应用 <see cref="PlanAlignment"/> 的结果（<see cref="Marry"/> 的写入相）。</summary>
+    private void ApplyAlignment(Person outsider, AlignmentPlan plan)
+    {
+        if (!plan.Applies)
+        {
             return;
         }
 
-        if (outsider.Generation != member.Generation)
+        if (outsider.Generation != plan.Generation)
         {
-            if (ChildrenOf(outsider.Id).Count > 0)
-            {
-                throw new InvalidOperationException(
-                    "外来者的辈分 MUST 在其尚无子女时落定，已有子女后 MUST NOT 再变更（规格书 §4.4）。");
-            }
-
-            outsider.SetGeneration(member.Generation);
+            outsider.SetGeneration(plan.Generation);
         }
 
         // 无论数值是否真的变了，「首次家族内成婚」这一次机会都已用掉（规格书 §4.4）。
         _settledOutsiders.Add(outsider.Id);
         _marriageAlignedOutsiders.Add(outsider.Id);
+    }
+
+    /// <summary>辈分对齐的结果：<see cref="Applies"/> 为 <c>false</c> 时其余字段无意义。</summary>
+    private readonly record struct AlignmentPlan(bool Applies, int Generation)
+    {
+        /// <summary>无变动。注意它与「对齐到 0」不同，故 MUST NOT 用可空整数代替。</summary>
+        public static AlignmentPlan None { get; } = new(false, 0);
     }
 }
