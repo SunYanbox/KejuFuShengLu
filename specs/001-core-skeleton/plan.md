@@ -9,20 +9,21 @@
 交付规格书 §16 阶段①：一个**能构建、能验证、且被自动化守卫**的解决方案骨架，以及后续
 十二个阶段共同读写的家族档案。
 
-技术路线：`KejuFuShengLu.slnx`（六工程，无 `.sln`）+ 根 `global.json` 固定 SDK 10.0.401
-+ 根 `Directory.Build.props` 打开 warnings-as-errors；`KFL.Core` 承载成员/家族/存档状态
-与值类型；`KFL.Infrastructure` 交付两组注入接缝（随机来源、游戏时间来源）；`KFL.Rules`
-只占位；两个 UI 工程保持可构建的空壳；`KFL.Tests` 用**可注入输入的纯函数守卫**把依赖
-方向、目标框架与平台泄漏钉死。
+技术路线：`KejuFuShengLu.slnx`（六工程，无 `.sln`）+ 根 `global.json` **只锁 .NET 10
+版本带**（`10.0.100` + `latestFeature`，不锁补丁号）+ 根 `Directory.Build.props` 打开
+warnings-as-errors；`KFL.Core` 承载成员/家族/存档状态与值类型；`KFL.Infrastructure`
+交付两组注入接缝（随机来源、游戏时间来源）；`KFL.Rules` 只占位；两个 UI 工程保持可构建
+的空壳；`KFL.Tests` 用**可注入输入的纯函数守卫**把依赖方向、目标框架与平台泄漏钉死。
 
 本阶段**不做任何数值**：无生活费、无收入、无贷款、无科举、无存档落盘。规则数值只在
 `KFL.Rules/Config/GameConfig.cs` 留一个空壳位置。
 
 ## Technical Context
 
-**Language/Version**: C# 14 / .NET 10；SDK `10.0.401` 由仓库根 `global.json`
-（`rollForward: latestFeature`）固定，实测本机已装 10.0.401 且
-`Microsoft.WindowsDesktop.App 10.0.12` 可用。
+**Language/Version**: C# 14 / .NET 10；仓库根 `global.json` 只约束到 .NET 10 版本带
+（`"version": "10.0.100"` + `"rollForward": "latestFeature"`），不锁具体补丁号。实测本机
+已装 SDK 10.0.401 且 `Microsoft.WindowsDesktop.App 10.0.12` 可用；同一配置在未来装了
+其他 `10.0.x` 的机器或 CI 上照常工作（章程原则 I 已 PATCH 至 v1.1.1）。
 
 **Primary Dependencies**: 本阶段**只**引入测试栈 `xunit` 2.9.x +
 `xunit.runner.visualstudio` 3.1.x + `Microsoft.NET.Test.Sdk` 17.14.x。
@@ -60,22 +61,24 @@ LiveChartsCore **本阶段一个都不装**——001 没有消费者，章程「
 
 | 章程条款 | 本计划如何满足 | 结论 |
 | --- | --- | --- |
-| **I. .NET 10 单一运行时基线** | 非 UI `net10.0`、UI `net10.0-windows`；`global.json` 固定 SDK；不设 `TargetFrameworks`（禁止多目标）；FR-002 | ✅ |
+| **I. .NET 10 单一运行时基线** | 非 UI `net10.0`、UI `net10.0-windows`；`global.json` 只锁 .NET 10 版本带（不锁补丁号，禁止 `rollForward: disable`，已随章程 v1.1.1）；不设 `TargetFrameworks`（禁止多目标）；FR-002 | ✅ |
 | **II. 分层解耦与单向依赖** | 现有依赖边严格单向且无环；核心三层不引平台类型、CSProj 无 `UseWPF`/`UseWindowsForms`；规则层无 `DateTime.Now`/`Random`/文件/网络；实体只承载数据与自身不变量，跨实体一致性由 `Family` 聚合承担（不承担结算编排）；FR-003、FR-013、FR-014 | ✅ |
 | **III. WPF + MVVM 表现层契约** | 本阶段无 ViewModel、无 code-behind 业务：`KFL.App` 只有 `App.xaml`/空 `MainWindow.xaml`，不含任何规则数值；主界面属阶段③。本阶段对原则三**无违反**，只有「尚未开始」 | ✅（N/A 部分已说明） |
 | **IV. 单测优先与结果确定性** | 两组接缝全部构造注入，无静态单例；`SeededRandomService` 保证同种子同序列；`GameState` 的唯一标识也走注入，避免隐式 `Guid.NewGuid()`；测试与实现同批提交；FR-013、FR-015、SC-002 | ✅ |
 | **V. 约定式提交与中文提交信息** | 全部提交走 `build`/`feat`/`test`/`docs` 类型 + 中文描述；本次规格书修订单独成一次 `docs` 提交，实现另起 `feat`/`test` 提交 | ✅（流程约束） |
 | **VI. 调试通道不复制规则** | 本阶段不建控制台（阶段⑦），因此不存在「上限被复制一遍」的通道；同时先把 `KFL.Rules/Config/GameConfig.cs` 的**位置**建出来，使后续上限有唯一归属 | ✅ |
-| **技术栈与工程约束** | `.slnx` 唯一、无 `.sln`；依赖按需引入并说明必要性；无游戏引擎；数值集中（Core 值域常量 vs Rules 规则常量，见下方待确认项）；金额 `decimal` 本阶段无金额故 N/A；Serilog 与存档路径属后续阶段 | ✅（一项解释待确认） |
+| **技术栈与工程约束** | `.slnx` 唯一、无 `.sln`；依赖按需引入并说明必要性；无游戏引擎；数值集中（实体值域常量归 `KFL.Core/Config`、规则常量归 `KFL.Rules/Config`，已获所有者确认，见 research R-06）；金额 `decimal` 本阶段无金额故 N/A；Serilog 与存档路径属后续阶段 | ✅ |
 | **开发工作流与质量门禁** | 严格对位规格书 §16 阶段①，无跨阶段提前动工；三项门禁可执行；复杂度逐项论证（资产池、系统时钟、存档/成就/事件总线三接口均推迟） | ✅ |
 
-**待所有者确认的一项（不是违规）**：章程要求「所有游戏规则数值 MUST 集中在
-`KFL.Rules/Config/GameConfig.cs` 等常量/配置类中」。本计划把实体自不变量的值域
-（天赋/学业/体质 0~100）放在 `KFL.Core/Config/AttributeLimits.cs`，因为依赖方向
-`Core ← Infrastructure ← Rules` 决定了 `KFL.Core` **不可能**引用 `KFL.Rules`
-（详见 research R-06）。若所有者认为 0~100 亦属「规则数值」，应通过
-`$speckit-constitution` 发 PATCH 澄清 Core 侧常量的地位，而不是把常量搬到一个引用不到
-的地方。
+**两项已裁决，均不再挂起**：
+
+- **R-01（SDK 固定粒度）**：只约束到 .NET 10 版本带，不锁具体补丁号，避免未来 CI/CD 因
+  缺某个补丁而无法构建。章程原则 I 原文写的是「固定 SDK 版本」，与本裁决有措辞冲突，
+  已按治理条款发 **PATCH 至 v1.1.1** 并写明「同一基线」的所指。
+- **R-06（常量归属）**：实体自不变量的值域（天赋/学业/体质 0~100）放
+  `KFL.Core/Config/AttributeLimits.cs`。因为依赖方向 `Core ← Infrastructure ← Rules`
+  决定了 `KFL.Core` **不可能**引用 `KFL.Rules`，把常量搬进 `GameConfig` 只会让实体失去
+  自校验。所有者已确认可接受，章程原文的「等常量/配置类」足以覆盖，无需修订。
 
 **无违规项** → `Complexity Tracking` 无需填写（见文末）。
 
@@ -101,7 +104,7 @@ specs/001-core-skeleton/
 
 ```text
 KejuFuShengLu.slnx                   # 唯一的解决方案文件（六工程，全用 <Project>）
-global.json                          # 固定 SDK 10.0.401
+global.json                          # 只锁 .NET 10 版本带（10.0.100 + latestFeature）
 Directory.Build.props                # 统一 warnings-as-errors / Nullable / 分析器级别
 .gitignore                           # 追加 bin/ obj/ TestResults/
 
@@ -113,7 +116,7 @@ src/
 │   │                                # DegreeRecord.cs  OfficialRank.cs  StatusTimers.cs
 │   ├── Enums/                       # Gender.cs  DegreeLevel.cs  ImperialPlacement.cs
 │   │                                # Occupation.cs  Origin.cs  Difficulty.cs  StatusFlag.cs
-│   └── Config/                      # AttributeLimits.cs（实体值域，见待确认项）
+│   └── Config/                      # AttributeLimits.cs（实体值域，已确认归 Core）
 ├── KFL.Infrastructure/              # net10.0 —— 两组注入接缝及其实现
 │   ├── KFL.Infrastructure.csproj
 │   ├── Abstractions/                # IRandomService.cs  IGameClock.cs
@@ -155,8 +158,8 @@ tests/
 ## Complexity Tracking
 
 > 无需填写：Constitution Check 无违规项，`Complexity Tracking` 保留为空。
-> 唯一需要所有者拍板的是 R-06 的**常量归属解释**（Core 侧实体值域 vs Rules 侧规则常量），
-> 它已记于上表下方，属解释性确认而非违规豁免。
+> 先前挂起的两项已全部裁决——R-01（SDK 只锁 .NET 10 版本带）已随章程 v1.1.1 落地，
+> R-06（实体值域常量归 `KFL.Core`）已获所有者确认，均不再需要豁免或后续动作。
 
 ## 阶段 0 / 阶段 1 小结
 
@@ -169,8 +172,9 @@ tests/
    收敛为「领域与规则测试无环境依赖；架构守卫可读仓库工程文件」，与章程原则 IV 原文
    （只约束规则层测试）一致。
 
-另有本次用户裁决一项（R-12）：规格书 §5.1「儿童 0~12」与 §4.3 成年年龄的重叠，已裁为
-「成年 = 男满 12 / 女满 14，未成年一律按儿童档」，并回写规格书 §5.1 与 §4.3。
+另有本次用户裁决两项：R-12（生活费等档：规格书 §5.1「儿童 0~12」与 §4.3 成年年龄的重叠，
+裁为「成年 = 男满 12 / 女满 14，未成年一律按儿童档」，已回写规格书 §5.1 与 §4.3）与
+R-01（`global.json` 只锁 .NET 10 版本带，已发章程 PATCH v1.1.1）。
 
 ## 下一步
 

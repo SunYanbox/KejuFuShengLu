@@ -29,7 +29,7 @@
 | G-05 | `ProjectReference` 边集 ⊂ 层序允许集，且图中无环：Core(0) ← Infrastructure(1) ← Rules(2) ← Presentation(3) / App(4)；`KFL.Tests` 豁免，可引用任意工程 | `KFL.Core` 引用 `KFL.Rules` | FR-003、章程原则 II |
 | G-06 | `KFL.Core` / `KFL.Infrastructure` / `KFL.Rules` 的程序集引用不含 `PresentationCore`、`PresentationFramework`、`WindowsBase`、`System.Drawing*`、`System.Windows.Forms` | 规则层 `using System.Windows.Media` | FR-003、SC-003 |
 | G-07 | 非 UI 工程的 `*.cs` 文本不含禁用 token（下表） | 规则层写 `DateTime.Now` | FR-013、SC-004 |
-| G-08 | 仓库根存在 `global.json`，其 `sdk.version` 主版本为 10 | SDK 漂移到 9.x | FR-002、章程原则 I |
+| G-08 | 仓库根存在 `global.json`；其 `sdk.version` 的主次版本为 `10.0`，且 `rollForward` ∈ { `latestFeature`, `latestMinor`, `latestMajor` }（即允许任意已安装的 `10.0.x` SDK） | SDK 漂移到 9.x；或用具体补丁号 + `rollForward: disable` 把基线卡死 | FR-002、章程原则 I（v1.1.1） |
 
 ### 2.1 G-07 禁用 token 清单
 

@@ -8,22 +8,32 @@
 
 ---
 
-## R-01 .NET SDK 与目标框架基线
+## R-01 .NET 10 基线与 SDK 固定方式
 
-**Decision**: 仓库根新增 `global.json` 固定 SDK：`10.0.401` + `rollForward: latestFeature`。
-非 UI 工程显式声明 `net10.0`，UI 工程显式声明 `net10.0-windows`。
+**Decision**: 仓库根新增 `global.json`，只约束到 **.NET 10 主次版本带**：
+`"version": "10.0.100"` + `"rollForward": "latestFeature"`（接受任意已安装的 `10.0.x`
+SDK），**不锁具体补丁号**。非 UI 工程显式声明 `net10.0`，UI 工程显式声明
+`net10.0-windows`。
 
-**Rationale**: 实测本机 `dotnet --version` = `10.0.401`，`dotnet --list-sdks` 另有
-`9.0.308`、`9.0.311`、`10.0.201`；`Microsoft.WindowsDesktop.App 10.0.12` 已安装，
-WPF 可运行。`latestFeature` 允许落在同一 `10.0.x` 的更高特性带，既不锁死到无法获取
-的补丁号，也不会掉回 .NET 9（章程原则 I：MUST NOT 降级、MUST NOT 多目标）。
+**Rationale**: 用户裁决——「只限制到 .NET 10，不应限制具体版本号，避免影响未来可能的
+CI/CD」。锁死补丁号会让任何尚未安装该补丁的 CI 机器直接无法构建；只约束到 10.0 版本带
+仍然满足章程原则 I 的真正目的：**不掉回 .NET 9、不降级、不多目标**。实测本机
+`dotnet --version` = `10.0.401`，`dotnet --list-sdks` 另有 `9.0.308`、`9.0.311`、
+`10.0.201`；`Microsoft.WindowsDesktop.App 10.0.12` 已安装，WPF 可运行。在
+`10.0.100` + `latestFeature` 下本机会选中 10.0.401，未来装了 10.0.6xx 也照常工作。
+
+**章程同步**: 章程原则 I 原文是「SDK 版本 MUST 通过仓库根的 `global.json` 固定，保证
+本机与 CI 使用同一基线」，与本裁决有措辞冲突，已按治理条款发 **PATCH 至 v1.1.1**：
+明确「同一基线」指同一 .NET 10 运行时与语言基线而非同一 SDK 构建号，并禁止
+`rollForward: disable`。
 
 `TargetFramework` **不**写进 `Directory.Build.props` 默认值——若给了默认值，
 某工程漏写或写错 TFM 时会被静默补上正确值，守卫测试就抓不到真实错误。
 
 **Alternatives considered**:
-- `rollForward: disable`：基线最严，但任何只有 10.0.201 的机器/CI 会直接失败，收益不抵可用性损失。
-- 不建 `global.json`：违反章程原则 I「SDK 版本 MUST 通过仓库根的 global.json 固定」。
+- 锁 `10.0.401`：对未来 CI 不友好，已按用户裁决弃用。
+- `rollForward: disable`：把「没装这个补丁」变成硬失败，收益不抵可用性损失。
+- 不建 `global.json`：无法阻止 SDK 回落到 .NET 9，违反章程原则 I。
 
 ---
 
@@ -118,9 +128,8 @@ WPF 可运行。`latestFeature` 允许落在同一 `10.0.x` 的更高特性带�
 
 **Alternatives considered**:
 - 全部数值归 Rules、Core 只存裸 `int`：实体不变量形同虚设。
-- 修订章程把这条写死：**未做**。此归属属解释而非冲突，作为**待所有者确认项**记于
-  [plan.md](./plan.md) 的 Constitution Check；若所有者认为 0~100 亦属「规则数值」，
-  则应通过 `$speckit-constitution` 发 PATCH 澄清 Core 侧常量的地位。
+- 修订章程把这条写死：**未做**。所有者已确认该归属可接受（2026-10-05），章程原文的
+  「等常量/配置类」足以覆盖 Core 侧常量，无需修订。
 
 **注**: 政绩上限 100（§8.2）**不**在本阶段进入 Core——它随阶段⑧的规则实现落地。
 
@@ -243,6 +252,7 @@ MUST 在无 UI、无文件系统、无网络依赖的条件下运行」，收敛
 | 事项 | 处置 |
 | --- | --- |
 | R-03 的 UUID 重复风险（调试控制台重置种子） | 阶段⑦ 开放议题，001 无触发路径 |
-| R-06 的常量归属解释 | 待所有者确认，必要时发章程 PATCH |
+| R-01 的 SDK 固定粒度 | **已裁决**（2026-10-05）：只锁 .NET 10 版本带，章程已 PATCH 至 v1.1.1 |
+| R-06 的常量归属解释 | **已确认**（2026-10-05）：实体值域常量放 `KFL.Core` 可接受，无需章程修订 |
 | 资产/现金/储蓄/贷款池建模 | 阶段②（规格书 §5.3、§5.4），spec 已列入 Out of Scope |
 | 系统时钟抽象 | 阶段④（存档时间戳）首次需要时引入 |

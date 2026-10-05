@@ -7,8 +7,9 @@
 
 ## 0. 前置条件
 
-- Windows + .NET SDK **10.0.401**（由仓库根 `global.json` 固定；`dotnet --version` 应输出 `10.0.401`）。
-  本机已安装 `Microsoft.WindowsDesktop.App 10.0.12`，WPF 可运行。
+- Windows + **.NET 10 SDK**（`10.0.x` 任一版本即可；仓库根 `global.json` 只锁到 .NET 10
+  版本带，`dotnet --version` 应输出 `10.0.*`）。本机实测为 `10.0.401`，且
+  `Microsoft.WindowsDesktop.App 10.0.12` 已安装，WPF 可运行。
 - 首次还原需要 NuGet 网络访问；还原完成后**构建与测试本身**不需要网络。
 
 ## 1. 三条门禁命令（对应规格书 §16「每阶段验收」）
