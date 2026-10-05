@@ -1,6 +1,21 @@
 bin/
 obj/
 
-.agents/
+# Agent 本地目录：仅 .agents/skills 随仓库共享，其余为本机配置/凭据
+.agents/*
+!.agents/skills/
 .claude/
 .codex/
+
+# Python 缓存与字节码
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.hypothesis/
+
+# Spec Kit 工作流登记表：内嵌本机安装时间戳，且无自建工作流需要跟踪
+.specify/workflows/workflow-registry.json
