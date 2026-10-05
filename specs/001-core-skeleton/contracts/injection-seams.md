@@ -22,7 +22,7 @@ public interface IRandomService
 | 范围 | `Next` 对 `maxExclusive <= minInclusive` MUST 抛 `ArgumentOutOfRangeException`；返回值 MUST 落在 `[minInclusive, maxExclusive)` |
 | 填充 | `NextBytes` MUST 写满整个 `destination`，不得部分填充 |
 | 唯一实现 | 001 只交付 `SeededRandomService(int seed)`；MUST NOT 使用全局 `Random`、`Random.Shared`、`Guid.NewGuid()` 作为隐式源 |
-| 消费者 | `GameState` 的唯一标识（16 字节 → `Guid`），见 R-03 |
+| 消费者 | `GameState` 的唯一标识（16 字节 → `Guid`），**经 `KFL.Infrastructure/Services/GameStateFactory`**——`KFL.Core` 看不到本接缝，转换不能在 Core 内完成，见 R-03 |
 
 **为什么用同一个接口产生唯一标识**：章程原则 IV 禁止隐式 `Guid.NewGuid()`；复用本接口
 使「同种子 → 同 UUID」可复现，并避免为 001 预置第三个接口。风险（调试控制台重置种子后

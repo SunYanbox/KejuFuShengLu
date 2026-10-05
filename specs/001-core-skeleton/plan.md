@@ -52,8 +52,9 @@ LiveChartsCore **本阶段一个都不装**——001 没有消费者，章程「
 - 非 UI 层零系统时钟、零全局随机、零文件系统、零网络（静态断言）。
 - 测试工程只额外读取本仓库工程文件与源码（FR-015 的收敛，见 research R-13）。
 
-**Scale/Scope**: 6 个工程；`KFL.Core` 约 12 个类型（3 实体 + 6 值类型/记录 + 枚举）；
-`KFL.Infrastructure` 2 组接缝 + 2 个实现；架构守卫 8 条断言；0 行数值逻辑；0 个界面功能。
+**Scale/Scope**: 6 个工程；`KFL.Core` **17 个领域类型**（3 实体 + 6 值类型/记录 + 8 枚举）
+**+ 1 个值域常量类**（`Config/AttributeLimits.cs`，非领域类型，故不计入 17）；
+`KFL.Infrastructure` 2 组接缝 + 3 个实现；架构守卫 8 条断言；0 行数值逻辑；0 个界面功能。
 
 ## Constitution Check
 
@@ -90,7 +91,7 @@ LiveChartsCore **本阶段一个都不装**——001 没有消费者，章程「
 specs/001-core-skeleton/
 ├── plan.md                          # 本文件
 ├── spec.md                          # 规格（含 §17 裁决后的修订）
-├── research.md                      # 阶段 0：13 项技术抉择（含实测证据）
+├── research.md                      # 阶段 0：16 项技术抉择（R-01~R-16，含实测证据）
 ├── data-model.md                    # 阶段 1：字段、不变量、需求映射
 ├── quickstart.md                    # 阶段 1：人工可复现验收流程
 ├── contracts/
@@ -115,12 +116,15 @@ src/
 │   ├── ValueObjects/                # GameDate.cs  PersonId.cs  TalentSet.cs
 │   │                                # DegreeRecord.cs  OfficialRank.cs  StatusTimers.cs
 │   ├── Enums/                       # Gender.cs  DegreeLevel.cs  ImperialPlacement.cs
-│   │                                # Occupation.cs  Origin.cs  Difficulty.cs  StatusFlag.cs
+│   │                                # DegreeChangeCause.cs  Occupation.cs  Origin.cs
+│   │                                # Difficulty.cs  StatusFlag.cs
 │   └── Config/                      # AttributeLimits.cs（实体值域，已确认归 Core）
 ├── KFL.Infrastructure/              # net10.0 —— 两组注入接缝及其实现
 │   ├── KFL.Infrastructure.csproj
 │   ├── Abstractions/                # IRandomService.cs  IGameClock.cs
 │   └── Services/                    # SeededRandomService.cs  GameStateClock.cs
+│                                    # GameStateFactory.cs（16 字节 → UUID）
+│                                    #   必须在 Infrastructure：Core 看不到接缝（G-05）
 ├── KFL.Rules/                       # net10.0 —— 本阶段只有常量位置，无规则实现
 │   ├── KFL.Rules.csproj
 │   └── Config/                      # GameConfig.cs（空壳，阶段②起填充）
@@ -145,7 +149,8 @@ tests/
     │   └── GuardSelfTests.cs        # 契约一第 4 节：合成违规输入必被捕获
     ├── Core/                        # 字段边界、九状态并存、亲属引用一致性
     ├── Infrastructure/              # 接缝确定性与契约行为
-    └── Fixtures/                    # 多代同堂 / 有配偶 / 有子女 三类夹具构造器
+    └── Fixtures/                    # 五类夹具构造器：多代同堂 / 有配偶 / 有子女
+                                     #   / 娶入配偶 / 买来的旁系
 ```
 
 **Structure Decision**: 工程划分与依赖方向**逐字**采用规格书 §2（六个工程、`.slnx` 扁平
@@ -163,7 +168,7 @@ tests/
 
 ## 阶段 0 / 阶段 1 小结
 
-`research.md` 的 13 项抉择全部有结论，无 `NEEDS CLARIFICATION` 残留。其中两项是**实测
+`research.md` 的 16 项抉择全部有结论，无 `NEEDS CLARIFICATION` 残留。其中两项是**实测
 发现的真问题**，而不是纸上推演：
 
 1. **`<TestProject>` 被 `.slnx` 解析器静默忽略**（R-02）：照抄规格书 §2 会让 `KFL.Tests`
@@ -172,9 +177,17 @@ tests/
    收敛为「领域与规则测试无环境依赖；架构守卫可读仓库工程文件」，与章程原则 IV 原文
    （只约束规则层测试）一致。
 
-另有本次用户裁决两项：R-12（生活费等档：规格书 §5.1「儿童 0~12」与 §4.3 成年年龄的重叠，
-裁为「成年 = 男满 12 / 女满 14，未成年一律按儿童档」，已回写规格书 §5.1 与 §4.3）与
-R-01（`global.json` 只锁 .NET 10 版本带，已发章程 PATCH v1.1.1）。
+另有本次用户裁决五项：
+
+- **R-12**（生活费等档）：规格书 §5.1「儿童 0~12」与 §4.3 成年年龄重叠，裁为「成年 = 男满
+  12 / 女满 14，未成年一律按儿童档」，已回写规格书 §5.1 与 §4.3。
+- **R-01**（SDK 固定粒度）：`global.json` 只锁 .NET 10 版本带，已发章程 PATCH v1.1.1。
+- **R-14**（功名变迁历史）：功名改为一串按时间排序的变迁记录（含 §7.4 的降级），当前功名
+  由末条派生；已回写规格书 §4.1、§6、§7.4、§12.2 与 spec FR-008。
+- **R-15**（辈分与家主）：辈分对血亲出生即定、对外来者由家族指定且须在尚无子女时落定；
+  新增 `Family.HeadId`，继任判定留给阶段⑧；已回写规格书 §4.4。
+- **R-16**（按角色月度收支）：不挂在 `Person` 上，改为 `GameState` 的家族级流水账，属阶段②；
+  spec 已列入 Out of Scope。同次回写还包括规格书 §9.5（买人口）与 §12.3（统计口径）。
 
 ## 下一步
 
