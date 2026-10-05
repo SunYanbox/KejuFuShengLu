@@ -4,10 +4,11 @@
 
 ### I. .NET 10 单一运行时基线（NON-NEGOTIABLE）
 
-全解决方案 MUST 统一以 .NET 10 为唯一运行时基线：游戏核心库（`KFL.Core`、
-`KFL.Infrastructure`、`KFL.Rules`、`KFL.Presentation`）目标框架为 `net10.0`，WPF
-应用与视图层项目（`KFL.App`）为 `net10.0-windows`。
+全解决方案 MUST 统一以 .NET 10 为唯一运行时基线，目标框架按层划分：
 
+- 非 UI 层（`KFL.Core`、`KFL.Infrastructure`、`KFL.Rules`）目标框架 MUST 为 `net10.0`。
+- UI 层（`KFL.Presentation`、`KFL.App`）目标框架 MUST 为 `net10.0-windows`；这两者
+  是规格书第 2 节定义的样式、2D 控件模板、动画与视图所在层，必须引用 WPF。
 - 任何项目 MUST NOT 降级到更早的 .NET 版本，也 MUST NOT 多目标（multi-target）
   到旧框架；确需多目标的场景必须先修订本章程。
 - 语言特性 MUST 使用 .NET 10 / C# 14 的当前能力，禁止为兼容旧运行时而写退化代码。
@@ -16,16 +17,19 @@
 - SDK 版本 MUST 通过仓库根的 `global.json` 固定，保证本机与 CI 使用同一基线。
 
 理由：统一基线是"底层与 UI 层分离"能够被验证的前提。一旦允许框架版本漂移，
-`KFL.Rules` 就会被无意间拖入 Windows 专属类型，解耦随之失效。
+`KFL.Rules` 就会被无意间拖入 Windows 专属类型，解耦随之失效。目标框架的划分
+MUST 与规格书第 2 节的项目职责一致：让承载 WPF 资源的项目留在 `net10.0`，只会
+逼出「编译不过」或「偷偷引入平台类型」两种坏结果。
 
 ### II. 分层解耦与单向依赖（NON-NEGOTIABLE）
 
 依赖方向 MUST 严格单向：`KFL.Core` ← `KFL.Infrastructure` ← `KFL.Rules` ←
 `KFL.Presentation` / `KFL.App`。箭头表示"被依赖"，下层 MUST NOT 知晓上层。
 
-- `KFL.Rules` MUST NOT 引用任何 WPF / Windows 专属类型（`System.Windows.*`、
-  `System.Drawing`、`PresentationCore` 等），其项目文件 MUST NOT 使用
-  `UseWPF`、`UseWindowsForms`。
+- `KFL.Core`、`KFL.Infrastructure`、`KFL.Rules` MUST NOT 引用任何 WPF / Windows
+  专属类型（`System.Windows.*`、`System.Drawing`、`PresentationCore` 等），其项目
+  文件 MUST NOT 使用 `UseWPF`、`UseWindowsForms`；`KFL.Presentation` 与 `KFL.App`
+  是仅有的两个允许使用 WPF / Windows 专属类型的项目。
 - 下层 MUST NOT 反向依赖上层；跨层协作 MUST 通过定义在下层的接口（如
   `ISaveService`、`IAchievementStore`、`IRandomService`、`IEventBus`）完成，
   由上层注入实现。禁止循环依赖。
@@ -97,6 +101,26 @@ ViewModel 之间保持单向、无控件类型的绑定关系，界面重构就�
 让本项目的全部参与者无需翻译即可读懂历史。两者结合才使历史既机器可读、
 又对人有用。
 
+### VI. 调试通道不复制规则（NON-NEGOTIABLE）
+
+调试控制台（规格书第 13 节）是唯一允许突破规则上限的入口；它 MUST 复用与玩家操作
+相同的服务接口与规则入口，MUST NOT 另写一套绕过规则的实现。
+
+- 规则层 MUST NOT 感知调用方是玩家操作还是调试控制台，MUST NOT 以「是否调试」
+  的分支放宽任何上限；同一输入在两条路径上 MUST 得到同一结果。
+- 越限能力 MUST 通过显式注入的配置或策略在装配期提供，MUST NOT 以按调用方分支的
+  方式写在规则内部。
+- 规格书定义的可变上限（如录取率 89.9999% 封顶）MUST 集中在
+  `KFL.Rules/Config/` 中声明，MUST NOT 在控制台或 ViewModel 中另行硬编码。
+- 控制台的每次操作 MUST 记录到控制台日志（时间戳 + 动作 + 结果）；作弊性操作
+  MUST 被标记。
+- 控制台的激活方式与面板结构 MUST 与规格书第 13 节一致，MUST NOT 新增规格书
+  未列出的面板或作弊入口。
+
+理由：上限一旦在调试通道里被复制一遍，两份数值就会各自演化，单测覆盖的也不再是
+玩家实际走的那条路径。让控制台复用同一条路径，作弊才只是「换个参数」，而不是
+第二套业务逻辑。
+
 ## 技术栈与工程约束
 
 - 解决方案 MUST 使用 `.slnx`（XML）格式，禁止生成 `.sln`，两者 MUST NOT 共存。
@@ -143,7 +167,14 @@ ViewModel 之间保持单向、无控件类型的绑定关系，界面重构就�
 - **合规审查**：每次代码审查与每个功能的收尾验收 MUST 核验本章程各项约束。
   偏离 MUST 被显式记录并说明理由，或先经修订放宽约束。无法核验合规的改动
   MUST NOT 合入。
+- **需求真源**：《科举浮生录规格书》是唯一的需求与数值真源。
+  - `specs/<NNN-feature>/spec.md`、`plan.md`、`tasks.md` MUST 引用对应规格书章节号
+    （如「规格书 §5.4」），MUST NOT 自创、改写或简化任何数值与公式。
+  - 工件与规格书不一致时 MUST 以规格书为准并修正工件，MUST NOT 以工件反推规格书。
+  - 规格书未覆盖的细节 MUST 按规格书第 17 节裁决；裁决结果 MUST 回写规格书对应
+    章节，使规格书始终保持自包含。
+  - 规格书变更 MUST 与受影响的 `spec.md` / `plan.md` / `tasks.md` 同步提交。
 - **运行时指引**：开发期的具体结构与命令以《科举浮生录规格书》与
   `.specify/templates/plan-template.md` 为准；两者 MUST NOT 与本章程冲突。
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-05 | **Last Amended**: 2026-10-05
+**Version**: 1.1.0 | **Ratified**: 2026-10-05 | **Last Amended**: 2026-10-05
