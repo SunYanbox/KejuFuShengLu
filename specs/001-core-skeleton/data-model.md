@@ -34,6 +34,7 @@
 | `Gender` | `Male`, `Female` | §4.1「性别」；§4.2「性别 50/50」 |
 | `DegreeLevel` | `BaiShen`(白身), `JuRen`(举人), `GongShi`(贡士), `JinShi`(进士) | §6 功名链 |
 | `ImperialPlacement` | `ZhuangYuan`(状元), `BangYan`(榜眼), `TanHua`(探花) | §6 进甲名次；§12.2 名次着色 |
+| `DegreeChangeCause` | `Initial`(开局或买功名婚姻带入), `ExamPass`(科举中式), `PunishmentDemotion`(§7.4 连坐降级), `DebugEdit`(§13.2 控制台改写) | §4.1 功名变迁历史 |
 | `Occupation` | `None`, `Studying`(读书), `Farming`(务农), `Crafting`(做工), `Trading`(经商) | §4.1「职业指派」；§4.3 读书指派；§5.2 收入来源 |
 | `Origin` | `Farmer`(农), `Artisan`(工), `Merchant`(商), `Scholar`(士) | §10.1 四出身 |
 | `Difficulty` | `Easy`(简单), `Normal`(普通), `Hard`(困难), `Hell`(地狱) | §11；序：简单 < 普通 < 困难 < 地狱 |
@@ -55,15 +56,23 @@
 终生不可通过游戏行为升降，仅调试控制台可修改」（§4.1）。
 「仅调试控制台可修改」的落地方式属阶段⑦；本阶段只保证**不存在**常规写入通道。
 
-### 1.5 `DegreeRecord`（readonly record struct）
+### 1.5 `DegreeRecord`（readonly record struct）—— 一条功名变迁记录
 
-| 成员 | 类型 | 说明 |
-| --- | --- | --- |
-| `Level` | `DegreeLevel` | 白身 / 举人 / 贡士 / 进士 |
-| `Placement` | `ImperialPlacement?` | 一甲名次，仅进士可有 |
+| 成员 | 类型 | 说明 | 来源 |
+| --- | --- | --- | --- |
+| `Level` | `DegreeLevel` | 变化后的功名：白身 / 举人 / 贡士 / 进士 | §6 |
+| `Placement` | `ImperialPlacement?` | 一甲名次，仅进士可有 | §6 |
+| `ChangedAt` | `GameDate` | 本次变化的年月（变迁历史的时间轴） | §4.1 |
+| `Cause` | `DegreeChangeCause` | 变化原因 | §4.1 |
 
 **不变量**：`Placement is not null` ⇒ `Level == DegreeLevel.JinShi`（§6：进甲者才是状元/
 榜眼/探花）。
+
+**为什么必须带日期与原因**：§4.1 要求功名以「变迁历史」呈现，而 §7.4 的连坐会
+**降一级功名**（进士→贡士→举人→白身）。若只记录「考试考成功的功名」，被降级者的历史
+末条会一直写着「进士」，与其真实功名矛盾——历史本身就成了假的。带 `Cause` 后，一次中式
+与一次降级都能被如实读出。举人被降为白身会追加一条 `Level = BaiShen` 的记录，这是
+**合法的历史条目**，与「尚无记录（出生即白身）」是两回事。
 
 ### 1.6 `OfficialRank`（readonly record struct）
 
@@ -93,13 +102,15 @@
 | `Id` | `PersonId` | 否 | 引用完整性所需 |
 | `Name` | `string` | 是 | §4.1「姓名」（§12.4 姓氏仅影响 Last Name，生成属后续阶段） |
 | `Gender` | `Gender` | 否 | §4.1 |
-| `Generation` | `int`（>= 0） | 否 | §4.1「辈分」；§12.1 家族树「一层一代」 |
+| `Generation` | `int`（>= 0） | 血亲：否；外来者：可变更一次 | §4.1「辈分」；§4.4；§12.1「一层一代」 |
 | `BirthDate` | `GameDate` | 否 | §4.3「生日当月转成年」；年龄由它派生（R-07） |
 | `Talents` | `TalentSet` | 否 | §4.1 天赋四项 |
 | `Study` | `int`（0~100） | 是 | §4.1「学业」 |
 | `Health` | `int`（0~100） | 是 | §4.1「体质」 |
 | `Lifespan` | `int`（>= 0，年） | 否 | §4.1「天命寿数：出生瞬间 roll 出…卡片上显示」 |
-| `Degree` | `DegreeRecord` | 是 | §6 功名链 |
+| `DegreeHistory` | `IReadOnlyList<DegreeRecord>` | 追加式 | §4.1 功名变迁历史；§6 |
+| `CurrentDegree` | `DegreeLevel`（派生，只读） | 否 | = `DegreeHistory` 末条 `Level`；空则白身 |
+| `CurrentPlacement` | `ImperialPlacement?`（派生，只读） | 否 | = `DegreeHistory` 末条 `Placement`；空则 `null` |
 | `Rank` | `OfficialRank?` | 是 | §8 官阶；`null` = 无官职 |
 | `Merit` | `int`（>= 0） | 是 | §4.1「政绩」；§8.2 上限 100 属规则（阶段⑧） |
 | `Status` | `StatusFlag` | 是 | §4.1 九种状态，可并存 |
@@ -109,17 +120,42 @@
 | `SpouseId` | `PersonId?` | 是 | §4.1 婚姻关系；一夫一妻（§9.1） |
 | `FormerSpouseIds` | `IReadOnlyList<PersonId>` | 是 | §9.1「丧偶可再婚」+ spec Edge Case（须能表达既往婚姻） |
 
+> **「可变」列的含义**：指该字段的**值**会随推演时间改变，**不表示 `Person` 暴露公开
+> setter**。写入通道只有两类，见不变量 2 与 §2.2 不变量 4：跨实体引用（配偶、父母、
+> 辈分）的唯一入口是 `Family`；`Person` 自持的字段由 `Person` 自己暴露可写属性。
+> 不变量 2 列出了**全部**无写入通道的成员，因此「谁有 setter」无需从本列推断。
+
 **不变量**
 1. `Talents`、`Study`、`Health` 落在 0~100（FR-005、FR-006）。
-2. `Study`/`Health` 可写，`Talents`/`Lifespan`/`Gender`/`Generation`/`BirthDate` 无写入通道
-   （FR-005、FR-007：「出生即定、终身不再改变」）。
+2. **无写入通道的成员（全集，测试须逐个反射断言）**：`Id`、`Gender`、`BirthDate`、
+   `Talents`、`Lifespan`、`Generation`、`FatherId`、`MotherId`、`SpouseId`、
+   `FormerSpouseIds`、`DegreeHistory`、`CurrentDegree`、`CurrentPlacement`——均为只读
+   属性，**不存在公开 setter**（FR-005、FR-007、FR-008、§4.4）。
+   **`Person` 自持的可写属性**只有八个：`Name`、`Study`、`Health`、`Rank`、`Merit`、
+   `Status`、`Timers`、`Occupation`。
+   分界依据：凡「出生即定」或「跨实体一致性」的字段一律只读——前者如 `Gender` /
+   `Talents` / `Lifespan`，后者如 `SpouseId` / `FatherId` / `MotherId` / `Generation`
+   （唯一入口在 `Family`，见 §2.2 不变量 4）。
 3. `FatherId != Id`、`MotherId != Id`、`SpouseId != Id`；`FormerSpouseIds` 不含 `SpouseId` 且不重复。
 4. `Timers` 与 `Status` 一致（见 1.7）。
 5. **年龄不落裸字段**：`AgeAt(GameDate)` = `BirthDate.AgeInYearsAt(at)`（R-07）。
 6. 出生时辰与「已亡」时间不落字段：§4.1 未列，且 §12.1 的归档排序属阶段⑨。
+7. `DegreeHistory` 按 `ChangedAt` **非降序**（追加式）；既有记录 MUST NOT 被改写或删除。
+   `CurrentDegree` / `CurrentPlacement` MUST 由末条派生，MUST NOT 另存独立字段——否则
+   §7.4 的连坐降级会让两处数据失配（见 1.5）。
+8. `Generation` 的分层规则（§4.4）：血亲成员（`FatherId` 或 `MotherId` 至少一方为本家族
+   成员）的辈分 = 父母辈分 + 1，出生即定、**终身不可变更**；外来者（`FatherId` 与
+   `MotherId` 皆 `null`——开局成员、娶入配偶、§9.5 买来的旁系）的辈分由 `Family` 指定，
+   且 MUST 在其**尚无子女**时落定。`Person` 不提供辈分的公开写入通道。
+   **开局成员的辈分初值 = 0**（§4.4「辈分自创始者为 0」），因此「买来的旁系 = 家主辈分
+   + 1」在开局家主治下取 **1**，娶入配偶取其家族内配偶的辈分。夹具与断言据此推导绝对值；
+   001 MUST NOT 另行规定其他初值。
 
 **明确不含**：`ChildIds`（由 `Family` 派生，见 R-08）；`IsShiIdentity`（仕身份为家族级，
-见 2.2）；`Origin`（出身为存档级，见 2.3）。
+见 2.2）；`Origin`（出身为存档级，见 2.3）；逐月收支记录（R-16：账本归 `GameState`，
+属阶段②，挂到实体上会让永久归档的成员无界增长）。
+`Lifespan` **只约束下界 `>= 0`，没有上界**——天命寿数的分布（§4.2）属阶段⑧，001 MUST NOT
+自设上限；「无上界」是有意留白，不是遗漏（曾因只写下界而被读成设计缺失）。
 
 ### 2.2 `Family`（家族）
 
@@ -127,6 +163,7 @@
 | --- | --- | --- | --- |
 | `Name` | `string` | 家族姓氏（§12.4） | §12.4 |
 | `HasShiStatus` | `bool` | 「仕身份」= 进士直系血统，**与出身独立可并存** | §10.2；spec Edge Case |
+| `HeadId` | `PersonId?` | **家主**（§4.4）；`null` = 家族内无在册男性成员 | §4.4 |
 | `Members` | `IReadOnlyCollection<Person>` | 全部成员（含已归档），按 `PersonId` 索引 | §12.1「死亡成员自动归档」 |
 | `TryGet(PersonId)` | 方法 | 按标识取成员 | FR-011 |
 | `ChildrenOf(PersonId)` | 方法 | 派生子女引用 | FR-011、SC-006 |
@@ -136,21 +173,35 @@
 
 **不变量**
 1. 成员标识唯一；`PersonId` 引用要么指向本家族成员，要么为 `null`（**无悬挂引用**）。
-2. 配偶关系双向一致：`a.SpouseId == b.Id` ⇔ `b.SpouseId == a.Id`（US1 AS2）。
+2. 配偶关系双向一致：`a.SpouseId == b.Id` ⇔ `b.SpouseId == a.Id`（US1 AS2）；且
+   **至多一人**——已有配偶（`SpouseId is not null`）的成员被指定第二个配偶时 MUST 被拒
+   （§9.1 一夫一妻）。丧偶再婚 MUST 走「先把 `SpouseId` 置 `null` 并追加进
+   `FormerSpouseIds`，再指定新配偶」两步，既往配偶的记录 MUST NOT 被覆盖（§9.1「丧偶后
+   可再婚」+ spec Edge Case）；再婚 MUST NOT 改动任何子女的 `FatherId`/`MotherId`。
 3. 父母引用为向无环：沿父系主轴向上遍历必然终止（SC-006、Edge Case 无自环）。
-4. 只有 `Family` 能改配偶与父母引用；`Person` 不提供公开写入通道（章程原则 II：
+4. 只有 `Family` 能改配偶、父母引用、辈分与家主；`Person` 不提供公开写入通道（章程原则 II：
    实体不承担跨实体编排）。
 5. `HasShiStatus` 与任何 `Origin` 可任意组合（§10.2：出身终身特性与仕身份叠加并存）。
+6. `HeadId` 要么为 `null`（家族内无在册男性成员——该情形**不构成绝嗣**，§15 判定与性别
+   无关），要么指向本家族的**在册**成员；MUST NOT 指向已亡或外嫁的已归档成员（§4.4）。
+7. 辈分的指定与变更入口唯一在 `Family`（同第 4 条）：血亲成员的辈分一经确定 MUST NOT
+   变更；外来者（娶入配偶、§9.5 买来的旁系）的辈分 MUST 在其尚无子女时落定（§4.4）。
 
 **§17 裁决**: `HasShiStatus` 建在家族级而非成员级——§10.2 的效果（录取率 ×1.1、婚嫁规格、
 贷款划扣 20%）在本项目「一存档一家族」的模型下由家族统一承载；嫁入配偶的差异在阶段④/
 ⑧ 真正实现该效果时再细分，本阶段不预置按人标记。
 
+**家主的分期**: `Family.HeadId` 进 001——它在 001 内**有真实消费者**：§4.4 的辈分规则
+要求「买来的旁系辈分 = 家主辈分 + 1」。但**继任判定不进 001**：它由死亡推进触发，属
+阶段⑧。001 只保证该字段存在、且「为 `null` 或指向在册成员」这一不变量可被校验。
+经核验，§4.4 的继任规则所需数据 001 已**全部提供**，无需为此再加字段：`Gender`、
+`BirthDate`（年龄）、`ChildrenOf`（子代数量与排序）、`Generation`、`Status`。
+
 ### 2.3 `GameState`（存档级状态）
 
 | 字段 | 类型 | 说明 | 来源 |
 | --- | --- | --- | --- |
-| `Id` | `Guid` | 创建存档时初始化，**改档名不影响**；由注入的 `IRandomService` 生成 | §14；FR-012；R-03 |
+| `Id` | `Guid` | 创建存档时初始化，**改档名不影响**（该子句属阶段④ 验证——001 无落盘，只校验非空与无公开 setter，见 FR-012）；由注入的 `IRandomService` 生成（16 字节 → Guid 的转换落在 `KFL.Infrastructure/Services/GameStateFactory.cs`——`KFL.Core` 看不到接缝，见 R-03） | §14；FR-012；R-03 |
 | `CurrentDate` | `GameDate` | 起始 = 1 年 1 月 | §3 |
 | `Difficulty` | `Difficulty` | 同一存档内可随时切换（切换逻辑属阶段⑫） | §11 |
 | `Origin` | `Origin` | 创建存档时选择 | §10.1 |
@@ -168,8 +219,9 @@
 | `IRandomService` | `double NextDouble()`；`int Next(int minInclusive, int maxExclusive)`；`void NextBytes(Span<byte> destination)` | `SeededRandomService(int seed)`：给定种子，序列完全可复现 | §1「可注入 IRandomService（可设种子、确定性）」；章程原则 IV |
 | `IGameClock` | `GameDate Current { get; }` | 以 `GameState.CurrentDate` 为后端；**不接触系统时钟** | §3；FR-013；R-04 |
 
-**关键约束**：非 UI 层 MUST NOT 出现 `DateTime.Now`、`Random`、文件系统、网络
-（章程原则 II；FR-013）。守卫测试静态断言（SC-004）。
+**关键约束**：非 UI 层 MUST NOT 出现系统时钟、全局随机、文件系统、网络（章程原则 II；
+FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 token），本节**不复制副本**；
+扫描范围与 `tests/KFL.Tests/Architecture/` 的豁免见契约一 G-07。守卫测试静态断言（SC-004）。
 
 **本阶段不引入**：`ISaveService`、`IAchievementStore`、`IEventBus`——规格书 §2 虽列于
 `KFL.Infrastructure`，但 001 无消费者（阶段④/⑪）。这是章程「复杂度 MUST 被论证」的
@@ -185,14 +237,14 @@
 | FR-003 / FR-014 / SC-003 | 各 `.csproj` 的 `ProjectReference` 与 `UseWPF` | 工程级守卫（含反向依赖与平台泄漏两次故意违规） |
 | FR-004 / SC-005 | `Person` 字段表（2.1） | 字段读写夹具测试 |
 | FR-005 / FR-006 | `TalentSet` / `Study` / `Health` 不变量 | 边界值 0 与 100、越界拒绝、天赋无写入通道 |
-| FR-007 | `Person.Lifespan` 只读 | 无 setter 断言 + 取值范围 |
-| FR-008 | `DegreeRecord` | 四级链 + `Placement` 仅进士 |
+| FR-007 | `Person.Lifespan` 只读 | 无 setter 断言 + `>= 0`；**上界属阶段⑧，本阶段不断言上限** |
+| FR-008 | `DegreeRecord` + `DegreeChangeCause` + `Person.DegreeHistory` | 历史按 `ChangedAt` 升序追加；§7.4 降级也入史；`CurrentDegree`/`CurrentPlacement` 由末条派生；`Placement` 仅进士 |
 | FR-009 | `OfficialRank?` | `null` 与 L1~L18 两端、L0/L19 拒绝 |
 | FR-010 | `StatusFlag` + `StatusTimers` | 九位可任意并存 + 计时一致性 |
-| FR-011 / SC-006 | `Family` 的索引与派生查询 | 三类夹具：多代同堂、有配偶、有子女；双向一致与无环 |
-| FR-012 | `GameState` | UUID 非空、改档名不影响（同名对象复用）、起始年月 |
+| FR-011 / SC-006 | `Family` 的索引与派生查询 + `HeadId` + 辈分规则 | 五类夹具：多代同堂、有配偶、有子女、娶入配偶、买来的旁系；双向一致与无环；**一夫一妻拒绝用例 + 丧偶再婚（`FormerSpouseIds` 承接前任、子女父母引用不断裂）**；家主为 `null` 或指向在册成员；血亲辈分不可变、外来者辈分落定规则；**开局成员辈分 = 0** |
+| FR-012 | `GameState` | 标识非空（`Guid.Empty` 被拒）、标识无公开 setter、起始年月；**改档名不变性属阶段④**（001 无落盘，无可验证对象） |
 | FR-013 / SC-004 | 两组接缝 + 静态扫描 | 源码级守卫 |
-| FR-015 / SC-002 | `tests/KFL.Tests` | `dotnet test`（领域/规则测试无环境依赖） |
+| FR-015 / SC-002 | `tests/KFL.Tests` 的领域与接缝目录 | `dotnet test`（领域/规则测试无环境依赖）；G-07 的扫描范围已按契约一扩至 `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`，`Architecture/` 显式豁免 |
 
 ---
 
