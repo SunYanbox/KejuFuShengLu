@@ -15,21 +15,14 @@
   </ItemGroup>
 
   <!--
-    testhost 启动时会监视「父进程」：它调用 Process.EnableRaisingEvents 打开父进程句柄，
-    在本机的进程宿主下该调用抛 Win32Exception(5) 拒绝访问，testhost 随即以未处理异常退出，
-    整个测试运行以 TESTRUNABORT 中止（现象与定位过程见
-    specs/001-core-skeleton/implementation-notes.md 第 2 节）。
-    开关本体是 VSTest 官方的 AppContext 开关，testhost 源码
-    DefaultEngineInvoker.EnableParentProcessQuery 读取；置 false 后 testhost 跳过这次
-    父进程查询，只放弃「vstest.console 死掉时 testhost 自杀」这一项保护，
-    测试的发现与执行行为、结果均不受影响。
-    注意：Microsoft.TestPlatform.TestHost.targets（随包引入、在本工程之后求值）会无条件写入
-    该开关项，因此用 ItemGroup 覆盖会被它盖掉，必须在求值顺序上更早的位置改它读取的属性。
-    该属性是包内部属性（前缀下划线），若将来升级 Test.Sdk 后回归，先回来检查这里。
+    环境补丁：受限宿主（Agent 沙箱）下 testhost 打开父进程句柄被拒，测试会以 TESTRUNABORT 中止。
+    本属性默认注释，MUST NOT 以启用状态提交；受阻时优先用命令行覆盖。详见仓库根 AGENTS.md。
   -->
+  <!--
   <PropertyGroup>
     <_MSTestEnableParentProcessQuery>false</_MSTestEnableParentProcessQuery>
   </PropertyGroup>
+  -->
 
   <!--
     T009 原文要求引用全部五个工程。其中 KFL.Presentation 与 KFL.App 的 TFM 是
