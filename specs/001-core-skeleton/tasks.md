@@ -298,3 +298,30 @@ Task: "T033 G-07 in tests/KFL.Tests/Architecture/EnvironmentDependencyTests.cs"
 - 提交粒度：按逻辑组（骨架 / 实体 / 守卫），提交信息用 Conventional Commits + 中文描述
 - 避免：模糊任务、同文件冲突、**未登记的**跨故事依赖（本阶段已登记的跨故事依赖只有
   一条：`US3 → T033`，见「User Story Dependencies」）
+
+---
+
+## Phase 7: Convergence
+
+> 本节由 `$speckit-converge` 追加（2026-10-05）：对「**当前代码** × spec / plan / tasks /
+> 章程」逐条核验后**仍然剩余**的工作。既有任务（T001~T049）一律未改动、未重排、未重编号；
+> 本节只追加新任务。本节产出前已实测：`dotnet build KejuFuShengLu.slnx` **0 警告 0 错误**；
+> `dotnet test KejuFuShengLu.slnx` **165 项全绿、0 skipped**；`dotnet sln list` 恰六工程；
+> 递归无 `*.sln`；`git status --short` 干净。
+>
+> **上述 6 项之外的 FR-001~FR-015 / SC-001~SC-006 与章程六条原则均已落地**（含九状态并存、
+> 功名变迁历史与降级、辈分与家主的落定规则、一夫一妻与丧偶再婚、八条架构守卫 G-01~G-08
+> 及其六组合成违规自证）。
+>
+> 一个**环境注记**（非代码缺陷，不构成任务）：本环境下并行 MSBuild 多节点 IPC 被沙箱拦截，
+> `dotnet build` / `dotnet test` 的**默认并行**调用会静默失败；加 `-m:1 -nodeReuse:false`
+> 即恢复正常。单工程构建与校验逻辑本身无问题。
+
+- [ ] T050 把 `Family.Marry` 改为**先校验、后写入**：在写入双方 `SpouseId` 之前完成外来者辈分对齐的全部前置校验，使失败的成婚调用不留下已生效的婚姻关系（现状：`SpouseId` 先写、`AlignOutsiderGeneration` 后抛，半提交状态在公开 API 上可达——外来者先有子女、再与辈分不同的家族内成员成婚即触发）；并补回归测试断言此时抛异常且双方 `SpouseId` 仍为 `null` per data-model §2.2 不变量 4 / §5「校验失败即拒绝，不产生非法档案」(partial)
+- [X] T051 为 `Family.HeadId` 的「为 `null` 或指向**在册**成员」不变量补上**归档侧强制点**（在任家主被置 `Deceased` / `MarriedOut` 时清空或拒绝），并补回归测试；若裁决该不变量应整体留给阶段⑧，则把该豁免**回写** `data-model.md` §2.2 不变量 6 与 `spec.md` FR-011——该缺口目前只记在 `implementation-notes.md` §3 第 4 条，而该文件自述「不承载任何需求」per FR-011 / data-model §2.2 不变量 6 (partial)
+  **裁决（2026-10-05，走方案 B）**：**不**为此增设归档回调或事件通知（家主继任判定属阶段⑧，届时由事件驱动修正），理由见章程「复杂度 MUST 被论证」；豁免已回写 `data-model.md` §2.2 不变量 6 与 `spec.md` FR-011，`implementation-notes.md` §3 第 4 条同步。**本任务完成。**
+- [ ] T052 为 G-07 的**测试目录扫描范围**补一条合成输入负向对照（向 `tests\KFL.Tests\Core\` 注入 `File.` 等禁用 token → 期望报 G-07），使 R-13 的收敛（把 `Core` / `Infrastructure` / `Fixtures` 纳入扫描）具备「扫描非空洞」的证据；现有 `GuardSelfTests` 的合成输入只落在 `src\KFL.Rules\` 下，`EnvironmentDependencyTests` 也只断言 `Architecture/` 被读到 per FR-015 / SC-002 / 契约一 G-07 (partial)
+- [ ] T053 清理仓库根的研究期残留目录 `ProbeX/`（仅含被 `.gitignore` 忽略的 `bin/` 测试宿主产物，源自 R-02 / R-09 的实测探针工程；spec / plan / tasks 均未登记该目录）per plan.md「Source Code (repository root)」(unrequested)
+- [ ] T054 处置 `specs/001-core-skeleton/implementation-notes.md`：把该文件登记进 `plan.md` 的「Documentation (this feature)」文档树，或裁决其不属于规划产物并写明归属 per plan.md「Documentation (this feature)」(unrequested)
+- [X] T055 复核 `tests/KFL.Tests/KFL.Tests.csproj` 的 `_MSTestEnableParentProcessQuery=false`：确认其仅在本机 testhost 父进程查询被拒时才必要，并登记保留理由与移除条件（上游 `Microsoft.NET.Test.Sdk` 修复、或 CI 环境不触发时移除）；若改用 `-p:BaseOutputPath=<工作区外>` 等不入仓库的方式即可绕过，则移除该开关 per tasks.md T009 / FR-015（spec / plan / tasks 均未要求该开关）(unrequested)
+  **裁决（2026-10-05，改口径）**：它绕的是**受限宿主（Agent 沙箱）**的权限限制，故改为**默认注释、MUST NOT 以启用状态提交**；受阻时**首选命令行覆盖** `dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`（实测 **165 项全绿、0 skipped**，且无需改任何文件），确需改文件时验证后 MUST 立即改回注释。同类沙箱权限经验已另存为仓库根 `AGENTS.md`。**本任务完成。**
