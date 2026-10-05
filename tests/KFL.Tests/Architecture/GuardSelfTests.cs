@@ -125,6 +125,38 @@ public class GuardSelfTests
         Assert.Contains(ArchitectureRules.Evaluate(notExempted), v => v.RuleId == "G-07");
     }
 
+    /// <summary>
+    /// 附加（T052）：G-07 的**测试目录扫描范围非空洞**——同一注入落在被扫描的三个测试目录下
+    /// 都必须报出。否则 R-13 把 <c>Core</c> / <c>Infrastructure</c> / <c>Fixtures</c> 纳入扫描这件事
+    /// 没有证据（其余合成输入只落在 <c>src\KFL.Rules\</c> 下）。
+    /// </summary>
+    /// <param name="path">注入位置，取自扫描范围内的三个测试目录。</param>
+    [Theory]
+    [InlineData(@"tests\KFL.Tests\Core\EnvironmentLeak.cs")]
+    [InlineData(@"tests\KFL.Tests\Infrastructure\EnvironmentLeak.cs")]
+    [InlineData(@"tests\KFL.Tests\Fixtures\EnvironmentLeak.cs")]
+    public void 测试目录内的禁用token报G07(string path)
+    {
+        var violations = ArchitectureRules.Evaluate(WithSource(path, "var now = DateTime.Now;"));
+
+        Assert.Contains(
+            violations,
+            v => v.RuleId == "G-07" && v.Subject.StartsWith(path, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// 附加（T052）：与上一条互为对照——<c>Architecture/</c> 是**显式豁免**而非漏扫，
+    /// 同一注入落在此处 MUST NOT 报 G-07。两条一起才说明该目录边界是被判定的，而非恒不命中。
+    /// </summary>
+    [Fact]
+    public void 架构目录内的同一注入不报G07()
+    {
+        var violations = ArchitectureRules.Evaluate(
+            WithSource(@"tests\KFL.Tests\Architecture\EnvironmentLeak.cs", "var now = DateTime.Now;"));
+
+        Assert.DoesNotContain(violations, v => v.RuleId == "G-07");
+    }
+
     private static string Describe(IEnumerable<ArchitectureViolation> violations) =>
         string.Join("；", violations.Select(v => v.ToString()));
 
