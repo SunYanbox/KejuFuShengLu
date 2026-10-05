@@ -14,7 +14,11 @@
 - 语言特性 MUST 使用 .NET 10 / C# 14 的当前能力，禁止为兼容旧运行时而写退化代码。
 - 引入的 NuGet 依赖 MUST 支持 `net10.0`（或 `net10.0-windows`）；不受支持或已停止
   维护的包 MUST NOT 引入。
-- SDK 版本 MUST 通过仓库根的 `global.json` 固定，保证本机与 CI 使用同一基线。
+- .NET 10 基线 MUST 通过仓库根的 `global.json` 固定，且**只约束到 .NET 10 主次版本带**
+  （如 `"version": "10.0.100"` + `"rollForward": "latestFeature"`）；MUST NOT 把 SDK
+  锁死到某个具体补丁号，也 MUST NOT 使用 `rollForward: disable`，以免尚未安装该补丁的
+  本机或 CI 直接无法构建。此处的「同一基线」指同一 .NET 10 运行时与语言基线，
+  不是同一个 SDK 构建号。
 
 理由：统一基线是"底层与 UI 层分离"能够被验证的前提。一旦允许框架版本漂移，
 `KFL.Rules` 就会被无意间拖入 Windows 专属类型，解耦随之失效。目标框架的划分
@@ -177,4 +181,4 @@ ViewModel 之间保持单向、无控件类型的绑定关系，界面重构就�
 - **运行时指引**：开发期的具体结构与命令以《科举浮生录规格书》与
   `.specify/templates/plan-template.md` 为准；两者 MUST NOT 与本章程冲突。
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-05 | **Last Amended**: 2026-10-05
+**Version**: 1.1.1 | **Ratified**: 2026-10-05 | **Last Amended**: 2026-10-05
