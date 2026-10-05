@@ -23,6 +23,16 @@
 - **仓库约定**：`tests/KFL.Tests/KFL.Tests.csproj` 里该属性**默认注释，MUST NOT 以启用状态提交**；
   确需改文件时，验证后必须立即改回注释。
 
+### 坑 3：被打断的测试留下孤儿 testhost，锁死 `bin\`
+
+- **现象**：`bin\` 下的 DLL 删不掉（`UnauthorizedAccessException`），或清理产物目录失败；
+  `git status` 看不到它们（`bin` 已被忽略），于是残留会一直躺在仓库里。
+- **原因**：坑 2 的开关一并关掉了「父进程死掉时 testhost 自杀」的看门狗，而宿主被强杀时
+  `vstest.console` 不会回收子进程 → 孤儿 `testhost.exe` 继续占着自己的 `bin\...\*.dll`。
+- **判定**：`Get-CimInstance Win32_Process -Filter "Name='testhost.exe'"` 里 `ParentProcessId`
+  已不在进程表中，即为孤儿；**不要去改文件 ACL**。
+- **处置**：`Get-Process -Name testhost | Stop-Process -Force` 后再删。
+
 ---
 
 ## 本仓库门禁（提交前四条全过）
