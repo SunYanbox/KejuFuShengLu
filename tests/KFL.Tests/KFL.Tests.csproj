@@ -15,6 +15,22 @@
   </ItemGroup>
 
   <!--
+    testhost 启动时会监视「父进程」：它调用 Process.EnableRaisingEvents 打开父进程句柄，
+    在本机的进程宿主下该调用抛 Win32Exception(5) 拒绝访问，testhost 随即以未处理异常退出，
+    整个测试运行以 TESTRUNABORT 中止（现象与定位过程见 HANDOFF §3.1）。
+    开关本体是 VSTest 官方的 AppContext 开关，testhost 源码
+    DefaultEngineInvoker.EnableParentProcessQuery 读取；置 false 后 testhost 跳过这次
+    父进程查询，只放弃「vstest.console 死掉时 testhost 自杀」这一项保护，
+    测试的发现与执行行为、结果均不受影响。
+    注意：Microsoft.TestPlatform.TestHost.targets（随包引入、在本工程之后求值）会无条件写入
+    该开关项，因此用 ItemGroup 覆盖会被它盖掉，必须在求值顺序上更早的位置改它读取的属性。
+    该属性是包内部属性（前缀下划线），若将来升级 Test.Sdk 后回归，先回来检查这里。
+  -->
+  <PropertyGroup>
+    <_MSTestEnableParentProcessQuery>false</_MSTestEnableParentProcessQuery>
+  </PropertyGroup>
+
+  <!--
     T009 原文要求引用全部五个工程。其中 KFL.Presentation 与 KFL.App 的 TFM 是
     net10.0-windows，net10.0 的测试工程在物理上引用不了它们——还原期直接报
     NU1201「项目与 net10.0 不兼容」。故此处只保留三个非 UI 工程：

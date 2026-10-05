@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 namespace KFL.Tests.Architecture;
 
 /// <summary>
@@ -17,39 +15,21 @@ public static class RepositoryLocator
     /// 定位仓库根：从 <see cref="AppContext.BaseDirectory"/> 向上逐级查找 <c>*.slnx</c>，
     /// **找不到即失败**（不静默返回 <c>null</c>）。
     /// </summary>
-    /// <param name="callerFilePath">编译期调用方源文件路径，仅作兜底。</param>
     /// <returns>仓库根的绝对路径。</returns>
-    /// <exception cref="InvalidOperationException">三处起点都找不到 <c>*.slnx</c>。</exception>
-    public static string LocateRepositoryRoot([CallerFilePath] string callerFilePath = "")
+    /// <exception cref="InvalidOperationException">向上找不到 <c>*.slnx</c>。</exception>
+    public static string LocateRepositoryRoot()
     {
-        var starts = new[]
-        {
-            AppContext.BaseDirectory,
-            Directory.GetCurrentDirectory(),
-            Path.GetDirectoryName(callerFilePath) ?? string.Empty,
-        };
+        var found = WalkUp(AppContext.BaseDirectory)
+            ?? throw new InvalidOperationException(
+                $"未能定位仓库根：从 {AppContext.BaseDirectory} 向上找不到 *.slnx。");
 
-        foreach (var start in starts)
-        {
-            if (string.IsNullOrWhiteSpace(start))
-            {
-                continue;
-            }
-
-            var found = WalkUp(start);
-            if (found is not null)
-            {
-                return found;
-            }
-        }
-
-        throw new InvalidOperationException(
-            "未能定位仓库根：从 AppContext.BaseDirectory、当前目录与本文件所在目录向上都找不到 *.slnx。");
+        return found;
     }
 
     /// <summary>读取仓库快照，供 <see cref="ArchitectureRules.Evaluate"/> 判定。</summary>
     /// <returns>仓库的结构化快照。</returns>
-    public static ArchitectureInput Load()    {
+    public static ArchitectureInput Load()
+    {
         var root = LocateRepositoryRoot();
 
         var solutionFilePaths = EnumerateFiles(root, "*.slnx")
