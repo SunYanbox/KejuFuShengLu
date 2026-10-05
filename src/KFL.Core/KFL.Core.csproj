@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>KFL.Core</RootNamespace>
+    <AssemblyName>KFL.Core</AssemblyName>
+  </PropertyGroup>
+
+  <!--
+    G-05 的允许边集里 KFL.Core 无出边：
+    Core 是最底层，MUST NOT 出现任何 ProjectReference。
+  -->
+
+</Project>

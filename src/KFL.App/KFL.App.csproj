@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KFL.App</RootNamespace>
+    <AssemblyName>KFL.App</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KFL.Core\KFL.Core.csproj" />
+    <ProjectReference Include="..\KFL.Infrastructure\KFL.Infrastructure.csproj" />
+    <ProjectReference Include="..\KFL.Rules\KFL.Rules.csproj" />
+    <ProjectReference Include="..\KFL.Presentation\KFL.Presentation.csproj" />
+  </ItemGroup>
+
+</Project>

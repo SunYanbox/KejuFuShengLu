@@ -1,0 +1,17 @@
+<Project>
+
+  <!--
+    仓库级统一构建基线（research R-10）。
+    MUST NOT 在此设置 TargetFramework / TargetFrameworks：
+    给了默认值会让写错的 TFM 被静默补上，架构守卫 G-03 随之失效（research R-01）。
+    TFM 一律由各工程自身的 .csproj 显式声明。
+  -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+  </PropertyGroup>
+
+</Project>

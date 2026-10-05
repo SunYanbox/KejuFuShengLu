@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>KFL.Tests</RootNamespace>
+    <AssemblyName>KFL.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <!--
+    T009 原文要求引用全部五个工程。其中 KFL.Presentation 与 KFL.App 的 TFM 是
+    net10.0-windows，net10.0 的测试工程在物理上引用不了它们——还原期直接报
+    NU1201「项目与 net10.0 不兼容」。故此处只保留三个非 UI 工程：
+    它们正是 T027~T034 的守卫测试与 T042~T044 的接缝测试唯一需要的类型来源
+    （工程清单类断言一律读文本，不需引用 UI 程序集）。
+    G-05 的允许边集仍保留 KFL.Tests -> 全部（允许 ≠ 必须）。
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\KFL.Core\KFL.Core.csproj" />
+    <ProjectReference Include="..\..\src\KFL.Infrastructure\KFL.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\KFL.Rules\KFL.Rules.csproj" />
+  </ItemGroup>
+
+</Project>

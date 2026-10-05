@@ -1,5 +1,7 @@
+# .NET 构建产物与测试结果
 bin/
 obj/
+TestResults/
 
 # Agent 本地目录：仅 .agents/skills 随仓库共享，其余为本机配置/凭据
 .agents/*

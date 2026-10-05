@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>KFL.Infrastructure</RootNamespace>
+    <AssemblyName>KFL.Infrastructure</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KFL.Core\KFL.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src\KFL.Core\KFL.Core.csproj" />
+  <Project Path="src\KFL.Infrastructure\KFL.Infrastructure.csproj" />
+  <Project Path="src\KFL.Rules\KFL.Rules.csproj" />
+  <Project Path="src\KFL.Presentation\KFL.Presentation.csproj" />
+  <Project Path="src\KFL.App\KFL.App.csproj" />
+  <Project Path="tests\KFL.Tests\KFL.Tests.csproj" />
+</Solution>
