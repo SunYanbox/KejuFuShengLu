@@ -76,7 +76,7 @@ System.ComponentModel.Win32Exception (5): 拒绝访问
 | 1 | **T009 原文要求 `KFL.Tests` 引用全部五个工程**，但 `net10.0` 的测试工程在物理上引用不了 `net10.0-windows` 的两个 UI 工程，还原期报 `NU1201` | 已按「最小忠实」只保留三个非 UI 工程的 `ProjectReference`（守卫只读文本，不需要 UI 程序集），理由写在 `tests/KFL.Tests/KFL.Tests.csproj` 注释里。**是否回写修正 T009 的措辞待定**——tasks.md 的任务描述未被改动，只勾了状态 |
 | 2 | **`SeededRandomService` 用播种的局部 `Random` 实例**，命中 G-07 字面清单里的 `new Random(` | 按契约一 §2.1 的行级豁免机制在**同一行**标注了理由。语义上它是显式播种的局部实例，不是隐式全局源（契约二 §1 禁的是「全局 `Random` / `Random.Shared` / `Guid.NewGuid()`」）。**是否改成自实现 PRNG 以彻底消除豁免待定** |
 | 3 | **`System.Random` 对给定种子的算法不保证跨 .NET 版本稳定** | 001 无落盘，「同种子 → 同结果」在单次运行内成立。若阶段④要求跨版本重放存档，需改用自实现的确定性算法。已写进 `SeededRandomService` 的类型注释 |
-| 4 | **`Family.HeadId` 的「指向在册成员」不变量只在 `SetHead` 时校验** | 家主**上任后**死亡 / 外嫁会让该不变量暂时失效，直到阶段⑧的继任判定修正。001 无死亡推进路径，未构造该状态，未做任何隐藏处理 |
+| 4 | **`Family.HeadId` 的「指向在册成员」不变量只在 `SetHead` 时校验** | 家主**上任后**死亡 / 外嫁会让该不变量暂时失效，直到阶段⑧的继任判定修正。001 的**产品代码**无死亡推进路径、不可抵达该状态，但**测试里构造过**（夹具已 `SetHead(founder)`，用例随后把 founder 置 `Deceased`，见 `FamilyTests` 的归档用例）。未做任何隐藏处理 |
 | 5 | **`KFL.Tests.csproj` 为绕开本机 testhost 崩溃，置了 `_MSTestEnableParentProcessQuery=false`**（见上节） | 该属性是 `Microsoft.TestPlatform.TestHost.targets` 的私有开关，会让 testhost 不再监视父进程。**对测试结果零影响**。若不接受仓库里带这个环境性开关，可删掉它并把构建输出挪到工作区外（`-p:BaseOutputPath=<工作区外>`）绕过——但那样必须同时恢复 `RepositoryLocator` 的兜底起点，因为契约 T028 规定它只从 `AppContext.BaseDirectory` 向上查找 |
 
 另有三处**代码级**的、为实现而必须做的取舍（理由都写在源码注释里，不是悄悄加的）：
@@ -86,9 +86,14 @@ System.ComponentModel.Win32Exception (5): 拒绝访问
   `AddOutsider` / `SetOutsiderGeneration` / `Marry` / `EndMarriage` / `SetHead` 是为了让
   规格书 §4.4 的辈分规则与 §9.1 的一夫一妻**由领域强制**、而不是只在测试里口头成立；
   构造成员的入口是必需的（夹具 MUST 只用公开 API 构造）。
-- `SeededRandomService.Next` 与 `StatusFlag` 各有一处 `[SuppressMessage]`：前者因 `Next` 是 VB
-  保留字（签名逐字取自契约二，不能改名），后者因 `CA1711` 与 data-model §1.3 固定的类型名冲突。
-  都是**带理由的定点抑制**，不是全局关规则，也没有用 `#pragma`。
+- `IRandomService.Next`（`SeededRandomService` 自身**没有任何特性**）与 `StatusFlag` 各有一处
+  `[SuppressMessage]`：前者因 `Next` 是 VB 保留字（签名逐字取自契约二，不能改名），后者因
+  `CA1711` 与 data-model §1.3 固定的类型名冲突。都是**带理由的定点抑制**，不是全局关规则，
+  也没有用 `#pragma`。
+- 行级豁免 `// arch-guard:allow` 共**两处**，且都必需：一处在 `SeededRandomService` 的播种实例上
+  （见本表第 2 条）；另一处在 `tests/KFL.Tests/Fixtures/FamilyFixtures.cs` 的第 20 行——
+  该行是**说明性注释**，为了写明「夹具标识一律确定性生成、不用全局随机源」而不得不写出被禁的
+  字面量，而 `Fixtures/` 正在 G-07 的扫描范围内（注释同样计入扫描）。
 
 ---
 

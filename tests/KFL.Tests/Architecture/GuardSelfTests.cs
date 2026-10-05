@@ -9,7 +9,8 @@ namespace KFL.Tests.Architecture;
 /// <para>
 /// **MUST NOT 通过真实改写仓库文件来验证**：本方案的允许边集是全序，任何反向边都闭合成环；
 /// <c>using System.Windows.Media;</c> 在 <c>net10.0</c> 工程里也必然编译失败。二者都会让
-/// 「守卫失败」与「编译失败」不可区分，手工路径恒不可用（HANDOFF §6）。
+/// 「守卫失败」与「编译失败」不可区分，手工路径恒不可用（见
+/// <c>specs/001-core-skeleton/implementation-notes.md</c> 第 1 节的 T035 行）。
 /// </para>
 /// <para>
 /// 合成输入以真实仓库快照为基线、**在内存中**注入违规——这是「合法输入」与「违规输入」

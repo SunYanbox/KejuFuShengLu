@@ -125,6 +125,14 @@
 > 辈分）的唯一入口是 `Family`；`Person` 自持的字段由 `Person` 自己暴露可写属性。
 > 不变量 2 列出了**全部**无写入通道的成员，因此「谁有 setter」无需从本列推断。
 
+**公开行为（非字段，T020 一并实现）**
+
+| 成员 | 签名 | 作用 | 来源 |
+| --- | --- | --- | --- |
+| `IsOutsider` | `bool`（只读） | `FatherId` 与 `MotherId` 皆 `null`，即 §4.4 定义的外来者（开局成员、娶入配偶、买来的旁系） | §4.4；§9.5 |
+| `AgeAt(GameDate)` | `int` | = `BirthDate.AgeInYearsAt(at)`；年龄不落裸字段（不变量 5、R-07） | §4.3；R-07 |
+| `AppendDegree(DegreeRecord)` | `void` | `DegreeHistory` 的**唯一**追加入口，强制 `ChangedAt` 非降序（不变量 7）；`Person` 不暴露可写的历史列表 | FR-008；§6 |
+
 **不变量**
 1. `Talents`、`Study`、`Health` 落在 0~100（FR-005、FR-006）。
 2. **无写入通道的成员（全集，测试须逐个反射断言）**：`Id`、`Gender`、`BirthDate`、
@@ -171,6 +179,19 @@
 | `RegisteredMembers` | 属性 | **在册** = 非「已亡」且非「外嫁」 | §12.1、§15 |
 | `ArchivedMembers` | 属性 | 已归档 = 已亡 或 外嫁 | §12.1 |
 
+**变更入口（`Family` 是跨实体唯一写入方，§4.4 辈分与 §9.1 一夫一妻的强制点）**
+
+| 成员 | 签名 | 规则 | 来源 |
+| --- | --- | --- | --- |
+| `BoughtCollateralGeneration` | `int`（派生） | = 家主辈分 + 1；`HeadId` 为 `null` 时抛异常（无在册男性成员则无从推导） | §4.4；§9.5 |
+| `AddFoundingMember(Person)` | `Person` | 开局成员：辈分 MUST 为 0、父母引用 MUST 为 `null` | §4.4 |
+| `AddChild(Person)` | `Person` | 血亲成员：父母至少一方为本家族成员，辈分 MUST = 该父母辈分 + 1 | §4.4 |
+| `AddOutsider(Person)` | `Person` | 外来者：父母引用 MUST 为 `null`，辈分由 `Family` 指定 | §4.4；§9.5 |
+| `SetOutsiderGeneration(PersonId, int)` | `void` | 外来者辈分的落定入口；拒绝血亲成员、拒绝**已有子女**者 | §4.4 |
+| `Marry(PersonId, PersonId)` | `void` | 一夫一妻（不变量 2）；娶入方的外来者辈分自动对齐其配偶 | §9.1；§4.4 |
+| `EndMarriage(PersonId)` | `void` | 丧偶/离异两步走的第一步：置空 `SpouseId` 并追加进 `FormerSpouseIds` | §9.1 |
+| `SetHead(PersonId?)` | `void` | `null` 或本家族**在册**成员（不变量 6）；**001 不校验性别**——继任判定属阶段⑧ | §4.4 |
+
 **不变量**
 1. 成员标识唯一；`PersonId` 引用要么指向本家族成员，要么为 `null`（**无悬挂引用**）。
 2. 配偶关系双向一致：`a.SpouseId == b.Id` ⇔ `b.SpouseId == a.Id`（US1 AS2）；且
@@ -208,6 +229,12 @@
 | `Family` | `Family` | 当前家族 | §2 |
 
 **不变量**：`Id != Guid.Empty`；`CurrentDate.Month` 合法。
+
+> **写入通道**：五个字段里只有 `CurrentDate` 有写入通道，且是 `internal set`——即**只有
+> `KFL.Core` 汇编内部**能推进年月。001 内除构造参数外**没有第二个写入者**（时间推进属
+> 阶段②/⑥）；后续若需要由 `KFL.Core` 之外推进时间，须在彼时重新裁决该成员的可见性。
+> `Difficulty` 是唯一对外可写的字段（切换逻辑属阶段⑫），其余三个字段只读。
+
 **明确不含**：资产池、商本、现金/储蓄/贷款、统计容器——均属阶段②及以后（spec Out of Scope）。
 
 ---

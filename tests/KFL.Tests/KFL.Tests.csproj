@@ -17,7 +17,8 @@
   <!--
     testhost 启动时会监视「父进程」：它调用 Process.EnableRaisingEvents 打开父进程句柄，
     在本机的进程宿主下该调用抛 Win32Exception(5) 拒绝访问，testhost 随即以未处理异常退出，
-    整个测试运行以 TESTRUNABORT 中止（现象与定位过程见 HANDOFF §3.1）。
+    整个测试运行以 TESTRUNABORT 中止（现象与定位过程见
+    specs/001-core-skeleton/implementation-notes.md 第 2 节）。
     开关本体是 VSTest 官方的 AppContext 开关，testhost 源码
     DefaultEngineInvoker.EnableParentProcessQuery 读取；置 false 后 testhost 跳过这次
     父进程查询，只放弃「vstest.console 死掉时 testhost 自杀」这一项保护，
