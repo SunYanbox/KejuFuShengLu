@@ -126,15 +126,16 @@ public class GuardSelfTests
     }
 
     /// <summary>
-    /// 附加（T052）：G-07 的**测试目录扫描范围非空洞**——同一注入落在被扫描的三个测试目录下
-    /// 都必须报出。否则 R-13 把 <c>Core</c> / <c>Infrastructure</c> / <c>Fixtures</c> 纳入扫描这件事
-    /// 没有证据（其余合成输入只落在 <c>src\KFL.Rules\</c> 下）。
+    /// 附加（T052）：G-07 的**测试目录扫描范围非空洞**——同一注入落在被扫描的四个测试目录下
+    /// 都必须报出。否则 R-13 把 <c>Core</c> / <c>Infrastructure</c> / <c>Fixtures</c> /
+    /// <c>Rules</c> 纳入扫描这件事没有证据（其余合成输入只落在 <c>src\KFL.Rules\</c> 下）。
     /// </summary>
-    /// <param name="path">注入位置，取自扫描范围内的三个测试目录。</param>
+    /// <param name="path">注入位置，取自扫描范围内的四个测试目录。</param>
     [Theory]
     [InlineData(@"tests\KFL.Tests\Core\EnvironmentLeak.cs")]
     [InlineData(@"tests\KFL.Tests\Infrastructure\EnvironmentLeak.cs")]
     [InlineData(@"tests\KFL.Tests\Fixtures\EnvironmentLeak.cs")]
+    [InlineData(@"tests\KFL.Tests\Rules\EnvironmentLeak.cs")]
     public void 测试目录内的禁用token报G07(string path)
     {
         var violations = ArchitectureRules.Evaluate(WithSource(path, "var now = DateTime.Now;"));
