@@ -5,7 +5,12 @@ namespace KFL.Core.ValueObjects;
 /// </summary>
 /// <remarks>
 /// <para>
-/// **不变量**：<see cref="Wen"/> MUST 为有限 <see cref="decimal"/>（<c>NaN</c> / <c>Infinity</c> 被拒）。
+/// **不变量**：<see cref="Wen"/> ∈ <see cref="decimal"/> 全域。这不是一条需要守卫的约束——
+/// <see cref="decimal"/> 是 128 位十进制浮点，**没有** <c>NaN</c> / <c>±Infinity</c> 表示，
+/// 故「非有限金额」在类型层面即不可表达（<c>decimal</c> 与 <c>double</c> 的这一差异是
+/// <c>Money</c> 选 <c>decimal</c> 的理由之一）。唯一的越界风险是算术**溢出**，
+/// 由 <c>decimal</c> 运算符抛 <see cref="OverflowException"/>（如
+/// <see cref="FromGuan"/> 的 ×1000 换算），不静默截断。
 /// </para>
 /// <para>
 /// **明确不含**：
@@ -40,27 +45,18 @@ public readonly record struct Money
     /// <summary>以「文」为单位的具名构造入口。</summary>
     /// <param name="wen">文数。</param>
     /// <returns>对应金额。</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="wen"/> 不是有限 <see cref="decimal"/>。</exception>
-    public static Money FromWen(decimal wen)
-    {
-        // decimal 没有公开的非有限值（既无 decimal.NaN 也无 decimal.PositiveInfinity），
-        // 故按「有限」的定义判定：落在 [decimal.MinValue, decimal.MaxValue] 之内。
-        // NaN 与任何值比较皆为 false，因此同样被下面的条件拒掉。
-        var isFinite = wen >= decimal.MinValue && wen <= decimal.MaxValue;
-
-        if (!isFinite)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(wen), wen, "金额 MUST 为有限 decimal（不允许 NaN / Infinity，data-model §1.1）。");
-        }
-
-        return new Money(wen);
-    }
+    /// <remarks>
+    /// 不做任何校验：**没有**可校验的东西——<paramref name="wen"/> 的静态类型 <see cref="decimal"/>
+    /// 已经排除了 <c>NaN</c> / <c>Infinity</c>，「有限性检查」在 <c>decimal</c> 上恒真（死代码）。
+    /// 越界只可能来自上游算术的溢出，而溢出在算出的那一刻就已抛出 <see cref="OverflowException"/>，
+    /// 不会以非法值的形式传到这里。
+    /// </remarks>
+    public static Money FromWen(decimal wen) => new(wen);
 
     /// <summary>以「贯」为单位的具名构造入口（= <see cref="FromWen"/>(贯 × 1000)）。</summary>
     /// <param name="guan">贯数。</param>
     /// <returns>对应金额。</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="guan"/> 不是有限 <see cref="decimal"/>。</exception>
+    /// <exception cref="OverflowException"><paramref name="guan"/> × 1000 超出 <see cref="decimal"/> 值域。</exception>
     public static Money FromGuan(decimal guan) => FromWen(guan * 1000m);
 
     /// <summary>两笔金额相加。</summary>
