@@ -263,6 +263,8 @@ MUST 在无 UI、无文件系统、无网络依赖的条件下运行」，收敛
 **收敛必须被物化，否则只是措辞**：契约一 G-07 的扫描范围因此**显式**包含
 `tests/KFL.Tests/Core`、`tests/KFL.Tests/Infrastructure`、`tests/KFL.Tests/Fixtures`，
 并**显式豁免** `tests/KFL.Tests/Architecture/`（该目录的职责就是读仓库工程文件与源码）。
+后者于 002 扩至 `tests/KFL.Tests/Rules`——规则层测试同样落在本收敛的「MUST 无环境依赖」
+一侧，不纳入扫描则这半条约束对它静默失效（002 `research.md` R-14）。
 若只扫产品工程，FR-015/SC-002 里「领域与规则测试无环境依赖」这一半就没有验证物——
 `dotnet test` 跑绿并不等于测试自身不碰文件系统。
 

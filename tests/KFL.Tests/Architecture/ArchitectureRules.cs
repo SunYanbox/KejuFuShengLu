@@ -117,9 +117,17 @@ public static class ArchitectureRules
     private static readonly string[] ProductSourceRoots =
         [@"src\KFL.Core\", @"src\KFL.Infrastructure\", @"src\KFL.Rules\"];
 
-    /// <summary>G-07 扫描范围额外包含的测试目录（R-13 的收敛在此物化）。</summary>
+    /// <summary>
+    /// G-07 扫描范围额外包含的测试目录（R-13 的收敛在此物化）。
+    /// <c>Rules\</c> 由 002 research R-14 追加——规则层测试同样 MUST 无环境依赖。
+    /// </summary>
     private static readonly string[] ScannedTestRoots =
-        [@"tests\KFL.Tests\Core\", @"tests\KFL.Tests\Infrastructure\", @"tests\KFL.Tests\Fixtures\"];
+    [
+        @"tests\KFL.Tests\Core\",
+        @"tests\KFL.Tests\Infrastructure\",
+        @"tests\KFL.Tests\Fixtures\",
+        @"tests\KFL.Tests\Rules\",
+    ];
 
     /// <summary>G-07 显式豁免的目录：其职责就是读仓库文件与源码。</summary>
     private const string ExemptTestDirectory = @"tests\KFL.Tests\Architecture\";
