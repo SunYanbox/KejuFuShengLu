@@ -8,48 +8,51 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 数值的唯一出处是 `KFL.Rules/Config/` 下的常量；本表与源码 MUST 同步，MUST NOT 成为第二真源
 （表中数值仅为可读性副本，冲突时以源码为准，并由同步测试兜底）。
 
+「配置成员」列统一写成**数值总表入口** `GameConfig` 的路径（T058，data-model §4.1）：
+`GameConfig` 只做逐成员转发，本身不含任何数值字面量，故 KFL.Rules/Config/ 内的常量仍是唯一出处。
+
 ## 1. 生活费（§5.1、§5.4、§10.1；R-17）
 
 | 数值 | 配置成员 | 断言锚点 |
 | --- | --- | --- |
-| 三档日耗 成人/青年/老人/儿童：拮据 20/7/14/5、普通 25/8.5/17.5/5、体面 30/10/21/5 | `LivingCostTable.DailyCost[档位][年龄档]` | 12 条逐格断言 |
-| 月 = 日耗 × **30** | `LivingCostTable.DaysPerMonth` | 单成员单档断言 |
-| 成年边界 男 **12** / 女 **14**；青年上界 **18**；老人下界 **60** | `AgeBracketPolicy` | 边界日断言（12 岁男生日、14 岁女生日、18 与 60 岁） |
-| 农出身独立乘区 成年 **0.90** / 未成年 **0.80** | `LivingCostTable.FarmerMultiplier` | 成年/未成年 × 农/非农 四种组合 |
-| 生活费一般乘区修正项 未成年 **−0.50**、救济期 **−0.20**（加算） | `LivingCostTable.GeneralZoneModifiers` | `1 − 0.5 − 0.2 = 0.3`（农出身未成年 + 救济）与 `0.5`（非农未成年） |
-| 米价系数 初始 **1.0**、游走 **±10%**、clamp **0.7~3.0**、米价派生值 `米价 = (系数 − 0.4) ÷ 0.6` | `GrainPricePolicy` | 边界 clamp 与连续越界回弹；派生值换算 |
-| 难度支出系数 简单/普通/困难/地狱 **0.6/1.0/1.1/1.3** | `DifficultyRates` | 四难度各一条 |
+| 三档日耗 成人/青年/老人/儿童：拮据 20/7/14/5、普通 25/8.5/17.5/5、体面 30/10/21/5 | `GameConfig.LivingCost.DailyCost[档位][年龄档]` | 12 条逐格断言 |
+| 月 = 日耗 × **30** | `GameConfig.LivingCost.DaysPerMonth` | 单成员单档断言 |
+| 成年边界 男 **12** / 女 **14**；青年上界 **18**；老人下界 **60** | `GameConfig.Ages`（`MaleAdulthoodAge` / `FemaleAdulthoodAge` / `YouthUpperAge` / `ElderLowerAge` / `Of`） | 边界日断言（12 岁男生日、14 岁女生日、18 与 60 岁） |
+| 农出身独立乘区 成年 **0.90** / 未成年 **0.80** | `GameConfig.LivingCost.FarmerMultiplierOf` | 成年/未成年 × 农/非农 四种组合 |
+| 生活费一般乘区修正项 未成年 **−0.50**、救济期 **−0.20**（加算） | `GameConfig.LivingCost.GeneralZoneModifiers` / `GeneralZoneFactor` | `1 − 0.5 − 0.2 = 0.3`（农出身未成年 + 救济）与 `0.5`（非农未成年） |
+| 米价系数 初始 **1.0**、游走 **±10%**、clamp **0.7~3.0**、米价派生值 `米价 = (系数 − 0.4) ÷ 0.6` | `GameConfig.GrainPrice`（`Initial` / `WalkAmplitude` / `Min` / `Max` / `PriceOffset` / `PriceScale` / `Walk` / `MarketPrice`） | 边界 clamp 与连续越界回弹；派生值换算 |
+| 难度支出系数 简单/普通/困难/地狱 **0.6/1.0/1.1/1.3** | `GameConfig.DifficultyRate.ExpenseFactor` | 四难度各一条 |
 
 ## 2. 收入（§5.2、§5.3、§8.1、§11；R-18/R-19）
 
 | 数值 | 配置成员 | 断言锚点 |
 | --- | --- | --- |
-| 自耕 亩产率 **0.5 贯/亩/年**、每人上限 **20 亩** | `IncomeRateTable.SelfFarming` | 40 亩 = 1.667 贯/月；第 21 亩转田租 |
-| 田租 亩产率 **0.1 贯/亩/年** | `IncomeRateTable.LandRent` | 与自耕同夹具对照 |
-| 务农 **2 贯/月**（家族**无田可耕 = `FarmlandMu == 0`** 时，每名**计口成年成员**） | `IncomeRateTable.FarmingWage` | 有田/无田两分支；与自耕互斥；**有田未占满容量不发务农**（E-17） |
-| 做工 **1.5 贯/月**、城市宅 **+1 贯/月** | `IncomeRateTable.Crafting` | 做工人数 × 1.5；城市宅加成 = `min(做工人数, 城市宅数)` **份，按本人工乘数降序逐人归属并各乘本人乘数**（E-15） |
-| 经商 **2%**、门槛 **100 贯**、商出身 **×1.1** | `IncomeRateTable.Trade` | 99/100 贯两边界；商出身加成 |
-| 天赋除数 农 **200**、工 **400**、商 **200** | `IncomeRateTable.TalentDivisors` | 各来源一条 |
-| 铺面年租 **20%** | `AssetPriceTable.ShopRentRate` | 300 × 20% ÷ 12 = 5 贯/月 |
-| 工出身 bonus **6%** | `IncomeRateTable.ArtisanBonusRate` | 基数为正/为 0/为负三分支 |
-| 官俸 18 级 **5100/4250/3560/2980/2490/2090/1750/1460/1220/1020/860/720/600/500/420/235/130/72** | `SalaryTable.Annual` | 逐级断言 + 锚点 72/420/5100（SC-004） |
-| 俸禄月摊 **÷12**、士出身当官 **×1.05** | `SalaryTable` | 士/非士对照 |
-| 难度收益系数 **1.4/1.0/0.9/0.8** | `DifficultyRates` | 四难度各一条；储蓄利息**不**乘（负例断言） |
+| 自耕 亩产率 **0.5 贯/亩/年**、每人上限 **20 亩** | `GameConfig.Income.SelfFarmingGuanPerMuPerYear` / `FarmlandPerCapitaMu` | 40 亩 = 1.667 贯/月；第 21 亩转田租 |
+| 田租 亩产率 **0.1 贯/亩/年** | `GameConfig.Income.LandRentGuanPerMuPerYear` | 与自耕同夹具对照 |
+| 务农 **2 贯/月**（家族**无田可耕 = `FarmlandMu == 0`** 时，每名**计口成年成员**） | `GameConfig.Income.FarmingWageGuanPerMonth` | 有田/无田两分支；与自耕互斥；**有田未占满容量不发务农**（E-17） |
+| 做工 **1.5 贯/月**、城市宅 **+1 贯/月** | `GameConfig.Income.CraftingGuanPerMonth` / `UrbanHouseCraftingBonusGuanPerMonth` | 做工人数 × 1.5；城市宅加成 = `min(做工人数, 城市宅数)` **份，按本人工乘数降序逐人归属并各乘本人乘数**（E-15） |
+| 经商 **2%**、门槛 **100 贯**、商出身 **×1.1** | `GameConfig.Income.TradeProfitRate` / `TradeCapitalThresholdGuan` / `MerchantOriginMultiplier` | 99/100 贯两边界；商出身加成 |
+| 天赋除数 农 **200**、工 **400**、商 **200** | `GameConfig.Income.AgricultureTalentDivisor` / `CraftTalentDivisor` / `CommerceTalentDivisor` | 各来源一条 |
+| 铺面年租 **20%** | `GameConfig.Assets.ShopRentRate` / `ShopMonthlyRent` | 300 × 20% ÷ 12 = 5 贯/月 |
+| 工出身 bonus **6%** | `GameConfig.Income.ArtisanBonusRate` | 基数为正/为 0/为负三分支 |
+| 官俸 18 级 **5100/4250/3560/2980/2490/2090/1750/1460/1220/1020/860/720/600/500/420/235/130/72** | `GameConfig.Salary.AnnualSalaryGuan` | 逐级断言 + 锚点 72/420/5100（SC-004） |
+| 俸禄月摊 **÷12**、士出身当官 **×1.05** | `GameConfig.Income.MonthsPerYear` / `GameConfig.Salary.ScholarOriginMultiplier` | 士/非士对照 |
+| 难度收益系数 **1.4/1.0/0.9/0.8** | `GameConfig.DifficultyRate.RevenueFactor` | 四难度各一条；储蓄利息**不**乘（负例断言） |
 
 ## 3. 资产（§5.3）
 
 | 数值 | 配置成员 | 断言锚点 |
 | --- | --- | --- |
-| 田 **1 贯/亩**、农村宅 **10 贯**、城市宅 **100 贯**、铺面 **300 贯**（购售同价） | `AssetPriceTable.UnitPrice` | 买/卖各一条，且卖出不再产生对应收入 |
+| 田 **1 贯/亩**、农村宅 **10 贯**、城市宅 **100 贯**、铺面 **300 贯**（购售同价） | `GameConfig.Assets.UnitPrice` | 买/卖各一条，且卖出不再产生对应收入 |
 
 ## 4. 现金、储蓄、贷款（§5.4、§10.2；R-08/R-11）
 
 | 数值 | 配置成员 | 断言锚点 |
 | --- | --- | --- |
-| 储蓄利率区间 **0.5%~2.4%**、1 月 roll、当年不变 | `InterestPolicy.SavingsRate` | 区间两端（`NextDouble()` 取 0 与极大） |
-| 贷款利率区间 **0.5%~2.4%**、计息周期 **12 月** | `InterestPolicy.LoanRate` / `InterestPeriodMonths` | 12 月节点命中一次、第 13 月不重复 |
-| 划扣比例 仕 **20%** / 工农 **40%** / 商 **80%** | `LoanPolicy.RepaymentRatio` | 三档各一条（SC-002） |
-| 饥馑 **3 月** 转救济、救济 **12 月**、救济折扣 **20%** | `FamineTimeline` | 4/4 阶段转移（SC-003） |
+| 储蓄利率区间 **0.5%~2.4%**、1 月 roll、当年不变 | `GameConfig.Interest.SavingsRate` | 区间两端（`NextDouble()` 取 0 与极大） |
+| 贷款利率区间 **0.5%~2.4%**、计息周期 **12 月** | `GameConfig.Interest.LoanRate` / `InterestPeriodMonths` | 12 月节点命中一次、第 13 月不重复 |
+| 划扣比例 仕 **20%** / 工农 **40%** / 商 **80%** | `GameConfig.Loan.RepaymentRatio` | 三档各一条（SC-002） |
+| 饥馑 **3 月** 转救济、救济 **12 月**、救济折扣 **20%** | `GameConfig.Famine`（`MonthsUntilRelief` / `ReliefMonthsUntilSevere` / `ReliefExpenseDiscount`） | 4/4 阶段转移（SC-003） |
 | 支付原语顺序 现金 → 储蓄 → 余额转贷款 | `PaymentPrimitive`（无魔数，结构即契约） | 三步各一条 |
 
 ## 5. 数值唯一性条款
@@ -62,6 +65,8 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
    断言关键数值**只**在 `src/KFL.Rules/Config/` 的 `.cs` 里以字面量出现
    （实现方式：配置成员名白名单 + 字面量扫描；命中即失败）。
 4. 米价派生值的系数（**0.4** 与 **0.6**）同属本表，MUST NOT 写进 `GrainPriceIndex`。
+5. `GameConfig`（数值总表入口）MUST 只转发既有成员，MUST NOT 声明自己的数值字面量：
+   它是**视图**，不是第二出处。
 
 ## 6. 本契约明确不包含
 

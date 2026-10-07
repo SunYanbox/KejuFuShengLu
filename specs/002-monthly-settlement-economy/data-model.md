@@ -317,30 +317,30 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 ## 5. 需求 → 模型映射
 
-| 需求 | 落在哪 | 验证方式 |
-| --- | --- | --- |
-| FR-001、SC-008 | `Treasury` / `Holdings` / `Loan` / `Money`（文为单位） | 字段边界测试 + 配置登记表核对 |
-| FR-002、FR-003、FR-004 | `AgeBracketPolicy` + `LivingCostTable`（四个乘区，R-17）+ `GrainPricePolicy` | 逐年龄档断言、边界日（12 岁男 / 14 岁女）、clamp 0.7/3.0 与连续越界回弹；农出身与一般乘区的四种组合（成年/未成年 × 农/非农）各一条断言；农出身未成年人处于救济期时的一般乘区 = 0.3 |
-| FR-005（次月生效） | `PendingDifficulty` / `PendingLivingStandard` / `LivingCostTable.InitialStandard` | 同月切换 → 当月不变、次月变（US1 AS6）；新建存档的初始档位 = `Normal`（一条断言） |
-| FR-006、FR-011、FR-012 | `IncomeCalculator` + `SalaryTable` + `DifficultyRates` | 逐来源分项断言；18 级锚点 72/420/5100；储蓄利息**不**乘收益系数 |
-| FR-007、FR-008、FR-009 | `IncomeRateTable` + `IncomeCalculator`（E-02 的触发口径） | 20 亩上限与超出转田租；城市宅 +1 贯（**份数 × 按人归属 × 本人乘数**三条各一断言，E-15）；商本 100 贯边界；无田时务农 2 贯且与自耕互斥；做工需指派；**可指派人群 = 计口 ∧ 成年**（青年/老人可、未成年不可，E-16）；**`TradeIncome` 归属被采用者**（`PersonId != null`，E-18） |
-| FR-010、FR-013、FR-015 | `AssetPriceTable` / `InterestPolicy` / `LoanPolicy` | 铺面月摊 5 贯（300×20%÷12）；1 月 roll、12 月计息、次年重 roll；20/40/80 各一条断言 |
-| FR-014、FR-016 | `Loan` + `LoanSettlement` + `InterestPolicy` | 先本后息；跨 12 月节点按当时本金计息；本金清零后转冲欠息；皆清即结清；计时按自然月（E-07）；任意金额手动提前还款（`FamilyEconomy.RepayLoan` 承载） |
-| FR-017 | `PaymentPrimitive` | 「现金 → 储蓄 → 余额转贷款」三步各一断言；本阶段无罚金入口 |
-| FR-018、FR-019 | `FamineState` + `FamineController` + `FamineTimeline` | 4 阶段转移 4/4 + 解除后计时归零；**「恰好第 3 月转救济 / 恰好第 12 月转 Severe」两条边界断言**（E-14）；阶段与剩余月数可读 |
-| FR-020 | `MonthlySettlementEngine` | 六步顺序契约（E-04）；越界步骤（随机事件/成长/科举/绝嗣）**不存在** |
-| FR-021、FR-022、SC-005 | `FamilyEconomy.Apply` / `RepayLoan` + `Ledger` | 资金池变动与条目一一对应；家族/角色两维度聚合同一批条目；归档成员历史可读 |
-| FR-023 | `KFL.Rules/Config/` 全部配置类 | 配置登记表 + 「配置类之外无第二份副本」扫描测试 |
-| FR-024、FR-025、SC-006、SC-007 | `MonthlySettlementEngine` 的注入与随机消费次序 | 同种子复跑逐位相同；G-07 静态断言（扫描范围含新 `Rules/` 目录） |
-| FR-026 | `LoanTests` / `FamineTimelineTests` / `SalaryTableTests` | §16 必测三项逐条 |
-| FR-027 | `AssetMarket` | 买入/售出后 `Holdings` 与资金池同价变动 |
-| FR-028 | ——（本阶段 MUST NOT 实现） | 「买人口」相关类型在阶段② 不存在，以「无该类型/无该类别」断言 |
-| FR-029、FR-030、SC-009 | `LivingCostCalculator` / `IncomeCalculator` 的**计口筛选** | 服刑 + 外嫁同夹具：贡献为 0、档案与历史条目仍可读；待阙**照常**计入 |
-| FR-031 | `IncomeRateTable` 的务农系数 + `IncomeCalculator` + `CountedMembers` | `tests/KFL.Tests/Rules/IncomeTests.cs`；**「无田可耕」= `FarmlandMu == 0`** 与「有田即不得发务农」各一断言（E-17） |
-| SC-001 | `MonthlySettlementEngine` + `SettlementResult` | `tests/KFL.Tests/Rules/SettlementEngineTests.cs`（quickstart S1~S3/S6） |
-| SC-002 | `LoanSettlement` + `LoanPolicy` | `tests/KFL.Tests/Rules/LoanTests.cs` |
-| SC-003 | `FamineController` + `FamineTimeline` | `tests/KFL.Tests/Rules/FamineTimelineTests.cs` |
-| SC-004 | `SalaryTable` | `tests/KFL.Tests/Rules/SalaryTableTests.cs` |
+| 需求 | 落在哪 | 验证方式 | 任务 |
+| --- | --- | --- | --- |
+| FR-001、SC-008 | `Treasury` / `Holdings` / `Loan` / `Money`（文为单位） | 字段边界测试 + 配置登记表核对 | T007~T016、T058、T059 |
+| FR-002、FR-003、FR-004 | `AgeBracketPolicy` + `LivingCostTable`（四个乘区，R-17）+ `GrainPricePolicy` | 逐年龄档断言、边界日（12 岁男 / 14 岁女）、clamp 0.7/3.0 与连续越界回弹；农出身与一般乘区的四种组合（成年/未成年 × 农/非农）各一条断言；农出身未成年人处于救济期时的一般乘区 = 0.3 | T027、T028、T029、T035、T038 |
+| FR-005（次月生效） | `PendingDifficulty` / `PendingLivingStandard` / `LivingCostTable.InitialStandard` | 同月切换 → 当月不变、次月变（US1 AS6）；新建存档的初始档位 = `Normal`（一条断言） | T018、T027、T041 |
+| FR-006、FR-011、FR-012 | `IncomeCalculator` + `SalaryTable` + `DifficultyRates` | 逐来源分项断言；18 级锚点 72/420/5100；储蓄利息**不**乘收益系数 | T031、T033、T036、T039、T040、T049 |
+| FR-007、FR-008、FR-009 | `IncomeRateTable` + `IncomeCalculator`（E-02 的触发口径） | 20 亩上限与超出转田租；城市宅 +1 贯（**份数 × 按人归属 × 本人乘数**三条各一断言，E-15）；商本 100 贯边界；无田时务农 2 贯且与自耕互斥；做工需指派；**可指派人群 = 计口 ∧ 成年**（青年/老人可、未成年不可，E-16）；**`TradeIncome` 归属被采用者**（`PersonId != null`，E-18） | T031、T036、T039 |
+| FR-010、FR-013、FR-015 | `AssetPriceTable` / `InterestPolicy` / `LoanPolicy` | 铺面月摊 5 贯（300×20%÷12）；1 月 roll、12 月计息、次年重 roll；20/40/80 各一条断言 | T022、T032、T042、T043、T045~T049 |
+| FR-014、FR-016 | `Loan` + `LoanSettlement` + `InterestPolicy` | 先本后息；跨 12 月节点按当时本金计息；本金清零后转冲欠息；皆清即结清；计时按自然月（E-07）；任意金额手动提前还款（`FamilyEconomy.RepayLoan` 承载） | T012、T043、T045、T046 |
+| FR-017 | `PaymentPrimitive` | 「现金 → 储蓄 → 余额转贷款」三步各一断言；本阶段无罚金入口 | T044、T046 |
+| FR-018、FR-019 | `FamineState` + `FamineController` + `FamineTimeline` | 4 阶段转移 4/4 + 解除后计时归零；**「恰好第 3 月转救济 / 恰好第 12 月转 Severe」两条边界断言**（E-14）；阶段与剩余月数可读 | T014、T050、T051、T052、T053 |
+| FR-020 | `MonthlySettlementEngine` | 六步顺序契约（E-04）；越界步骤（随机事件/成长/科举/绝嗣）**不存在** | T037、T041、T045、T048、T052 |
+| FR-021、FR-022、SC-005 | `FamilyEconomy.Apply` / `RepayLoan` + `Ledger` | 资金池变动与条目一一对应；家族/角色两维度聚合同一批条目；归档成员历史可读 | T016、T017、T025、T054、T055 |
+| FR-023 | `KFL.Rules/Config/` 全部配置类 | 配置登记表 + 「配置类之外无第二份副本」扫描测试 | T027~T033、T058、T059 |
+| FR-024、FR-025、SC-006、SC-007 | `MonthlySettlementEngine` 的注入与随机消费次序 | 同种子复跑逐位相同；G-07 静态断言（扫描范围含新 `Rules/` 目录） | T002、T037、T060 |
+| FR-026 | `LoanTests` / `FamineTimelineTests` / `SalaryTableTests` | §16 必测三项逐条 | T040、T046、T053 |
+| FR-027 | `AssetMarket` | 买入/售出后 `Holdings` 与资金池同价变动 | T056、T057 |
+| FR-028 | ——（本阶段 MUST NOT 实现） | 「买人口」相关类型在阶段② 不存在，以「无该类型/无该类别」断言 | T010、T025 |
+| FR-029、FR-030、SC-009 | `LivingCostCalculator` / `IncomeCalculator` 的**计口筛选** | 服刑 + 外嫁同夹具：贡献为 0、档案与历史条目仍可读；待阙**照常**计入 | T034、T035、T036、T038、T039、T055 |
+| FR-031 | `IncomeRateTable` 的务农系数 + `IncomeCalculator` + `CountedMembers` | `tests/KFL.Tests/Rules/IncomeTests.cs`；**「无田可耕」= `FarmlandMu == 0`** 与「有田即不得发务农」各一断言（E-17） | T031、T034、T036、T039 |
+| SC-001 | `MonthlySettlementEngine` + `SettlementResult` | `tests/KFL.Tests/Rules/SettlementEngineTests.cs`（quickstart S1~S3/S6） | T037、T041 |
+| SC-002 | `LoanSettlement` + `LoanPolicy` | `tests/KFL.Tests/Rules/LoanTests.cs` | T042、T043、T045、T046 |
+| SC-003 | `FamineController` + `FamineTimeline` | `tests/KFL.Tests/Rules/FamineTimelineTests.cs` | T050~T053 |
+| SC-004 | `SalaryTable` | `tests/KFL.Tests/Rules/SalaryTableTests.cs` | T033、T040 |
 
 ---
 

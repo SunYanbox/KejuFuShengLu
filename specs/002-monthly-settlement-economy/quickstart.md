@@ -37,12 +37,15 @@ dotnet sln   KejuFuShengLu.slnx list                                            
 
 ```powershell
 dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
-  -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~LivingCostTests"
+  -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~LivingCostTests|FullyQualifiedName~SettlementEngineTests"
 ```
 
 - **夹具**：多代同堂（含儿童 / 青年 / 成人 / 老人）+ 田 + 宅 + 铺面 + 一名在职位成员，固定种子。
 - **断言**：逐年龄档日耗与人数 → `30 × 米价系数 × 难度支出系数 × 农出身独立乘区 × 一般乘区`；
   四个乘区各自可分别读出；生日当月转档（12 岁男 / 14 岁女）。
+- **引擎级**（`SettlementEngineTests`）：一次 `Settle` 把六步串起来——① 待理晋升 ② 米价游走与 clamp
+  ③ 收入（含 12 月年度项）④ 生活费（饥馑机先 `Tick`）⑤ 贷款（先计息后划扣）⑥ `AdvanceMonth()`；
+  逐项可在同一条命令内读出，且条目与资金池同步。
 - **期望**：普通档、非农、无救济的儿童 = `5 × 30 × 米价系数 × 难度支出系数 × 1.00 × 0.50`；
   同条件农出身儿童 = 上式再乘 `0.80`；救济期再按一般乘区 `1 − 0.5 − 0.2 = 0.3`。
 
@@ -50,7 +53,7 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
 
 ```powershell
 dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
-  -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~IncomeTests"
+  -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~IncomeTests|FullyQualifiedName~SalaryTableTests"
 ```
 
 - 自耕 40 亩 = `40 × 0.5 ÷ 12 = 1.667 贯/月`（**不是** 2 贯，R-18）；
@@ -134,6 +137,19 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
 - 但两人的档案、族谱位置与既往账目仍 100% 可读；
 - **待阙**成员照常计入生活费（**在册 ≠ 计口**）。
 
+### S9 资产购售与收入退化（FR-027、R-15）
+
+```powershell
+dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
+  -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~AssetMarketTests"
+```
+
+- 田宅铺**购售同价**（`AssetPriceTable.UnitPrice`），买卖各落一条**资金类**条目（`AssetPurchase` / `AssetSale`），
+  资金池与 `Holdings` 同步变动；
+- 卖出后对应收入来源退化到零：田 → 自耕与田租、城市宅 → 做工加成、铺面 → 铺面租、卖光资产 → 工 bonus 基数里的市值项消失；
+- 资产卖光或从未持有时结算**不中断**；现金不足（可付额 = 现金 + 储蓄，R-05）即**拒绝**，
+  MUST NOT 转成贷款（§9.5/§5.4 同一口径）。
+
 ## 4. 完成判据（§16 阶段验收 + 本阶段 Success Criteria）
 
 | 判据 | 怎么验 |
@@ -142,12 +158,13 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
 | SC-001 一次结算可在单条测试命令内逐项断言 | S1~S3、S6 |
 | SC-002 贷款三规则独立断言、三档比例各 ≥1 条 | S3 |
 | SC-003 饥馑 4/4 转移 + 解除后计时归零 | S5 |
-| SC-004 俸禄 18 级锚点误差为 0 | S2 |
+| SC-004 俸禄 18 级锚点误差为 0 | S2（`SalaryTableTests`） |
 | SC-005 条目合计与资金池变动完全相等 | S6 |
 | SC-006 同种子 100% 相同 | S7 |
 | SC-007 非 UI 层 0 次环境直接访问 | S7（G-07） |
-| SC-008 数值唯一出处 | `contracts/config-registry.md` §5 的扫描测试 |
+| SC-008 数值唯一出处 | `contracts/config-registry.md` §5 的扫描测试（S7 的 `~Architecture` 一并跑出） |
 | SC-009 服刑与外嫁贡献为 0、档案仍可读 | S8 |
+| FR-027 田宅铺购售同价、卖出后收入退化、现金不足不转贷款 | S9 |
 
 ## 5. 本阶段**不**验收的项（避免误判为遗漏）
 
