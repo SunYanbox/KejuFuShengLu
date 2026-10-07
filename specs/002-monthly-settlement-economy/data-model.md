@@ -3,7 +3,7 @@
 **Feature**: `002-monthly-settlement-economy` | **Date**: 2026-10-06 | **Spec**: [spec.md](./spec.md) | **Research**: [research.md](./research.md)
 
 本文件定义 002 交付的经济状态与结算产物。字段全集来自规格书 §5.1~§5.4、§8.1、§11、§12.3
-与 spec 的 FR-001~FR-030；**凡规格书未列举、且本阶段无消费者的一律不建**（章程「复杂度
+与 spec 的 FR-001~FR-031；**凡规格书未列举、且本阶段无消费者的一律不建**（章程「复杂度
 MUST 被论证」）。存档落盘属阶段④，此时增删字段仍无迁移成本。
 
 层归属的依据见 research R-01：**状态在 `KFL.Core`，依赖数值的推导与编排在 `KFL.Rules`**。
@@ -24,7 +24,8 @@ MUST 被论证」）。存档落盘属阶段④，此时增删字段仍无迁移
 | `IsPositive` / `IsNegative` | `bool`（派生） | 结算分支用 |
 | `+ - * (decimal) 一元 -` 与 `== < >` | 运算符 | 与 `decimal` 的乘法只在「乘系数」处使用 |
 
-**不变量**：`Wen` 为有限 `decimal`（`NaN`/`Infinity` 被拒）。
+**不变量**：`Wen` ∈ `decimal` 全域；溢出由 `decimal` 运算符抛 `OverflowException`（`FromGuan`
+的 ×1000 换算有此风险）。
 **明确不含**：舍入（R-02：一律保留全精度，取整属阶段③展示层）；隐式 `double`/`int` 转换
 （把「贯」「文」的口径混淆挡在编译期）。
 
@@ -96,7 +97,10 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 **`LedgerCategoryMetadata` 的职责**（结构事实，不是平衡数值，故随枚举留在 Core，R-04）：
 `KindOf(category) → LedgerEntryKind`、`CreditTargetOf(category) → LedgerCreditTarget?`——返回
 `null` 表示**没有正额入账目标**，即上表「正额入账目标」列为「—」的 **9 个类别**（4 个恒为负的
-支出类 + 5 个事件类）；`FamilyEconomy.Apply` 收到这 9 类之一的正额 MUST 抛异常。
+支出类 + 5 个事件类）。其中**只有 4 个恒为负的支出类**（`LivingCost`、`LoanPrincipalRepaid`、
+`LoanInterestRepaid`、`AssetPurchase`）在收到正额时 `FamilyEconomy.Apply` MUST 抛异常；5 个
+**事件类**的金额是**事件自身的金额语义**（阶段迁移恒 0，`LoanInterestAccrued` 为利息额、**可正**），
+`Apply` 只追加条目不移动资金池（与 `contracts/ledger.md` 的二分类一致）。
 **SC-005 的求和口径** = 对 `KindOf == Treasury` 的条目求和。
 
 ---
@@ -143,7 +147,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 故不违反章程原则 II 的「实体 MUST NOT 承担跨实体结算编排职责」。
 
 **写入通道**：`Principal` 与 `MonthsSinceInterest` 为公开可写属性（带 `>= 0` 校验）——前者由
-`PaymentPrimitive` 在资金池不足时加差额，后者由结算每月 +1；`AccruedInterest` **只读**，
+`PaymentPrimitive` 在现金 + 储蓄不足时加差额，后者由结算每月 +1；`AccruedInterest` **只读**，
 唯一写入通道是 `AccrueInterest(Money)`，「利息永不滚入本金」因此无法被绕过。
 
 **`LoanRepayment`**：`readonly record struct (Money PrincipalPart, Money InterestPart)`，
@@ -262,7 +266,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `AssetPriceTable` | 田 1 / 农村宅 10 / 城市宅 100 / 铺面 300 贯；铺面年租 20% | §5.3 |
 | `InterestPolicy` | 储蓄贷款利率区间 0.5%~2.4%、计息周期 12 月 | §5.4 |
 | `FamineTimeline` | 饥馑 3 月转救济、救济 12 月、救济折扣 20% | §5.4 |
-| `GrainPricePolicy` | 初始 1.0、游走幅度 10%、clamp 0.7~3.0、米价派生 `0.4 + 0.6 × 米价` | §5.1 |
+| `GrainPricePolicy` | 初始 1.0、游走幅度 10%、clamp 0.7~3.0、米价派生值 `米价 = (系数 − 0.4) ÷ 0.6` | §5.1 |
 | `DifficultyRates` | 四难度的收益/支出/贿赂风险/负面事件系数 + 查表 | §11 |
 | `SalaryTable` | 18 级年俸（L1=5100 … L18=72）、月摊 = ÷12、士出身当官 ×1.05 | §8.1 |
 | `LoanPolicy` | 划扣比例 仕 20% / 工农 40% / 商 80% 的判定 | §5.4、§10.2 |
@@ -301,7 +305,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `IncomeCalculator` | `static ... Compute(计口成员, Holdings, Treasury, HasShiStatus, 难度, 出身)` | §5.2 各来源分项与归属成员；**不碰**资金池 |
 | `SavingsSettlement` | `static decimal RollRate(IRandomService)`；`static Money Accrue(Money savings, decimal rate)` | §5.4 的 1 月 roll 与 12 月计息 |
 | `LoanSettlement` | `static bool IsInterestDue(Loan)`；`static decimal RollRate(IRandomService)`；`static Money ComputeRepayment(Money netProfit, bool hasShiStatus, Origin origin, Loan)` | §5.4 的计息节点与划扣额（含封顶） |
-| `FamineController` | `static FamineDecision Evaluate(FamineState, Money payable, Money pool)` | §5.4 四阶段流转与「解除优先」（R-12） |
+| `FamineController` | `static FamineDecision Evaluate(FamineState, Money payable, Money pool)` | §5.4 四阶段流转与「解除优先」（R-12）；`pool` 是**可付额**（现金 + 储蓄，不含商本，见 R-05），不是 SC-005 求和的资金池 |
 | `AssetMarket` | `static ... Buy/Sell(GameState, AssetKind, int count)` | §5.3 田宅铺买入口（购售同价） |
 | `PaymentPrimitive` | `static PaymentResult Pay(FamilyEconomy, Money amount)` | FR-017「现金 → 储蓄 → 余额转贷款」；本阶段无罚金调用方 |
 
@@ -317,7 +321,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | FR-006、FR-011、FR-012 | `IncomeCalculator` + `SalaryTable` + `DifficultyRates` | 逐来源分项断言；18 级锚点 72/420/5100；储蓄利息**不**乘收益系数 |
 | FR-007、FR-008、FR-009 | `IncomeRateTable` + `IncomeCalculator`（E-02 的触发口径） | 20 亩上限与超出转田租；城市宅 +1 贯；商本 100 贯边界；无田时务农 2 贯且与自耕互斥；做工需指派 |
 | FR-010、FR-013、FR-015 | `AssetPriceTable` / `InterestPolicy` / `LoanPolicy` | 铺面月摊 5 贯（300×20%÷12）；1 月 roll、12 月计息、次年重 roll；20/40/80 各一条断言 |
-| FR-014、FR-016 | `Loan` + `LoanSettlement` + `InterestPolicy` | 先本后息；跨 12 月节点按当时本金计息；本金清零后转冲欠息；皆清即结清；计时按自然月（E-07） |
+| FR-014、FR-016 | `Loan` + `LoanSettlement` + `InterestPolicy` | 先本后息；跨 12 月节点按当时本金计息；本金清零后转冲欠息；皆清即结清；计时按自然月（E-07）；任意金额手动提前还款（`FamilyEconomy.RepayLoan` 承载） |
 | FR-017 | `PaymentPrimitive` | 「现金 → 储蓄 → 余额转贷款」三步各一断言；本阶段无罚金入口 |
 | FR-018、FR-019 | `FamineState` + `FamineController` + `FamineTimeline` | 4 阶段转移 4/4 + 解除后计时归零；阶段与剩余月数可读 |
 | FR-020 | `MonthlySettlementEngine` | 六步顺序契约（E-04）；越界步骤（随机事件/成长/科举/绝嗣）**不存在** |
@@ -328,6 +332,11 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | FR-027 | `AssetMarket` | 买入/售出后 `Holdings` 与资金池同价变动 |
 | FR-028 | ——（本阶段 MUST NOT 实现） | 「买人口」相关类型在阶段② 不存在，以「无该类型/无该类别」断言 |
 | FR-029、FR-030、SC-009 | `LivingCostCalculator` / `IncomeCalculator` 的**计口筛选** | 服刑 + 外嫁同夹具：贡献为 0、档案与历史条目仍可读；待阙**照常**计入 |
+| FR-031 | `IncomeRateTable` 的务农系数 + `IncomeCalculator` + `CountedMembers` | `tests/KFL.Tests/Rules/IncomeTests.cs` |
+| SC-001 | `MonthlySettlementEngine` + `SettlementResult` | `tests/KFL.Tests/Rules/SettlementEngineTests.cs`（quickstart S1~S3/S6） |
+| SC-002 | `LoanSettlement` + `LoanPolicy` | `tests/KFL.Tests/Rules/LoanTests.cs` |
+| SC-003 | `FamineController` + `FamineTimeline` | `tests/KFL.Tests/Rules/FamineTimelineTests.cs` |
+| SC-004 | `SalaryTable` | `tests/KFL.Tests/Rules/SalaryTableTests.cs` |
 
 ---
 
@@ -337,11 +346,11 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 | 起始阶段 | 条件 | 结果 | 事件类条目 |
 | --- | --- | --- | --- |
-| `None` | 资金池 < 当月应付额 | `Famine`（计时 1） | `FamineEntered` |
+| `None` | 现金 + 储蓄 < 当月应付额 | `Famine`（计时 1） | `FamineEntered` |
 | `Famine` | 累计满 3 个月仍未足额付清 | `Relief`（计时从 1 起重算） | `FamineReliefEntered` |
 | `Relief` | 累计满 12 个月仍未足额付清 | `Severe`（计时从 1 起重算） | `FamineSevereEntered` |
 | `Severe` | —— | 保持 `Severe` | — |
-| 任一阶段 | 资金池 ≥ 当月应付额 | `None`（计时清零） | `FamineResolved` |
+| 任一阶段 | 现金 + 储蓄 ≥ 当月应付额 | `None`（计时清零） | `FamineResolved` |
 
 **判定次序**：先判「付得起 → 全部解除」，再判升级（R-12）。救济期内应付额 = 正常档 ×
 `(1 − 20%)`；其余阶段为正常档。
@@ -350,7 +359,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 | 状态 | 触发 | 结果 |
 | --- | --- | --- |
-| 无贷款 | `PaymentPrimitive` 遇资金池不足 | `Principal += 差额`（本阶段唯一产生路径；罚金属阶段⑥） |
+| 无贷款 | `PaymentPrimitive` 遇现金 + 储蓄不足 | `Principal += 差额`（本阶段唯一产生路径；罚金属阶段⑥） |
 | `MonthsSinceInterest` 0→12 | 每次结算第⑤步（**先计息**） | `AccruedInterest += 当时本金 × 新 roll 利率`，计数归零，落事件类条目 |
 | 净利润 > 0 且未结清 | 每次结算第⑤步（**后划扣**） | 划扣 `min(净利润 × 比例, Total)`，先本后息，落 1~2 条资金类条目 |
 | `Principal == 0` 且 `AccruedInterest == 0` | 划扣后 | `IsSettled`，此后不再产生划扣条目 |

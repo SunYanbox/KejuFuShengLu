@@ -18,7 +18,8 @@
   在类型系统层面不可能。
 - `KFL.Rules` 新增 `Config/`（生活费日耗表、收入系数、资产价格、利率区间、饥馑时间线、
   难度系数、18 级俸禄表、米价策略、划扣比例）与 `Settlement/`（`MonthlySettlementEngine`
-  与四个纯函数计算器）、`Economy/`（资产买卖、支付原语）。
+  与五个纯函数：`LivingCostCalculator`、`IncomeCalculator`、`LoanSettlement`、`SavingsSettlement`、
+  `FamineController`）、`Economy/`（资产买卖、支付原语）。
 - 全部随机性经注入的 `IRandomService` 取得，消费次序（米价 → 储蓄利率 → 贷款利率）
   写进契约并逐条断言（章程原则 IV）。
 
@@ -57,9 +58,16 @@ MessagePack、Bogus、Serilog、LiveChartsCore 在本阶段仍然**没有消费�
 - 随机性只能来自注入的 `IRandomService`；「现在」只能来自注入的 `IGameClock`（契约二）。
 - 地图与依赖边不新增：`KFL.Core ← KFL.Infrastructure ← KFL.Rules`（G-05 不变）。
 
-**Scale/Scope**: 新增约 5 个 Core 枚举、3 个 Core 值类型、5 个 Core 经济类型（聚合 + 成员）；
-`KFL.Rules` 新增 5 个配置类 + 7 个结算/经济类型；测试新增约 9 个测试文件（含 §16 必测三项）；
-0 个界面功能、0 行持久化代码。
+**Scale/Scope**: 新增 8 个 Core 枚举文件（7 枚举 + 1 个与枚举同目录的元数据静态类
+`LedgerCategoryMetadata`）、3 个 Core 值类型、6 个 Core 经济实体（聚合 + 成员）；
+`KFL.Rules` 新增 10 个配置类（`LivingCostTable` / `AgeBracketPolicy` / `IncomeRateTable` /
+`AssetPriceTable` / `InterestPolicy` / `FamineTimeline` / `GrainPricePolicy` / `DifficultyRates` /
+`SalaryTable` / `LoanPolicy`）+ 11 个结算/经济类型（`SettlementResult`、`CountedMembers`、
+`LivingCostCalculator`、`IncomeCalculator`、`MonthlySettlementEngine`、`LoanSettlement`、
+`SavingsSettlement`、`FamineController`、`AssetMarket`、`PaymentPrimitive`、`GameConfig`）；
+测试新增 10 个测试文件（`tests/KFL.Tests/Rules/` 的 T038~T041、T046、T049、T053、T055、T057、
+T060；另有 Foundational 的 T024~T026）；0 个界面功能、0 行持久化代码。
+**该行是生成前的粗估，此处按计划结构树校正。**
 
 ## Constitution Check
 
@@ -88,7 +96,7 @@ MessagePack、Bogus、Serilog、LiveChartsCore 在本阶段仍然**没有消费�
 | **E-03** | §5.2 每个公式都带 `(1+农/200)×(1+工/400)` 一类乘数，但没说用「谁」的天赋 | **按人计**：自耕/做工/经商的乘数用**参与者本人**天赋；**家族级来源（田租）用家主天赋**；家主为 `null` 或非计口成员时该乘数取 `1.0`（无加成） | 规格书 §5.2 |
 | **E-04** | §3 的月末结算顺序 | **修订为**：①提升待生效的难度/生活费档位 → ②米价系数游走并 clamp → ③**收入**（含 12 月的储蓄利息与工出身 bonus）→ ④**生活费** → ⑤贷款**先计息、后划扣**。当月净利润 = ③−④ | 规格书 §3、§5.4 |
 | **E-05** | 同月既赶上「每满 12 个月计息」又产生划扣时的先后 | **先计息**（按**月初剩余本金**独立 roll 一次并累入欠息），**后划扣** | 规格书 §5.4 |
-| **E-06** | 当月现金 + 储蓄付不起生活费时实际扣多少 | **能付多少付多少**：生活费条目金额 = `min(应付生活费, 现金+储蓄)`，资金池清零；差额不入账、不转贷款（与 §5.4「不存在主动借贷」一致） | 规格书 §5.4 |
+| **E-06** | 当月现金 + 储蓄付不起生活费时实际扣多少 | **能付多少付多少**：生活费条目金额 = `min(应付生活费, 现金+储蓄)`，现金与储蓄清零；差额不入账、不转贷款（与 §5.4「不存在主动借贷」一致） | 规格书 §5.4 |
 | **E-07** | `spec.md` FR-015 尾句「净利润 ≤ 0 时 MUST NOT 改变计息计时」与 §5.4「每 12 个月按当时剩余本金计息一次」冲突 | **以规格书为准**：计息计时按**自然月**推进，与当月净利润是否为负无关；`spec.md` 该子句修正为「MUST NOT 重置或跳过计息计时」 | spec.md FR-015（规格书无需改动） |
 | **E-08** | 账本里既要有「进入饥馑」这类**不涉及资金**的条目（US4 AS1），又要满足「条目金额合计 = 资金池变动额」（SC-005） | 条目显式分**资金类**（参与 SC-005 求和）与**事件类**（阶段迁移、贷款计息入欠息）两类；分类是**结构事实**不是平衡数值，故声明在 `KFL.Core`（同 001 R-06 的「实体自不变量值域随实体所在层」） | 规格书 §12.3；spec.md FR-021/SC-005 |
 | **E-09** | §5.2 自耕写「月收入 = 自耕亩数 × 0.5 ÷ 12 贯（即 40 亩 = 2 贯/月）」，但 `40 × 0.5 ÷ 12 = 1.667 ≠ 2`（真源自身算不平） | **以公式为准**：自耕 = 亩数 × 0.5 ÷ 12 贯（40 亩 = 1.667 贯/月）；括号里的「2 贯/月」作为笔误修正 | 规格书 §5.2 |
@@ -159,6 +167,7 @@ src/
 │   │   ├── AgeBracket.cs            # 【新】儿童 / 青年 / 成人 / 老人
 │   │   ├── LedgerCategory.cs        # 【新】§12.3 的类别全集
 │   │   ├── LedgerEntryKind.cs       # 【新】资金类 / 事件类（E-08）
+│   │   ├── LedgerCreditTarget.cs    # 【新】正额入账目标池：现金 / 储蓄（§5.4）
 │   │   ├── FamineStage.cs           # 【新】无 / 饥馑 / 救济 / 第三阶段
 │   │   ├── AssetKind.cs             # 【新】田 / 农村宅 / 城市宅 / 铺面
 │   │   └── LedgerCategoryMetadata.cs # 【新】类别的结构事实：种类 + 入账目标池
@@ -175,17 +184,18 @@ src/
 │   │   ├── AssetPriceTable.cs       # 【新】田 1 / 农村宅 10 / 城市宅 100 / 铺面 300 贯，购售同价
 │   │   ├── InterestPolicy.cs        # 【新】储蓄与贷款利率区间 0.5%~2.4%、计息周期 12 月
 │   │   ├── FamineTimeline.cs        # 【新】饥馑 3 月、救济 12 月、救济折扣 −20%
-│   │   ├── GrainPricePolicy.cs      # 【新】初始 1.0、±10% 游走、clamp 0.7~3.0、米价派生 0.4+0.6×
+│   │   ├── GrainPricePolicy.cs      # 【新】初始 1.0、±10% 游走、clamp 0.7~3.0、米价派生值 (系数−0.4)÷0.6
 │   │   ├── DifficultyRates.cs       # 【新】§11 四难度的收益/支出/贿赂风险/负面事件系数
 │   │   ├── SalaryTable.cs           # 【新】§8.1 十八级年俸 + 月摊 + 士出身 1.05
 │   │   └── LoanPolicy.cs            # 【新】划扣比例 20/40/80 与「仕」判定
 │   ├── Economy/
 │   │   ├── AssetMarket.cs           # 【新】田宅铺买入/售出（购售同价，FR-027）
-│   │   ├── PaymentPrimitive.cs      # 【新】现金 → 储蓄 → 余额转贷款（FR-017）
-│   │   └── IncomeCalculator.cs      # 【新】§5.2 全部收入来源的纯函数
+│   │   └── PaymentPrimitive.cs      # 【新】现金 → 储蓄 → 余额转贷款（FR-017）
 │   ├── Settlement/
 │   │   ├── MonthlySettlementEngine.cs   # 【新】唯一编排入口（顺序、随机消费次序）
+│   │   ├── CountedMembers.cs            # 【新】计口/在册两口径（纯函数，FR-029/FR-030）
 │   │   ├── LivingCostCalculator.cs      # 【新】§5.1 生活费与年龄档明细（纯函数）
+│   │   ├── IncomeCalculator.cs          # 【新】§5.2 全部收入来源的纯函数
 │   │   ├── LoanSettlement.cs            # 【新】计息与划扣（纯函数，作用于 Loan + Money）
 │   │   ├── SavingsSettlement.cs         # 【新】1 月 roll 利率、12 月计息（纯函数）
 │   │   ├── FamineController.cs          # 【新】四阶段状态机（纯函数）
