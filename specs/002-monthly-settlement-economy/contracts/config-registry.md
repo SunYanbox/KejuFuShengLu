@@ -62,8 +62,15 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 2. 测试 MUST 通过配置成员取期望值，**MUST NOT** 复制字面量——只有锚点断言（如 72/420/5100）
    允许写字面量，因为「锚点」本身就是被验证对象。
 3. 同步测试：扫描 `src/` 与 `tests/KFL.Tests/{Core,Infrastructure,Fixtures,Rules}/` 的源码，
-   断言关键数值**只**在 `src/KFL.Rules/Config/` 的 `.cs` 里以字面量出现
-   （实现方式：配置成员名白名单 + 字面量扫描；命中即失败）。
+   按**两条互补判据**断言数值的唯一出处（实现：`tests/KFL.Tests/Architecture/ConfigLiteralRules.cs`）：
+   - **数值清单判据**：清单内的数值**只**在 `src/KFL.Rules/Config/` 的 `.cs` 里以字面量出现。
+     清单＝小数全收 + 4 位及以上官俸 + 实测零撞车的低品官俸（860/720/235/130/72）；
+     宅价 1/10/100/300、门槛 100、亩数 20 等整数**不入清单**——它们与成员编号/年龄/夹具金额同值，
+     入单会产出数百处无关命中（详见 `ConfigLiteralTests` 类注释与 tasks.md 的 T059 追记）。
+   - **金额条款判据**：产品源码（`src/KFL.Core`、`KFL.Infrastructure`、`KFL.Rules`，`Config/` 除外）
+     MUST NOT 把裸数值字面量喂给 `Money.FromGuan` / `Money.FromWen`——该判据按**金额构造点**
+     而非按数值识别，故恰好覆盖上一条收不进的整数规则值（如 `Money.FromGuan(300m)`）。
+     测试目录不在其范围内（夹具金额属条款 ⑤）。
 4. 米价派生值的系数（**0.4** 与 **0.6**）同属本表，MUST NOT 写进 `GrainPriceIndex`。
 5. `GameConfig`（数值总表入口）MUST 只转发既有成员，MUST NOT 声明自己的数值字面量：
    它是**视图**，不是第二出处。

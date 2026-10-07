@@ -422,6 +422,34 @@ MUST NOT 被塞给某个成员或丢失）、AS3（已归档成员历史条目�
 >
 > ④ **T062 覆盖结论**：见 T065 的提交信息（逐条 FR/SC + data-model §5 映射核对表）。
 
+> **T007 / T024 / T059 追记（2026-10-06，PR 复审回写）**
+>
+> ① **清单扩容**：原登记「低品官俸与成员编号/夹具金额撞车」经全仓库实测**不成立**——
+> `860` / `720` / `235` / `130` / `72` 五值扫描 **0 处命中**，已入单（无需行级豁免）；
+> 仍不入单的低品只剩 `600`（1 处）/`500`（3 处）/`420`（2 处）。
+>
+> ② **整数规则值的覆盖缺口另立判据补**：宅价 1/10/100/300 与门槛 100 直接入单不可行——
+> 本次复测四值合计 **431 处**命中（`1` **345**、`10` 47、`100` 33、`300` 6），绝大多数是
+> `Generation + 1`、`1 << 3`、`year < 1`、`GameDate(10, 5)`、`TalentSet(100, …)` 一类无关同值。
+> 故新增**金额条款** `ConfigLiteralRules.EvaluateMoneyLiterals`：**产品源码**
+> （`src\KFL.Core` / `KFL.Infrastructure` / `KFL.Rules`，数值合法住处 `Config\` 除外）
+> MUST NOT 把裸数值字面量喂给 `Money.FromGuan` / `Money.FromWen`。该判据按**构造点**（上下文）
+> 而非按数值识别，不需要把 1/10/100/300 放进清单，故不受同值噪声影响；产品源码实测 **0 处**命中。
+> 落地物：`ConfigLiteralTests.产品代码的金额字面量只经配置成员取得`（真实仓库）
+> 与 `金额字面量判据只在产品代码的构造点上生效`（注入自检）。
+>
+> ③ **T007 / T024 口径回写（死代码清理）**：`Money.FromWen` 原带一段
+> `wen >= decimal.MinValue && wen <= decimal.MaxValue` 的「有限性检查」——`decimal` 没有
+> NaN/±Infinity 表示，该条件对任何 `decimal` **恒真**，分支不可达（死代码），
+> 且与 T007 已登记的「`Wen` ∈ `decimal` 全域；越界由 `decimal` 运算符抛 `OverflowException`」
+> 相矛盾。已删除该分支与其误导性注释，`Money` 的 XML 注释改为可实现的表述；
+> `MoneyTests` 的对应用例更名为 `decimal全域端点被接受且换算溢出被拒`。
+>
+> ④ **T035 / T036 口径修正**（同一批复审）：`LivingCostCalculator` 的 `perMemberGuan` 量纲实为
+> **文/人/月**（`30 × 系数 × 日耗(文/日)`），已更名 `perMemberWen`；`IncomeCalculator.AddShopRent`
+> 原走 `ShopMonthlyRent(...).Guan`（÷1000）→ `Add` 内 `FromGuan`（×1000）的往返，
+> 已改为在 `Add` 的 `Money` 重载上直接 `Money * decimal`（唯一存储口径仍是文）。
+
 ---
 
 ## Dependencies & Execution Order
