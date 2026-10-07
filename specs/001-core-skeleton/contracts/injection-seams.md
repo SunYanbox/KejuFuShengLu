@@ -41,7 +41,7 @@ public interface IGameClock
 | --- | --- |
 | 语义 | 返回的是**推演出的游戏年月**（§3：1 回合 = 1 游戏月），不是系统时钟 |
 | 实现 | 001 只交付以 `GameState.CurrentDate` 为后端的实现；MUST NOT 读取 `DateTime.Now` |
-| 注入 | 规则层需要「现在」时 MUST 从注入的 `IGameClock` 取；MUST NOT 直接从 `GameState` 字段取，也 MUST NOT 用静态全局 |
+| 注入 | 规则层需要「现在」时 MUST 从注入的 `IGameClock` 取；MUST NOT 直接从 `GameState` 字段取，也 MUST NOT 用静态全局。月度结算引擎（002）按**构造函数**注入 `IGameClock` 与 `IRandomService`；MUST NOT 把 `GameState.CurrentDate` 直接当作「现在」（该值由 `IGameClock` 承载），也 MUST NOT 用静态全局 |
 | 测试替身 | 测试用固定日期的替身驱动，断言「同输入 → 同结果」 |
 
 **为什么不交付系统时钟抽象**：001 内不存在墙钟时间的消费者（存档时间戳属阶段④）。
