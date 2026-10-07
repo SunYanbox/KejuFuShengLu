@@ -89,12 +89,13 @@ public class MoneyTests
     }
 
     [Fact]
-    public void 有限decimal两端被接受且乘法溢出被拒()
+    public void decimal全域端点被接受且换算溢出被拒()
     {
         // decimal 在 C# 与 .NET 里**没有** NaN / Infinity 取值（既无 decimal.NaN 也无
-        // decimal.PositiveInfinity），故「非有限 decimal」在类型层面即不可表达：FromWen 的实参
-        // 本身就是有限值。可断言的是：有限域两端被接受，且 FromGuan 的 ×1000 越界 MUST 抛出
-        // 而不是静默截断或返回非有限值（Money.FromWen 的有限性守卫即按此定义）。
+        // decimal.PositiveInfinity），故「非有限 decimal」在类型层面即不可表达：FromWen 不做、
+        // 也无法做有限性校验（任何这类校验在 decimal 上都恒真，是死代码）。可断言的是：
+        // 值域两端被原样接受，且 FromGuan 的 ×1000 越界 MUST 抛 OverflowException
+        // 而不是静默截断（契约五 §1.1；tasks T007 的「不变量」：Wen ∈ decimal 全域）。
         Assert.Equal(decimal.MaxValue, Money.FromWen(decimal.MaxValue).Wen);
         Assert.Equal(decimal.MinValue, Money.FromWen(decimal.MinValue).Wen);
 
