@@ -33,15 +33,26 @@ public sealed class GameStateFactory
     /// <param name="difficulty">难度。</param>
     /// <param name="origin">出身。</param>
     /// <param name="family">当前家族。</param>
+    /// <param name="economy">
+    /// 家族经济聚合，**由调用方构造并传入**（R-13）。本方法 MUST NOT 决定新建存档的生活费初始档位：
+    /// 该值单点在 <c>KFL.Rules/Config/LivingCostTable.InitialStandard</c>，而
+    /// <c>KFL.Infrastructure</c> 看不到 <c>KFL.Rules</c>（G-05）——在此代填会引入第二个出处（SC-008）。
+    /// </param>
     /// <returns>新建的存档级状态。</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="family"/> 为 <c>null</c>。</exception>
-    public GameState Create(GameDate date, Difficulty difficulty, Origin origin, Family family)
+    /// <exception cref="ArgumentNullException"><paramref name="family"/> 或 <paramref name="economy"/> 为 <c>null</c>。</exception>
+    public GameState Create(
+        GameDate date,
+        Difficulty difficulty,
+        Origin origin,
+        Family family,
+        FamilyEconomy economy)
     {
         ArgumentNullException.ThrowIfNull(family);
+        ArgumentNullException.ThrowIfNull(economy);
 
         Span<byte> buffer = stackalloc byte[GuidSizeInBytes];
         _randomService.NextBytes(buffer);
 
-        return new GameState(new Guid(buffer), date, difficulty, origin, family);
+        return new GameState(new Guid(buffer), date, difficulty, origin, family, economy);
     }
 }

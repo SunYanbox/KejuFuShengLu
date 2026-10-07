@@ -73,12 +73,14 @@ public class DeterminismTests
     {
         // GameStateFactory 是 001 内唯一的产品生成路径；同种子同标识即证明其来源可注入。
         var factory = new GameStateFactory(new SeededRandomService(42));
-        var first = factory.Create(StartDate, Difficulty.Normal, Origin.Scholar, new Family("测试"));
-        var second = factory.Create(StartDate, Difficulty.Hard, Origin.Farmer, new Family("另一族"));
+        var first = factory.Create(StartDate, Difficulty.Normal, Origin.Scholar, new Family("测试"), NewEconomy());
+        var second = factory.Create(StartDate, Difficulty.Hard, Origin.Farmer, new Family("另一族"), NewEconomy());
 
         var replay = new GameStateFactory(new SeededRandomService(42));
-        var firstAgain = replay.Create(StartDate, Difficulty.Normal, Origin.Scholar, new Family("测试"));
-        var secondAgain = replay.Create(StartDate, Difficulty.Hard, Origin.Farmer, new Family("另一族"));
+        var firstAgain = replay.Create(
+            StartDate, Difficulty.Normal, Origin.Scholar, new Family("测试"), NewEconomy());
+        var secondAgain = replay.Create(
+            StartDate, Difficulty.Hard, Origin.Farmer, new Family("另一族"), NewEconomy());
 
         Assert.Equal(first.Id, firstAgain.Id);
         Assert.Equal(second.Id, secondAgain.Id);
@@ -98,6 +100,13 @@ public class DeterminismTests
     {
         var family = FamilyFixtures.Couple().Family;
         return new GameStateFactory(new SeededRandomService(seed))
-            .Create(StartDate, Difficulty.Normal, Origin.Farmer, family);
+            .Create(StartDate, Difficulty.Normal, Origin.Farmer, family, NewEconomy());
     }
+
+    /// <summary>
+    /// 一个合法的经济聚合初值（6 参构造的最后一个实参，R-13）。米价系数与生活费档位的**产品**
+    /// 初值单点在 <c>KFL.Rules/Config</c>（<c>GrainPricePolicy</c> / <c>LivingCostTable.InitialStandard</c>），
+    /// 本测试只要求一个合法取值——确定性断言针对的是标识生成，与这两个初值无关。
+    /// </summary>
+    private static FamilyEconomy NewEconomy() => new(LivingStandard.Normal, new GrainPriceIndex(1m));
 }
