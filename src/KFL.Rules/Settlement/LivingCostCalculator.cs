@@ -80,11 +80,13 @@ public static class LivingCostCalculator
             var dailyCost = LivingCostTable.DailyCost(livingStandard, bracket);
             var memberCount = buckets.TryGetValue(bracket, out var count) ? count : 0;
 
-            var perMemberGuan = LivingCostTable.DaysPerMonth * grainPriceIndex * expenseFactor * dailyCost
+            // 量纲：月(30) × 无量纲系数们 × 日耗(文/日) = **文/人/月**，故变量名以 Wen 结尾
+            // （曾误名 perMemberGuan——那是贯，与实参喂给 FromWen 的口径不符）。
+            var perMemberWen = LivingCostTable.DaysPerMonth * grainPriceIndex * expenseFactor * dailyCost
                 * LivingCostTable.FarmerMultiplierOf(origin, bracket)
                 * LivingCostTable.GeneralZoneFactor(bracket == AgeBracket.Child, inRelief);
 
-            var subtotal = Money.FromWen(perMemberGuan * memberCount);
+            var subtotal = Money.FromWen(perMemberWen * memberCount);
             lines.Add(new LivingCostLine(bracket, dailyCost, memberCount, subtotal));
             payable += subtotal;
         }
