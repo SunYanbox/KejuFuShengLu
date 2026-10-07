@@ -34,4 +34,29 @@ public static class InterestPolicy
 
     /// <summary>贷款计息周期（自然月）：达此月数即计息并把计时归零（§5.4；E-07）。</summary>
     public const int InterestPeriodMonths = 12;
+
+    /// <summary>
+    /// 把 <c>[0, 1]</c> 的随机取值映射为区间内的利率：<c>利率 = 下限 + r × (上限 − 下限)</c>
+    /// （契约三 §4 的映射表）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// **US2 与 US3 共用本方法**：贷款计息（<c>LoanSettlement.RollRate</c>）与当年储蓄利率
+    /// （<c>SavingsSettlement.RollRate</c>）的映射公式相同，双方 MUST NOT 各自复制一份
+    /// （tasks T043/T047；SC-008 要求同一个数不出第二个出处）。
+    /// </para>
+    /// <para>
+    /// **越界输入夹到端点**：接缝契约已保证 <c>NextDouble() ∈ [0.0, 1.0)</c>，此处不做抛异常式校验，
+    /// 而是把区间外的取值夹住——这样「取 0 与极大值」的边界断言在 <c>double.MaxValue</c> 这类
+    /// 极端输入上依然落在区间内（否则 <c>(decimal)</c> 换算会抛 <see cref="OverflowException"/>）。
+    /// </para>
+    /// </remarks>
+    /// <param name="r">随机取值。</param>
+    /// <returns>区间内的利率。</returns>
+    public static decimal RateFor(double r)
+    {
+        var bounded = double.IsNaN(r) || r < 0d ? 0d : r > 1d ? 1d : r;
+
+        return MinRate + ((decimal)bounded * (MaxRate - MinRate));
+    }
 }
