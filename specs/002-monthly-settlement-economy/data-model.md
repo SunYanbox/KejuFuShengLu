@@ -194,7 +194,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `Holdings` | `Holdings` | 田宅铺数量 |
 | `Ledger` | `Ledger` | 流水账 |
 | `GrainPriceIndex` | `GrainPriceIndex` | 米价系数（可变，结构体属性） |
-| `LivingStandard` | `LivingStandard` | 当前**生效**的生活费档位 |
+| `LivingStandard` | `LivingStandard` | 当前**生效**的生活费档位；**新建存档 = 普通**（2026-10-06 裁决，取值单点在 `LivingCostTable.InitialStandard`） |
 | `PendingLivingStandard` | `LivingStandard?` | 待生效档位，结算第①步提升（R-09） |
 | `Famine` | `FamineState` | 饥馑阶段 |
 | `TreasuryPool` | `Money`（派生） | `现金 + 储蓄 + 商本`；SC-005 的右侧口径（R-05） |
@@ -215,6 +215,9 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 2. **资金流动必落条目**：资金池的任何变动都只能经 `Apply` / `RepayLoan`，二者都在同一次
    调用里追加条目——「只动资金池而不落条目」在类型层面不可表达（FR-021、SC-005）。
 3. `PendingLivingStandard` 仅由切换入口设置，结算第①步提升后置 `null`。
+4. **构造要求显式传入当前档位、不设默认值**：`KFL.Infrastructure` 看不到 `KFL.Rules`（G-05），
+   新建存档的初值（`LivingCostTable.InitialStandard` = `Normal`）必须由调用方给出，而不是由
+   `KFL.Core` 里抄一份「普通」当默认值（那会让同一个规则数值出现第二个出处）。
 
 ### 3.7 `GameState` 的变更
 
@@ -237,7 +240,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | 类 | 覆盖的数值 | 规格书章节 |
 | --- | --- | --- |
 | `GameConfig` | 唯一数值真源的**总入口**（聚合各子表，供核对） | §1、§5 |
-| `LivingCostTable` | 三档 × 四年龄档日耗（拮据 20/7/14/5、普通 25/8.5/17.5/5、体面 30/10/21/5）、**农出身独立乘区**（成年 0.90 / 未成年 0.80）、**生活费一般乘区**的修正项列表（未成年 −50%、救济期 −20%，加算） | §5.1、§5.4、§10.1；R-17 |
+| `LivingCostTable` | 三档 × 四年龄档日耗（拮据 20/7/14/5、普通 25/8.5/17.5/5、体面 30/10/21/5）、**新建存档的初始档位**（`InitialStandard` = `Normal`，2026-10-06 裁决）、**农出身独立乘区**（成年 0.90 / 未成年 0.80）、**生活费一般乘区**的修正项列表（未成年 −50%、救济期 −20%，加算） | §5.1、§5.4、§10.1；R-17 |
 | `AgeBracketPolicy` | 成年边界（男 12 / 女 14）、青年上界 18、老人下界 60；`Of(性别, 年龄) → AgeBracket` | §5.1、§4.3 |
 | `IncomeRateTable` | 自耕 0.5 贯/亩/年、每亩上限 20、田租 0.1 贯/亩/年、务农 2 贯/月、做工 1.5 贯/月、城市宅 +1 贯/月、经商 2% 与门槛 100 贯、商出身 ×1.1、农/工/商 除数 200/400 | §5.2 |
 | `AssetPriceTable` | 田 1 / 农村宅 10 / 城市宅 100 / 铺面 300 贯；铺面年租 20% | §5.3 |
@@ -294,7 +297,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | --- | --- | --- |
 | FR-001、SC-008 | `Treasury` / `Holdings` / `Loan` / `Money`（文为单位） | 字段边界测试 + 配置登记表核对 |
 | FR-002、FR-003、FR-004 | `AgeBracketPolicy` + `LivingCostTable`（四个乘区，R-17）+ `GrainPricePolicy` | 逐年龄档断言、边界日（12 岁男 / 14 岁女）、clamp 0.7/3.0 与连续越界回弹；农出身与一般乘区的四种组合（成年/未成年 × 农/非农）各一条断言；农出身未成年人处于救济期时的一般乘区 = 0.3 |
-| FR-005（次月生效） | `PendingDifficulty` / `PendingLivingStandard` | 同月切换 → 当月不变、次月变（US1 AS6） |
+| FR-005（次月生效） | `PendingDifficulty` / `PendingLivingStandard` / `LivingCostTable.InitialStandard` | 同月切换 → 当月不变、次月变（US1 AS6）；新建存档的初始档位 = `Normal`（一条断言） |
 | FR-006、FR-011、FR-012 | `IncomeCalculator` + `SalaryTable` + `DifficultyRates` | 逐来源分项断言；18 级锚点 72/420/5100；储蓄利息**不**乘收益系数 |
 | FR-007、FR-008、FR-009 | `IncomeRateTable` + `IncomeCalculator`（E-02 的触发口径） | 20 亩上限与超出转田租；城市宅 +1 贯；商本 100 贯边界；无田时务农 2 贯且与自耕互斥；做工需指派 |
 | FR-010、FR-013、FR-015 | `AssetPriceTable` / `InterestPolicy` / `LoanPolicy` | 铺面月摊 5 贯（300×20%÷12）；1 月 roll、12 月计息、次年重 roll；20/40/80 各一条断言 |
