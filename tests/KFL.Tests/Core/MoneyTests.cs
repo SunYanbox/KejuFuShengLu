@@ -17,7 +17,7 @@ public class MoneyTests
     public void FromGuan按一贯千文换算()
     {
         Assert.Equal(1000m, Money.FromGuan(1m).Wen);
-        Assert.Equal(500m, Money.FromGuan(0.5m).Wen);
+        Assert.Equal(500m, Money.FromGuan(0.5m).Wen);  // arch-guard:allow 金额换算夹具数值（非规则数值副本）
         Assert.Equal(0m, Money.FromGuan(0m).Wen);
         Assert.Equal(Money.FromWen(2500m), Money.FromGuan(2.5m));
     }
@@ -27,7 +27,7 @@ public class MoneyTests
     {
         Assert.Equal(1m, Money.FromWen(1000m).Guan);
         Assert.Equal(0.001m, Money.FromWen(1m).Guan);
-        Assert.Equal(-0.5m, Money.FromWen(-500m).Guan);
+        Assert.Equal(-0.5m, Money.FromWen(-500m).Guan);  // arch-guard:allow 金额换算夹具数值（非规则数值副本）
         Assert.Equal(Money.FromWen(1000m), Money.FromGuan(Money.FromWen(1000m).Guan));
         Assert.Equal(Money.FromWen(2500m), Money.FromGuan(Money.FromWen(2500m).Guan));
     }
@@ -50,7 +50,7 @@ public class MoneyTests
         Assert.False(Money.FromWen(1m).IsNegative);
         Assert.True(Money.FromWen(-1m).IsNegative);
         Assert.False(Money.FromWen(-1m).IsPositive);
-        Assert.True(Money.FromGuan(0.5m).IsPositive);
+        Assert.True(Money.FromGuan(0.5m).IsPositive);  // arch-guard:allow 金额换算夹具数值（非规则数值副本）
     }
 
     [Fact]

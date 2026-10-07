@@ -344,11 +344,11 @@ public class LedgerInvariantTests
         economy.Treasury.Loan = loan;
         var poolBefore = economy.TreasuryPool;
 
-        var accrued = economy.AccrueLoanInterest(Money.FromGuan(0.5m), AnyDate);
+        var accrued = economy.AccrueLoanInterest(Money.FromGuan(0.5m), AnyDate);  // arch-guard:allow 夹具借款与利息金额（非规则数值副本）
 
-        Assert.Equal(Money.FromGuan(0.5m), accrued);
+        Assert.Equal(Money.FromGuan(0.5m), accrued);  // arch-guard:allow 夹具借款与利息金额（非规则数值副本）
         Assert.Equal(Money.FromGuan(10m), loan.Principal);
-        Assert.Equal(Money.FromGuan(0.5m), loan.AccruedInterest);
+        Assert.Equal(Money.FromGuan(0.5m), loan.AccruedInterest);  // arch-guard:allow 夹具借款与利息金额（非规则数值副本）
         Assert.Equal(Money.FromGuan(10.5m), loan.Total);
         Assert.Equal(poolBefore, economy.TreasuryPool);
 
@@ -356,7 +356,7 @@ public class LedgerInvariantTests
 
         Assert.Equal(LedgerCategory.LoanInterestAccrued, entry.Category);
         Assert.Equal(LedgerEntryKind.Event, LedgerCategoryMetadata.KindOf(entry.Category));
-        Assert.Equal(Money.FromGuan(0.5m), entry.Amount);
+        Assert.Equal(Money.FromGuan(0.5m), entry.Amount);  // arch-guard:allow 夹具借款与利息金额（非规则数值副本）
         Assert.Null(entry.PersonId);
     }
 
