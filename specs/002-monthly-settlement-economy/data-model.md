@@ -167,7 +167,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 **方法**：`int CountOf(AssetKind)`、`void Add(AssetKind, int count)`、`void Remove(AssetKind, int count)`
 （移除至负数 MUST 抛异常）。
-**明确不含**：价格、市值、农田上限——单价与「每成人 20 亩」都在 `KFL.Rules/Config`（R-01）。
+**明确不含**：价格、市值、农田上限——单价与「每人 20 亩」都在 `KFL.Rules/Config`（R-01）。
 
 ### 3.4 `Ledger`（家族级追加式流水账）
 
@@ -197,6 +197,10 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 **方法**：`void TransitionTo(FamineStage stage)`（置阶段并把 `ElapsedMonths` 置 1；仅
 `TransitionTo(None)` 例外，按 `Clear()` 语义归 0——否则会破坏下面的不变量）、
 `void Tick()`（阶段非 `None` 时 +1）、`void Clear()`（归 `None`/0）。
+**计时时点（§17 裁决 E-14）**：`Tick()` MUST 在每月第④步的**足额判定之前**被调用一次，
+消费方再用**推进后**的 `ElapsedMonths` 比较阈值——转入当月记 1，故「满 3 月」在第 3 个饥馑月
+当月成立（`X` 月进入 → `X+2` 月计 3 → 转 `Relief`）。`Tick()` 本身不判阈值、不知道时限
+（时限在 `FamineTimeline`）。
 **形状**：`class`（非结构体）并提供**公开复制构造**，供 `SettlementResult.FamineBefore/After`
 取快照——不为快照开放 setter，避免绕过不变量。
 **明确不含**：3 个月与 12 个月的阈值、救济折扣、体质下降与死亡判定——阈值与折扣在
@@ -302,7 +306,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | --- | --- | --- |
 | `MonthlySettlementEngine` | `ctor(IRandomService, IGameClock)`；`SettlementResult Settle(GameState)` | 唯一编排入口：按契约「月度结算」§1 的六步顺序执行，就地推进 `GameState` 与 `CurrentDate` |
 | `LivingCostCalculator` | `static ... Compute(计口成员, LivingStandard, 米价系数, 难度, 出身, FamineStage)` | §5.1/§5.4 生活费与逐档明细（四个乘区，R-17）；**不碰**资金池 |
-| `IncomeCalculator` | `static ... Compute(计口成员, Holdings, Treasury, HasShiStatus, 难度, 出身)` | §5.2 各来源分项与归属成员；**不碰**资金池 |
+| `IncomeCalculator` | `static ... Compute(计口成员, Holdings, Treasury, HasShiStatus, 难度, 出身)` | §5.2 各来源分项与归属成员；**不碰**资金池。成员集合 = **计口 ∧ 成年**（E-16，成年按 §4.3）；城市宅加成按人归属并逐人乘本人 `(1+工/400)`（E-15）；`TradeIncome` 归属被采用的那名成员（E-18） |
 | `SavingsSettlement` | `static decimal RollRate(IRandomService)`；`static Money Accrue(Money savings, decimal rate)` | §5.4 的 1 月 roll 与 12 月计息 |
 | `LoanSettlement` | `static bool IsInterestDue(Loan)`；`static decimal RollRate(IRandomService)`；`static Money ComputeRepayment(Money netProfit, bool hasShiStatus, Origin origin, Loan)` | §5.4 的计息节点与划扣额（含封顶） |
 | `FamineController` | `static FamineDecision Evaluate(FamineState, Money payable, Money pool)` | §5.4 四阶段流转与「解除优先」（R-12）；`pool` 是**可付额**（现金 + 储蓄，不含商本，见 R-05），不是 SC-005 求和的资金池 |
@@ -319,11 +323,11 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | FR-002、FR-003、FR-004 | `AgeBracketPolicy` + `LivingCostTable`（四个乘区，R-17）+ `GrainPricePolicy` | 逐年龄档断言、边界日（12 岁男 / 14 岁女）、clamp 0.7/3.0 与连续越界回弹；农出身与一般乘区的四种组合（成年/未成年 × 农/非农）各一条断言；农出身未成年人处于救济期时的一般乘区 = 0.3 |
 | FR-005（次月生效） | `PendingDifficulty` / `PendingLivingStandard` / `LivingCostTable.InitialStandard` | 同月切换 → 当月不变、次月变（US1 AS6）；新建存档的初始档位 = `Normal`（一条断言） |
 | FR-006、FR-011、FR-012 | `IncomeCalculator` + `SalaryTable` + `DifficultyRates` | 逐来源分项断言；18 级锚点 72/420/5100；储蓄利息**不**乘收益系数 |
-| FR-007、FR-008、FR-009 | `IncomeRateTable` + `IncomeCalculator`（E-02 的触发口径） | 20 亩上限与超出转田租；城市宅 +1 贯；商本 100 贯边界；无田时务农 2 贯且与自耕互斥；做工需指派 |
+| FR-007、FR-008、FR-009 | `IncomeRateTable` + `IncomeCalculator`（E-02 的触发口径） | 20 亩上限与超出转田租；城市宅 +1 贯（**份数 × 按人归属 × 本人乘数**三条各一断言，E-15）；商本 100 贯边界；无田时务农 2 贯且与自耕互斥；做工需指派；**可指派人群 = 计口 ∧ 成年**（青年/老人可、未成年不可，E-16）；**`TradeIncome` 归属被采用者**（`PersonId != null`，E-18） |
 | FR-010、FR-013、FR-015 | `AssetPriceTable` / `InterestPolicy` / `LoanPolicy` | 铺面月摊 5 贯（300×20%÷12）；1 月 roll、12 月计息、次年重 roll；20/40/80 各一条断言 |
 | FR-014、FR-016 | `Loan` + `LoanSettlement` + `InterestPolicy` | 先本后息；跨 12 月节点按当时本金计息；本金清零后转冲欠息；皆清即结清；计时按自然月（E-07）；任意金额手动提前还款（`FamilyEconomy.RepayLoan` 承载） |
 | FR-017 | `PaymentPrimitive` | 「现金 → 储蓄 → 余额转贷款」三步各一断言；本阶段无罚金入口 |
-| FR-018、FR-019 | `FamineState` + `FamineController` + `FamineTimeline` | 4 阶段转移 4/4 + 解除后计时归零；阶段与剩余月数可读 |
+| FR-018、FR-019 | `FamineState` + `FamineController` + `FamineTimeline` | 4 阶段转移 4/4 + 解除后计时归零；**「恰好第 3 月转救济 / 恰好第 12 月转 Severe」两条边界断言**（E-14）；阶段与剩余月数可读 |
 | FR-020 | `MonthlySettlementEngine` | 六步顺序契约（E-04）；越界步骤（随机事件/成长/科举/绝嗣）**不存在** |
 | FR-021、FR-022、SC-005 | `FamilyEconomy.Apply` / `RepayLoan` + `Ledger` | 资金池变动与条目一一对应；家族/角色两维度聚合同一批条目；归档成员历史可读 |
 | FR-023 | `KFL.Rules/Config/` 全部配置类 | 配置登记表 + 「配置类之外无第二份副本」扫描测试 |
@@ -332,7 +336,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | FR-027 | `AssetMarket` | 买入/售出后 `Holdings` 与资金池同价变动 |
 | FR-028 | ——（本阶段 MUST NOT 实现） | 「买人口」相关类型在阶段② 不存在，以「无该类型/无该类别」断言 |
 | FR-029、FR-030、SC-009 | `LivingCostCalculator` / `IncomeCalculator` 的**计口筛选** | 服刑 + 外嫁同夹具：贡献为 0、档案与历史条目仍可读；待阙**照常**计入 |
-| FR-031 | `IncomeRateTable` 的务农系数 + `IncomeCalculator` + `CountedMembers` | `tests/KFL.Tests/Rules/IncomeTests.cs` |
+| FR-031 | `IncomeRateTable` 的务农系数 + `IncomeCalculator` + `CountedMembers` | `tests/KFL.Tests/Rules/IncomeTests.cs`；**「无田可耕」= `FarmlandMu == 0`** 与「有田即不得发务农」各一断言（E-17） |
 | SC-001 | `MonthlySettlementEngine` + `SettlementResult` | `tests/KFL.Tests/Rules/SettlementEngineTests.cs`（quickstart S1~S3/S6） |
 | SC-002 | `LoanSettlement` + `LoanPolicy` | `tests/KFL.Tests/Rules/LoanTests.cs` |
 | SC-003 | `FamineController` + `FamineTimeline` | `tests/KFL.Tests/Rules/FamineTimelineTests.cs` |
@@ -347,13 +351,17 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | 起始阶段 | 条件 | 结果 | 事件类条目 |
 | --- | --- | --- | --- |
 | `None` | 现金 + 储蓄 < 当月应付额 | `Famine`（计时 1） | `FamineEntered` |
-| `Famine` | 累计满 3 个月仍未足额付清 | `Relief`（计时从 1 起重算） | `FamineReliefEntered` |
-| `Relief` | 累计满 12 个月仍未足额付清 | `Severe`（计时从 1 起重算） | `FamineSevereEntered` |
+| `Famine` | 推进后计时 ≥ 3（第 3 个饥馑月当月）仍未足额付清 | `Relief`（计时从 1 起重算） | `FamineReliefEntered` |
+| `Relief` | 推进后计时 ≥ 12（第 12 个救济月当月）仍未足额付清 | `Severe`（计时从 1 起重算） | `FamineSevereEntered` |
 | `Severe` | —— | 保持 `Severe` | — |
 | 任一阶段 | 现金 + 储蓄 ≥ 当月应付额 | `None`（计时清零） | `FamineResolved` |
 
 **判定次序**：先判「付得起 → 全部解除」，再判升级（R-12）。救济期内应付额 = 正常档 ×
 `(1 − 20%)`；其余阶段为正常档。
+**计时（E-14）**：每月在④的足额判定**之前**先 `Tick()`（阶段非 `None` 时 +1），阈值用**推进后**
+的 `ElapsedMonths` 比较——`Famine` 计 `≥ 3` 即转 `Relief`（`X` 月进入 → `X+2` 月当即转，
+`−20%` 自 `X+3` 月的应付额起生效），`Relief` 计 `≥ 12` 即转 `Severe`。因此
+「恰好第 3 月 / 恰好第 12 月」是本阶段 MUST 有的边界断言（第 2 月与第 11 月 MUST NOT 触发）。
 
 ### 6.2 贷款（§5.4，R-08）
 
@@ -371,7 +379,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `GrainPriceIndex` | 每月第②步游走 ±10% 后 clamp 0.7~3.0（当月生效，US1 AS5） |
 | `PendingDifficulty` / `PendingLivingStandard` | 每月第①步提升为生效值并清空待生效位（R-09） |
 | `Treasury.SavingsRate` | 1 月重 roll（与上年无关），当年内不变；12 月计息并入储蓄本金（R-11） |
-| `FamineState.ElapsedMonths` | 阶段非 `None` 时每月 +1（`TransitionTo` 的当月记为 1） |
+| `FamineState.ElapsedMonths` | 阶段非 `None` 时每月 +1（`TransitionTo` 的当月记为 1）；**调用点在④的足额判定之前**，阈值用推进后的值比较（E-14） |
 | `GameState.CurrentDate` | 结算末尾 `AdvanceMonth()`（跨年进位） |
 
 ### 6.4 本阶段**不建立**的状态转移
