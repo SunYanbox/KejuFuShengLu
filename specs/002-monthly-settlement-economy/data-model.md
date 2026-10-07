@@ -32,7 +32,7 @@ MUST 被论证」）。存档落盘属阶段④，此时增删字段仍无迁移
 
 | 成员 | 类型 | 说明 | 来源 |
 | --- | --- | --- | --- |
-| `Value` | `decimal` | **米价系数**，初始 1.0 | §5.1；E-01 |
+| `Value` | `decimal` | **米价系数**（Core **不含初值**：初始 1.0 单点在 `GrainPricePolicy`，SC-008） | §5.1；E-01；§4.1 |
 
 **不变量**：`Value > 0`。
 **明确不含**：`0.7~3.0` 的 clamp 区间与 `±10%` 的游走幅度（属 `KFL.Rules/Config/GrainPricePolicy`，
@@ -94,7 +94,9 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `FamineResolved` | 饥馑全部解除 | **事件类** | — | §5.4 |
 
 **`LedgerCategoryMetadata` 的职责**（结构事实，不是平衡数值，故随枚举留在 Core，R-04）：
-`KindOf(category) → LedgerEntryKind`、`CreditTargetOf(category) → LedgerCreditTarget`。
+`KindOf(category) → LedgerEntryKind`、`CreditTargetOf(category) → LedgerCreditTarget?`——返回
+`null` 表示**没有正额入账目标**，即上表「正额入账目标」列为「—」的 **9 个类别**（4 个恒为负的
+支出类 + 5 个事件类）；`FamilyEconomy.Apply` 收到这 9 类之一的正额 MUST 抛异常。
 **SC-005 的求和口径** = 对 `KindOf == Treasury` 的条目求和。
 
 ---
@@ -117,6 +119,9 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 **方法（内部转账，均不落条目、无手续费，R-05）**：`TransferToSavings(Money)`、
 `TransferToCash(Money)`、`InjectMerchantCapital(Money)`、`WithdrawMerchantCapital(Money)`；
 前两者与后两者在金额超过来源池时 MUST 抛异常（不允许隐式透支）。
+**写入通道**：三个金额池对 `KFL.Core` 之外**不可写**（`internal` setter），初值只经公开三参构造
+`Treasury(Money cash, Money savings, Money merchantCapital)`（默认 0）给出——开局资产属阶段③
+（§10.1），Core 不写数值；「只动资金池而不落条目」因此在类型层面不可表达（FR-021）。
 
 ### 3.2 `Loan`（贷款）
 
@@ -136,6 +141,10 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 **为什么「先本后息」在实体里**：它是单实体的自身不变量（§5.4），不涉及跨实体编排，
 故不违反章程原则 II 的「实体 MUST NOT 承担跨实体结算编排职责」。
+
+**写入通道**：`Principal` 与 `MonthsSinceInterest` 为公开可写属性（带 `>= 0` 校验）——前者由
+`PaymentPrimitive` 在资金池不足时加差额，后者由结算每月 +1；`AccruedInterest` **只读**，
+唯一写入通道是 `AccrueInterest(Money)`，「利息永不滚入本金」因此无法被绕过。
 
 **`LoanRepayment`**：`readonly record struct (Money PrincipalPart, Money InterestPart)`，
 不变量：两部分皆 `>= 0` 且 `PrincipalPart <= 还款前本金`、`InterestPart <= 还款前欠息`。
@@ -181,8 +190,11 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `ElapsedMonths` | `int` | **本阶段**已持续月数（转入当月记 1） | §5.4 |
 
 **不变量**：`Stage == None` ⇔ `ElapsedMonths == 0`。
-**方法**：`void TransitionTo(FamineStage stage)`（置阶段并把 `ElapsedMonths` 置 1）、
+**方法**：`void TransitionTo(FamineStage stage)`（置阶段并把 `ElapsedMonths` 置 1；仅
+`TransitionTo(None)` 例外，按 `Clear()` 语义归 0——否则会破坏下面的不变量）、
 `void Tick()`（阶段非 `None` 时 +1）、`void Clear()`（归 `None`/0）。
+**形状**：`class`（非结构体）并提供**公开复制构造**，供 `SettlementResult.FamineBefore/After`
+取快照——不为快照开放 setter，避免绕过不变量。
 **明确不含**：3 个月与 12 个月的阈值、救济折扣、体质下降与死亡判定——阈值与折扣在
 `KFL.Rules/Config/FamineTimeline`；体质与死亡属阶段⑧（FR-019）。
 
@@ -218,6 +230,10 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 4. **构造要求显式传入当前档位、不设默认值**：`KFL.Infrastructure` 看不到 `KFL.Rules`（G-05），
    新建存档的初值（`LivingCostTable.InitialStandard` = `Normal`）必须由调用方给出，而不是由
    `KFL.Core` 里抄一份「普通」当默认值（那会让同一个规则数值出现第二个出处）。
+   构造签名（`Treasury`/`Holdings`/`Ledger` 可省：`null` = 空池 / 零资产 / 空账，均为**零状态**、
+   不含任何规则数值）：
+   `FamilyEconomy(LivingStandard livingStandard, GrainPriceIndex grainPriceIndex, Treasury? treasury = null, Holdings? holdings = null, Ledger? ledger = null)`
+   ——档位与米价系数**同为必需参数**，因为两者的初值都在 `KFL.Rules/Config`（同样的 SC-008 理由）。
 
 ### 3.7 `GameState` 的变更
 
