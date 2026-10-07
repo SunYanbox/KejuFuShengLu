@@ -251,7 +251,9 @@ public static class IncomeCalculator
             return;
         }
 
-        Add(lines, LedgerCategory.ShopRentIncome, null, AssetPriceTable.ShopMonthlyRent(holdings.Shops).Guan * revenue);
+        // 铺面月租已由配置表以 Money（文）给出，故直接乘系数——不再经 .Guan（÷1000）往返
+        // 到「贯」再在 Add 里 ×1000 回「文」（Money 的唯一存储口径是文）。
+        Add(lines, LedgerCategory.ShopRentIncome, null, AssetPriceTable.ShopMonthlyRent(holdings.Shops) * revenue);
     }
 
     /// <summary>经商效率 = 商乘数 × 工乘数。</summary>
@@ -295,5 +297,19 @@ public static class IncomeCalculator
         }
 
         lines.Add(new IncomeLine(category, personId, Money.FromGuan(guan)));
+    }
+
+    /// <summary>
+    /// 只落**正额**分项（已是 <see cref="Money"/> 的金额用这一重载）：免去 `.Guan`（÷1000）→
+    /// `Add` 内 `FromGuan`（×1000）的口径往返（data-model §1.1：唯一存储以文为单位）。
+    /// </summary>
+    private static void Add(List<IncomeLine> lines, LedgerCategory category, PersonId? personId, Money amount)
+    {
+        if (!amount.IsPositive)
+        {
+            return;
+        }
+
+        lines.Add(new IncomeLine(category, personId, amount));
     }
 }
