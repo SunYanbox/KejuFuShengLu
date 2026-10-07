@@ -40,6 +40,12 @@ public sealed record ConfigLiteralViolation(string Path, int Line, decimal Value
 /// 行级豁免：命中行若含 <see cref="ExemptionComment"/> 即跳过（须在同一行写明理由）。
 /// 这是为「夹具输入」与「锚点断言」准备的口子——锚点（如 <c>5100</c>）本身是被验证对象。
 /// </para>
+/// <para>
+/// **两条判据**：① 数值清单命中（<see cref="Evaluate"/>，按**数值**识别，覆盖小数与 4 位及以上官俸）；
+/// ② 金额字面量（<see cref="EvaluateMoneyLiterals"/>，按**上下文**识别，覆盖清单收不进的整数规则值
+/// 如宅价 1/10/100/300 与门槛 100）。两者互补：① 抓「规则数值被抄到非配置处」，
+/// ② 抓「产品代码把金额写成硬编码」。
+/// </para>
 /// </remarks>
 public static class ConfigLiteralRules
 {
@@ -70,6 +76,14 @@ public static class ConfigLiteralRules
         @"tests\KFL.Tests\Rules\",
     ];
 
+    /// <summary>产品源码根：<see cref="EvaluateMoneyLiterals"/> 的扫描范围（数值合法住处 <c>Config\</c> 除外）。</summary>
+    public static readonly string[] ProductRoots =
+    [
+        @"src\KFL.Core\",
+        @"src\KFL.Infrastructure\",
+        @"src\KFL.Rules\",
+    ];
+
     private static readonly string[] IgnoredPathSegments = [".git", "bin", "obj"];
 
     /// <summary>
@@ -78,6 +92,14 @@ public static class ConfigLiteralRules
     /// </summary>
     private static readonly Regex LiteralPattern = new(
         @"(?<![A-Za-z0-9_.])(\d+(?:\.\d+)?)(?:[mMfFdD])?(?![A-Za-z0-9_])",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    /// <summary>
+    /// `Money.FromGuan(字面量)` / `Money.FromWen(字面量)`——<see cref="EvaluateMoneyLiterals"/> 的判据。
+    /// 实参须**紧接**在左括号（可含空白）之后，故 `Money.FromGuan(guan * 1000m)` 之类派生表达式不命中。
+    /// </summary>
+    private static readonly Regex MoneyArgumentLiteralPattern = new(
+        @"Money\.From(?:Guan|Wen)\(\s*(-?\d+(?:\.\d+)?)(?:[mMfFdD])?(?![A-Za-z0-9_])",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     /// <summary>
@@ -116,6 +138,77 @@ public static class ConfigLiteralRules
                 foreach (var value in LiteralsIn(line))
                 {
                     if (!registered.Contains(value) || !seen.Add((path, index + 1, value)))
+                    {
+                        continue;
+                    }
+
+                    violations.Add(new ConfigLiteralViolation(path, index + 1, value, line.Trim()));
+                }
+            }
+        }
+
+        return violations
+            .OrderBy(v => v.Path, StringComparer.Ordinal)
+            .ThenBy(v => v.Line)
+            .ToList();
+    }
+
+    /// <summary>
+    /// SC-008 的**金额条款**：产品源码里 MUST NOT 把裸数值字面量直接喂给
+    /// <c>Money.FromGuan</c> / <c>Money.FromWen</c>——那个字面量必然是规则数值的第二份副本。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// **为何另立一条判据**：<see cref="Evaluate"/> 的清单只能收「小数全收 + 4 位及以上官俸」——
+    /// 宅价 1/10/100/300、门槛 100、亩数 20、月数 30 这类整数规则值一旦入单，会与成员编号、年龄、
+    /// <c>GameDate</c> 年号、<c>TalentSet(100)</c>、夹具金额撞车（实测：宅价四值合计 **431** 处命中，
+    /// 其中 <c>1</c> 一项就占 **345** 处），扫描会退化成噪声源。本条改按**上下文**识别：
+    /// 产品代码里金额的构造点只有 <c>Money.FromGuan</c> / <c>Money.FromWen</c> 两处，
+    /// 给它们喂字面量即「**离开配置表就无法成立**」的数值副本（产品代码的金额一律经配置成员
+    /// 或派生表达式取得）。判别不依赖数值大小，故不会与任何同值噪声混淆。
+    /// </para>
+    /// <para>
+    /// **范围只到产品源码**（<see cref="ProductRoots"/>，数值的合法住处 <c>Config\</c> 除外）：
+    /// 测试里的 <c>Money.FromGuan(10m)</c> 是夹具金额（契约五 §5 条款 ⑤），不是规则数值的第二出处。
+    /// 行级豁免注释同样生效。
+    /// </para>
+    /// </remarks>
+    /// <param name="sourceFiles">仓库相对路径 → 文件原文。</param>
+    /// <returns>违规列表（按文件、行号排序）。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="sourceFiles"/> 为 <c>null</c>。</exception>
+    public static IReadOnlyList<ConfigLiteralViolation> EvaluateMoneyLiterals(
+        IReadOnlyDictionary<string, string> sourceFiles)
+    {
+        ArgumentNullException.ThrowIfNull(sourceFiles);
+
+        var violations = new List<ConfigLiteralViolation>();
+
+        foreach (var (path, text) in EnumerateSources(sourceFiles))
+        {
+            if (!ProductRoots.Any(root => path.StartsWith(root, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var rawLines = Lines(text);
+            var codeLines = CodeView(text).Split('\n');
+
+            for (var index = 0; index < codeLines.Length; index++)
+            {
+                var line = codeLines[index];
+
+                if (index < rawLines.Length && IsExempt(rawLines[index]))
+                {
+                    continue;
+                }
+
+                foreach (Match match in MoneyArgumentLiteralPattern.Matches(line))
+                {
+                    if (!decimal.TryParse(
+                        match.Groups[1].Value,
+                        NumberStyles.Number,
+                        CultureInfo.InvariantCulture,
+                        out var value))
                     {
                         continue;
                     }
