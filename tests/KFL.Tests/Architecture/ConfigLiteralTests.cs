@@ -19,12 +19,22 @@ namespace KFL.Tests.Architecture;
 /// <para>
 /// **清单的取舍**：<b>小数全收</b>（日耗 8.5/17.5、乘区 0.90、亩产 0.5、利润率 0.02、利率 0.005/0.024、
 /// 系数 0.2/0.4/0.6/0.7、比例 0.40…——最容易被人「顺手复制」进计算器的那一类）；
-/// <b>整数只收 4 位及以上的官俸数额</b>（1020~5100）。1~3 位整数（亩数 20、月数 12/30、年龄 12/14/18/60、
-/// 除数 200/400、门槛 100、宅价 1/10/100/300、饥馑 3/12、低品官俸 860/720/600/500/420/235/130/72）
-/// 在已提交的领域/夹具测试里同时也是**成员编号、年龄与世代号、夹具金额**（<c>NewPerson(420, …)</c>、
-/// <c>generation: 3</c>、<c>Money.FromGuan(10m)</c>），逐行判据无法区分二者——实测把它们入单会产生
-/// 200 余处命中，扫描将退化成噪声源。整数规则值的唯一性由配置表自身的 XML 注释、
-/// 以及 T062 的 FR/SC 覆盖核对（每一行都要落到读配置成员的断言）兜底。
+/// <b>4 位及以上官俸数额全收</b>（1020~5100），<b>低品官俸中实测零撞车的 5 项也收</b>
+/// （860/720/235/130/72——原「低品数额一律与成员编号/夹具金额撞车」的判断经实测不成立，见下）。
+/// 余下的 1~3 位整数（亩数 20、月数 12/30、年龄 12/14/18/60、除数 200/400、门槛 100、
+/// 宅价 1/10/100/300、饥馑 3/12、低品官俸 600/500/420）在已提交的领域/夹具测试里同时也是
+/// **成员编号、年龄与世代号、夹具金额**（<c>NewPerson(420, …)</c>、<c>generation: 3</c>、
+/// <c>Money.FromGuan(10m)</c>、<c>GameDate(10, 5)</c>、<c>TalentSet(100, …)</c>），逐行判据无法区分二者
+/// ——实测把宅价四值 1/10/100/300 入单会产生 **431** 处命中（<c>1</c> 一项 345 处、<c>10</c> 47 处、
+/// <c>100</c> 33 处、<c>300</c> 6 处，且绝大多数是 <c>Generation + 1</c>、<c>1 &lt;&lt; 3</c>、
+/// <c>year &lt; 1</c> 一类无关同值），扫描将退化成噪声源。
+/// </para>
+/// <para>
+/// **整数规则值的缺口由第二条判据补**：<see cref="ConfigLiteralRules.EvaluateMoneyLiterals"/>
+/// 按「金额构造点」而非按数值识别，专抓 <c>Money.FromGuan(300m)</c> 这类硬编码——它不需要把
+/// 1/10/100/300 放进数值清单，故不受同值撞车影响（产品源码实测零命中），
+/// 见 <see cref="产品代码的金额字面量只经配置成员取得"/>。整数规则值的唯一性另由配置表自身的
+/// XML 注释、以及 T062 的 FR/SC 覆盖核对（每一行都要落到读配置成员的断言）兜底。
 /// </para>
 /// <para>
 /// **小数的夹具撞车用行级豁免**（T059 条款 ⑤）：测试里作为**用例输入**的夹具数值不算第二出处，
@@ -69,6 +79,9 @@ public class ConfigLiteralTests
         0.06m,
         // §2 官俸 18 级：4 位及以上者入单（低品数额与成员编号/夹具金额撞车，见类注释）
         5100m, 4250m, 3560m, 2980m, 2490m, 2090m, 1750m, 1460m, 1220m, 1020m,
+        // §2 官俸低品中**实测零撞车**的 5 项（860/720/235/130/72：全仓库扫描 0 处命中，
+        //    故无需行级豁免；余下 600/500/420 与成员编号撞车，仍见类注释）
+        860m, 720m, 235m, 130m, 72m,
         // §2 士出身当官 ×1.05
         1.05m,
         // §3 田 1 贯/亩、农村宅 10 贯、城市宅 100 贯、铺面 300 贯（整数，见类注释）
@@ -90,6 +103,53 @@ public class ConfigLiteralTests
             violations.Count == 0,
             FormattableString.Invariant(
                 $"SC-008 违规 {violations.Count} 处（清单 {RegisteredValues.Length} 项，扫描 {CountScanned(input.SourceFiles)} 个文件）：{Environment.NewLine}{Describe(violations)}"));
+    }
+
+    /// <summary>
+    /// SC-008 的金额条款：产品代码里的金额一律经配置成员或派生表达式取得，
+    /// MUST NOT 出现 <c>Money.FromGuan(300m)</c> 这类裸字面量——真实仓库零违规。
+    /// </summary>
+    [Fact]
+    public void 产品代码的金额字面量只经配置成员取得()
+    {
+        var input = RepositoryLocator.Load();
+        var violations = ConfigLiteralRules.EvaluateMoneyLiterals(input.SourceFiles);
+
+        Assert.True(
+            violations.Count == 0,
+            FormattableString.Invariant(
+                $"金额条款违规 {violations.Count} 处（产品源码 {CountProductFiles(input.SourceFiles)} 个文件）：{Environment.NewLine}{Describe(violations)}"));
+    }
+
+    /// <summary>
+    /// 金额条款的自检：产品代码里喂字面量即报；喂变量/表达式、写在配置类里、
+    /// 写在测试目录里、或加了行级豁免都不报。
+    /// </summary>
+    [Fact]
+    public void 金额字面量判据只在产品代码的构造点上生效()
+    {
+        var sources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [@"src\KFL.Rules\Settlement\Sample.cs"] = """
+                var a = Money.FromGuan(300m);
+                var b = Money.FromWen(-1m);
+                var c = Money.FromGuan(someGuan * 1000m);
+                var d = Money.FromGuan(AssetPriceTable.ShopGuan);
+                var e = Money.FromWen(100m); // arch-guard:allow 锚点即被验证对象
+                """,
+            [@"src\KFL.Rules\Config\SampleTable.cs"] = "var f = Money.FromGuan(300m);",
+            [@"tests\KFL.Tests\Core\SampleTests.cs"] = "var g = Money.FromGuan(300m);",
+        };
+
+        var violations = ConfigLiteralRules.EvaluateMoneyLiterals(sources);
+
+        // a 与 b 命中（第 1、2 行）；c/d 是派生表达式不命中；e 有行级豁免；
+        // 配置类是数值合法住处；测试目录不在金额条款范围内。
+        Assert.Equal(2, violations.Count);
+        Assert.Equal(300m, violations[0].Value);
+        Assert.Equal(1, violations[0].Line);
+        Assert.Equal(-1m, violations[1].Value);
+        Assert.Equal(2, violations[1].Line);
     }
 
     /// <summary>扫描范围非空洞：每个根目录都真的读到了文件，否则上面的断言可能恒真。</summary>
@@ -211,6 +271,16 @@ public class ConfigLiteralTests
 
     private static int CountScanned(IReadOnlyDictionary<string, string> sourceFiles) =>
         ScannedPaths(sourceFiles).Count();
+
+    /// <summary>金额条款的扫描面：产品源码根，除去数值的合法住处 <c>Config\</c>。</summary>
+    private static int CountProductFiles(IReadOnlyDictionary<string, string> sourceFiles) =>
+        sourceFiles.Keys
+            .Select(path => path.Replace('/', '\\'))
+            .Count(path =>
+                path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                && ConfigLiteralRules.ProductRoots.Any(
+                    root => path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                && !path.StartsWith(ConfigLiteralRules.ConfigRoot, StringComparison.OrdinalIgnoreCase));
 
     private static IEnumerable<string> ScannedPaths(IReadOnlyDictionary<string, string> sourceFiles) =>
         sourceFiles.Keys
