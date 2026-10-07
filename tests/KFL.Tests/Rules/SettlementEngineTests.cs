@@ -1,3 +1,4 @@
+using System.Reflection;
 using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
@@ -232,6 +233,114 @@ public class SettlementEngineTests
         Assert.Equal(-partial, livingCostEntry.Amount);
     }
 
+    [Fact]
+    public void 米价派生值只是展示值而生活费乘的是系数()
+    {
+        // FR-004：状态量与生活费乘数都是**米价系数**；`米价 = (系数 − 偏移) ÷ 比例` 只是派生展示值。
+        Assert.Equal(
+            (GrainPricePolicy.Min - GrainPricePolicy.PriceOffset) / GrainPricePolicy.PriceScale,
+            GrainPricePolicy.MarketPrice(GrainPricePolicy.Min));
+        Assert.Equal(
+            (GrainPricePolicy.Max - GrainPricePolicy.PriceOffset) / GrainPricePolicy.PriceScale,
+            GrainPricePolicy.MarketPrice(GrainPricePolicy.Max));
+        Assert.Equal(
+            (GrainPricePolicy.Initial - GrainPricePolicy.PriceOffset) / GrainPricePolicy.PriceScale,
+            GrainPricePolicy.MarketPrice(GrainPricePolicy.Initial));
+
+        var family = RulesHarness.FamilyOf(RulesHarness.Member(68, Gender.Male, 40));
+
+        // 12 月结算不消费「当年储蓄利率」roll，随机取值槽位只剩米价：
+        // 起点取下限且向下游走 → clamp 回下限；起点取上限且向上游走 → clamp 回上限。
+        var low = SettleWalking(family, 0.0d, GrainPricePolicy.Min, Difficulty.Normal);
+        var high = SettleWalking(family, 1.0d, GrainPricePolicy.Max, Difficulty.Normal);
+
+        Assert.Equal(GrainPricePolicy.Min, low.GrainPriceIndexAfter);
+        Assert.Equal(GrainPricePolicy.Max, high.GrainPriceIndexAfter);
+        Assert.Equal(Payable(family, low, GrainPricePolicy.Min, Difficulty.Normal), low.LivingCostPayable);
+        Assert.Equal(Payable(family, high, GrainPricePolicy.Max, Difficulty.Normal), high.LivingCostPayable);
+
+        // 若误把派生值当乘数，应付额会落到另一条数轴上（0.5 与 4.33…，而不是 0.7 与 3）。
+        Assert.NotEqual(
+            Payable(family, low, GrainPricePolicy.MarketPrice(GrainPricePolicy.Min), Difficulty.Normal),
+            low.LivingCostPayable);
+        Assert.NotEqual(
+            Payable(family, high, GrainPricePolicy.MarketPrice(GrainPricePolicy.Max), Difficulty.Normal),
+            high.LivingCostPayable);
+    }
+
+    [Fact]
+    public void 四档难度支出系数各自成为当月应付额的乘数()
+    {
+        // FR-005 / §11：支出系数按难度四档各取一值，且**只**按难度变化。
+        var expressed = new[] { Difficulty.Easy, Difficulty.Normal, Difficulty.Hard, Difficulty.Hell }
+            .Select(DifficultyRates.ExpenseFactor)
+            .ToArray();
+
+        Assert.Equal(expressed.Length, expressed.Distinct().Count());
+
+        var family = RulesHarness.FamilyOf(RulesHarness.Member(69, Gender.Male, 40));
+        var payables = new List<Money>();
+
+        foreach (var difficulty in new[] { Difficulty.Easy, Difficulty.Normal, Difficulty.Hard, Difficulty.Hell })
+        {
+            // r = 0.5 → 游走因子恰为 1，米价系数原地不动，支出系数是唯一变量。
+            var result = SettleWalking(family, 0.5d, GrainPricePolicy.Initial, difficulty);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+
+            Assert.Equal(GrainPricePolicy.Initial, result.GrainPriceIndexAfter);
+            Assert.Equal(Payable(family, result, result.GrainPriceIndexAfter, difficulty), result.LivingCostPayable);
+
+            payables.Add(result.LivingCostPayable);
+        }
+
+        for (var index = 1; index < payables.Count; index++)
+        {
+            // 支出系数随难度单调递增（简单 < 普通 < 困难 < 地狱）→ 应付额同序严格递增。
+            Assert.True(payables[index - 1] < payables[index]);
+        }
+    }
+
+    [Fact]
+    public void 引擎公开面只有唯一编排入口且快照字段恰为本阶段交付物()
+    {
+        // FR-020：随机事件、属性成长与衰老、疾病与死亡、科举季、绝嗣判定等越界步骤在本阶段 MUST NOT 存在。
+        // 以公开面作可证断言：多一个越界入口或越界字段就会红。
+        var engineEntries = typeof(MonthlySettlementEngine)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Select(method => method.Name)
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(["Settle"], engineEntries);
+
+        var expectedProperties = new[]
+        {
+            nameof(SettlementResult.Month),
+            nameof(SettlementResult.GrainPriceIndexBefore),
+            nameof(SettlementResult.GrainPriceIndexAfter),
+            nameof(SettlementResult.LivingCosts),
+            nameof(SettlementResult.LivingCostPayable),
+            nameof(SettlementResult.LivingCostPaid),
+            nameof(SettlementResult.Incomes),
+            nameof(SettlementResult.NetProfit),
+            nameof(SettlementResult.LoanInterestAccrued),
+            nameof(SettlementResult.LoanRepayment),
+            nameof(SettlementResult.SavingsInterest),
+            nameof(SettlementResult.ArtisanBonus),
+            nameof(SettlementResult.FamineBefore),
+            nameof(SettlementResult.FamineAfter),
+            nameof(SettlementResult.Entries),
+            nameof(SettlementResult.TreasuryPoolBefore),
+            nameof(SettlementResult.TreasuryPoolAfter),
+        }.Order(StringComparer.Ordinal).ToArray();
+
+        var actualProperties = typeof(SettlementResult)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Select(property => property.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expectedProperties, actualProperties);
+    }
+
     private static GameState NewState(
         Family family,
         Origin origin = Origin.Artisan,
@@ -255,6 +364,37 @@ public class SettlementEngineTests
 
     private static SettlementResult Settle(GameState state) =>
         new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state)).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+
+    /// <summary>在 12 月（不消费储蓄利率 roll）以指定米价系数与难度的单次结算。</summary>
+    /// <param name="family">家族。</param>
+    /// <param name="walk">米价游走的随机取值。</param>
+    /// <param name="grain">结算前的米价系数。</param>
+    /// <param name="difficulty">难度。</param>
+    private static SettlementResult SettleWalking(Family family, double walk, decimal grain, Difficulty difficulty)
+    {
+        var state = NewState(
+            family,
+            difficulty: difficulty,
+            grain: grain,
+            date: new GameDate(RulesHarness.Date.Year, 12));
+
+        return new MonthlySettlementEngine(new FixedRandomService(walk), new GameStateClock(state)).Settle(state);
+    }
+
+    /// <summary>按给定米价系数与难度复算某次结算的应付生活费（档位与饥馑阶段取结算的默认口径）。</summary>
+    /// <param name="family">家族。</param>
+    /// <param name="result">结算快照。</param>
+    /// <param name="grainIndex">用作乘数的米价系数。</param>
+    /// <param name="difficulty">难度。</param>
+    private static Money Payable(Family family, SettlementResult result, decimal grainIndex, Difficulty difficulty) =>
+        LivingCostCalculator.Compute(
+            CountedMembers.Counted(family),
+            result.Month,
+            LivingStandard.Normal,
+            grainIndex,
+            difficulty,
+            Origin.Artisan,
+            FamineStage.None).Payable;
 
     private static Money TreasuryDelta(IReadOnlyList<LedgerEntry> entries)
     {

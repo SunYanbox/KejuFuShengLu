@@ -1,3 +1,4 @@
+using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 
@@ -168,6 +169,9 @@ public static class GameConfig
 
         /// <summary>铺面月租 = 单价 × 年租率 ÷ 月数。</summary>
         public static Money ShopMonthlyRent(int shops) => AssetPriceTable.ShopMonthlyRent(shops);
+
+        /// <summary>田宅铺市值（贯；**不含商本池**）。</summary>
+        public static Money MarketValue(Holdings holdings) => AssetPriceTable.MarketValue(holdings);
     }
 
     /// <summary>储蓄与贷款利率表（§5.4；R-08/R-11）：区间与计息周期。</summary>
@@ -200,6 +204,9 @@ public static class GameConfig
 
         /// <summary>该阶段的可持续月数（<c>null</c> = 无上限）。</summary>
         public static int? LimitMonths(FamineStage stage) => FamineTimeline.LimitMonths(stage);
+
+        /// <summary>本阶段的剩余月数（不为负；无时限阶段为 0）。</summary>
+        public static int RemainingMonths(FamineState state) => FamineTimeline.RemainingMonths(state);
     }
 
     /// <summary>米价政策（§5.1）：初始系数、游走幅度、clamp 区间与派生值系数。</summary>
