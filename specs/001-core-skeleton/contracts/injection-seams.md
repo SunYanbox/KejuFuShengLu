@@ -57,5 +57,5 @@ public interface IGameClock
 ## 4. 本契约明确不包含
 
 `ISaveService`、`IAchievementStore`、`IEventBus`——规格书 §2 虽把它们列在
-`KFL.Infrastructure`，但 001 无消费者（阶段④/⑪）。等各自阶段带着真实需求回来定义，
+`KFL.Infrastructure`，但 001 无消费者（阶段④/逻辑轨 ⑧）。等各自阶段带着真实需求回来定义，
 而不是现在猜签名。

@@ -64,10 +64,10 @@ LiveChartsCore **本阶段一个都不装**——001 没有消费者，章程「
 | --- | --- | --- |
 | **I. .NET 10 单一运行时基线** | 非 UI `net10.0`、UI `net10.0-windows`；`global.json` 只锁 .NET 10 版本带（不锁补丁号，禁止 `rollForward: disable`，已随章程 v1.1.1）；不设 `TargetFrameworks`（禁止多目标）；FR-002 | ✅ |
 | **II. 分层解耦与单向依赖** | 现有依赖边严格单向且无环；核心三层不引平台类型、CSProj 无 `UseWPF`/`UseWindowsForms`；规则层无 `DateTime.Now`/`Random`/文件/网络；实体只承载数据与自身不变量，跨实体一致性由 `Family` 聚合承担（不承担结算编排）；FR-003、FR-013、FR-014 | ✅ |
-| **III. WPF + MVVM 表现层契约** | 本阶段无 ViewModel、无 code-behind 业务：`KFL.App` 只有 `App.xaml`/空 `MainWindow.xaml`，不含任何规则数值；主界面属阶段③。本阶段对原则三**无违反**，只有「尚未开始」 | ✅（N/A 部分已说明） |
+| **III. WPF + MVVM 表现层契约** | 本阶段无 ViewModel、无 code-behind 业务：`KFL.App` 只有 `App.xaml`/空 `MainWindow.xaml`，不含任何规则数值；主界面属界面轨 U1。本阶段对原则三**无违反**，只有「尚未开始」 | ✅（N/A 部分已说明） |
 | **IV. 单测优先与结果确定性** | 两组接缝全部构造注入，无静态单例；`SeededRandomService` 保证同种子同序列；`GameState` 的唯一标识也走注入，避免隐式 `Guid.NewGuid()`；测试与实现同批提交；FR-013、FR-015、SC-002 | ✅ |
 | **V. 约定式提交与中文提交信息** | 全部提交走 `build`/`feat`/`test`/`docs` 类型 + 中文描述；本次规格书修订单独成一次 `docs` 提交，实现另起 `feat`/`test` 提交 | ✅（流程约束） |
-| **VI. 调试通道不复制规则** | 本阶段不建控制台（阶段⑦），因此不存在「上限被复制一遍」的通道；同时先把 `KFL.Rules/Config/GameConfig.cs` 的**位置**建出来，使后续上限有唯一归属 | ✅ |
+| **VI. 调试通道不复制规则** | 本阶段不建控制台（界面轨 U4），因此不存在「上限被复制一遍」的通道；同时先把 `KFL.Rules/Config/GameConfig.cs` 的**位置**建出来，使后续上限有唯一归属 | ✅ |
 | **技术栈与工程约束** | `.slnx` 唯一、无 `.sln`；依赖按需引入并说明必要性；无游戏引擎；数值集中（实体值域常量归 `KFL.Core/Config`、规则常量归 `KFL.Rules/Config`，已获所有者确认，见 research R-06）；金额 `decimal` 本阶段无金额故 N/A；Serilog 与存档路径属后续阶段 | ✅ |
 | **开发工作流与质量门禁** | 严格对位规格书 §16 阶段①，无跨阶段提前动工；三项门禁可执行；复杂度逐项论证（资产池、系统时钟、存档/成就/事件总线三接口均推迟） | ✅ |
 
@@ -134,7 +134,7 @@ src/
 └── KFL.App/                         # net10.0-windows, WinExe —— 空壳窗口
     ├── KFL.App.csproj
     ├── App.xaml / App.xaml.cs       # 入口点，StartupUri 指向 MainWindow
-    └── MainWindow.xaml / .xaml.cs   # 空窗口（主界面属阶段③）
+    └── MainWindow.xaml / .xaml.cs   # 空窗口（主界面属界面轨 U1）
 
 tests/
 └── KFL.Tests/                       # net10.0
@@ -186,7 +186,7 @@ tests/
 - **R-14**（功名变迁历史）：功名改为一串按时间排序的变迁记录（含 §7.4 的降级），当前功名
   由末条派生；已回写规格书 §4.1、§6、§7.4、§12.2 与 spec FR-008。
 - **R-15**（辈分与家主）：辈分对血亲出生即定、对外来者由家族指定且须在尚无子女时落定；
-  新增 `Family.HeadId`，继任判定留给阶段⑧；已回写规格书 §4.4。
+  新增 `Family.HeadId`，继任判定留给逻辑轨 ⑦；已回写规格书 §4.4。
 - **R-16**（按角色月度收支）：不挂在 `Person` 上，改为 `GameState` 的家族级流水账，属阶段②；
   spec 已列入 Out of Scope。同次回写还包括规格书 §9.5（买人口）与 §12.3（统计口径）。
 

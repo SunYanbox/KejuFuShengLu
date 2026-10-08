@@ -26,7 +26,7 @@ MUST 被论证」）。存档落盘属阶段④，此时增删字段仍无迁移
 
 **不变量**：`Wen` ∈ `decimal` 全域；溢出由 `decimal` 运算符抛 `OverflowException`（`FromGuan`
 的 ×1000 换算有此风险）。
-**明确不含**：舍入（R-02：一律保留全精度，取整属阶段③展示层）；隐式 `double`/`int` 转换
+**明确不含**：舍入（R-02：一律保留全精度，取整属界面轨 U1 展示层）；隐式 `double`/`int` 转换
 （把「贯」「文」的口径混淆挡在编译期）。
 
 ### 1.2 `GrainPriceIndex`（readonly record struct）
@@ -37,7 +37,7 @@ MUST 被论证」）。存档落盘属阶段④，此时增删字段仍无迁移
 
 **不变量**：`Value > 0`。
 **明确不含**：`0.7~3.0` 的 clamp 区间与 `±10%` 的游走幅度（属 `KFL.Rules/Config/GrainPricePolicy`，
-R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（阶段③ 展示用）。
+R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（界面轨 U1 展示用）。
 
 ### 1.3 `LedgerEntry`（readonly record struct）
 
@@ -124,7 +124,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 `TransferToCash(Money)`、`InjectMerchantCapital(Money)`、`WithdrawMerchantCapital(Money)`；
 前两者与后两者在金额超过来源池时 MUST 抛异常（不允许隐式透支）。
 **写入通道**：三个金额池对 `KFL.Core` 之外**不可写**（`internal` setter），初值只经公开三参构造
-`Treasury(Money cash, Money savings, Money merchantCapital)`（默认 0）给出——开局资产属阶段③
+`Treasury(Money cash, Money savings, Money merchantCapital)`（默认 0）给出——开局资产属逻辑轨 ③
 （§10.1），Core 不写数值；「只动资金池而不落条目」因此在类型层面不可表达（FR-021）。
 
 ### 3.2 `Loan`（贷款）
@@ -204,7 +204,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 **形状**：`class`（非结构体）并提供**公开复制构造**，供 `SettlementResult.FamineBefore/After`
 取快照——不为快照开放 setter，避免绕过不变量。
 **明确不含**：3 个月与 12 个月的阈值、救济折扣、体质下降与死亡判定——阈值与折扣在
-`KFL.Rules/Config/FamineTimeline`；体质与死亡属阶段⑧（FR-019）。
+`KFL.Rules/Config/FamineTimeline`；体质与死亡属逻辑轨 ⑦（FR-019）。
 
 ### 3.6 `FamilyEconomy`（经济聚合＝资金流动的唯一入口）
 
@@ -384,7 +384,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 ### 6.4 本阶段**不建立**的状态转移
 
-属性成长/衰老/疾病/死亡（阶段⑧）、科举季触发与功名变迁（阶段⑤）、罚金与服刑计时（阶段⑥）、
-待阙转授官与考课/致仕（阶段⑧）、婚育与外嫁归档（阶段⑧）、绝嗣判定（阶段⑪）、
-随机事件与米价灾年跳涨（阶段⑧）、存档落盘与成就（阶段④/⑪）。上述项在本阶段的模型里
+属性成长/衰老/疾病/死亡（逻辑轨 ⑦）、科举季触发与功名变迁（阶段⑤）、罚金与服刑计时（阶段⑥）、
+待阙转授官与考课/致仕（逻辑轨 ③）、婚育与外嫁归档（逻辑轨 ⑦）、绝嗣判定（逻辑轨 ⑧）、
+随机事件与米价灾年跳涨（逻辑轨 ⑦）、存档落盘与成就（阶段④/逻辑轨 ⑧）。上述项在本阶段的模型里
 **没有对应的写入通道**，因此不是「暂未实现」，而是「不可达」。

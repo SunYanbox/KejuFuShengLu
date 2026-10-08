@@ -75,5 +75,5 @@ readonly record struct LedgerEntry(GameDate Date, PersonId? PersonId, LedgerCate
 
 ## 7. 本契约明确不包含
 
-CSV 导出、图表、统计页的筛选器（阶段⑩）、存档序列化格式（阶段④）、买人口的支出类别
-（阶段⑧ 新增类别时须同时补 `LedgerCategoryMetadata` 的两种查询口径）。
+CSV 导出、图表、统计页的筛选器（界面轨 U3）、存档序列化格式（阶段④）、买人口的支出类别
+（逻辑轨 ⑦ 新增类别时须同时补 `LedgerCategoryMetadata` 的两种查询口径）。
