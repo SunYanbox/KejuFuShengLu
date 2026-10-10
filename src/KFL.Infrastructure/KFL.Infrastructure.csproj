@@ -10,4 +10,9 @@
     <ProjectReference Include="..\KFL.Core\KFL.Core.csproj" />
   </ItemGroup>
 
+  <!-- 规格书 §2 的姓名生成（Bogus zh_CN）；以局部 Randomizer(seed) 使用，MUST NOT 触碰全局种子。 -->
+  <ItemGroup>
+    <PackageReference Include="Bogus" Version="35.6.1" />
+  </ItemGroup>
+
 </Project>
