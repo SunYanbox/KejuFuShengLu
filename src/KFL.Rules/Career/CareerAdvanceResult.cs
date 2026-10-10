@@ -5,7 +5,7 @@ namespace KFL.Rules.Career;
 
 /// <summary>一次授官的记录（成员 → 入仕途径 → 新官阶）。</summary>
 /// <param name="PersonId">被授官的成员。</param>
-/// <param name="Track">入仕途径（由功名记录派生；特奏名无进士记录）。</param>
+/// <param name="Track">入仕途径（入口记录在 <c>Person.EntryTrack</c> 上的值；特奏名无进士记录）。</param>
 /// <param name="Rank">新官阶。</param>
 public sealed record CareerAppointment(PersonId PersonId, AppointmentTrack Track, OfficialRank Rank);
 

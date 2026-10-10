@@ -12,8 +12,9 @@ namespace KFL.Rules.Career;
 /// <remarks>
 /// <para>
 /// 它把一名**无官职**的成员置入**待阙**：掷剩余月数（<c>Next(6, 24 + 1)</c>，**恰好 1 次</b> <c>Next</c>）
-/// 并置状态位与计时。授官本身**不在本类**发生——待阙计时递减到 0 的当月由
-/// <see cref="OfficialCareerAdvance"/> 的 ③-a 授官。
+/// 并置状态位、计时与**入仕途径**（<see cref="Person.EntryTrack"/>）。授官本身**不在本类**发生——
+/// 待阙计时递减到 0 的当月由 <see cref="OfficialCareerAdvance"/> 的 ③-a 授官，
+/// 且 ③-a **只读** <see cref="Person.EntryTrack"/>（契约七 §3 条款 6：初始官阶按 track 映射）。
 /// </para>
 /// <para>
 /// **MUST NOT**：写官阶（<see cref="Person.Rank"/>）、写 <see cref="Person.MonthsInOffice"/>、
@@ -24,9 +25,10 @@ namespace KFL.Rules.Career;
 /// 校验相在掷骰之前完成，故被拒时既不改状态也不消耗随机。
 /// </para>
 /// <para>
-/// <b>赋值次序</b>：置位时 MUST **先 <see cref="Person.Status"/>、后 <see cref="Person.Timers"/>**——
-/// <see cref="Person"/> 的交叉校验规定「计时非空 ⇔ 对应状态位为真」，故位必须先为真；
-/// 清位时次序相反（先清计时、后清位，见 <see cref="OfficialCareerAdvance"/> ③-a）。
+/// <b>赋值次序</b>：置位时 MUST **先 <see cref="Person.Status"/>、后 <see cref="Person.Timers"/>、
+/// 最后 <see cref="Person.EntryTrack"/>**——<see cref="Person"/> 的交叉校验规定「计时非空 ⇔ 对应状态位为真」
+/// 与「入仕途径非空 ⇒ 待阙位为真」，故位必须先为真；清位时次序相反
+/// （先清计时与途径、后清位，见 <see cref="OfficialCareerAdvance"/> ③-a）。
 /// 两处都必须保留其余计时字段（重建 <see cref="StatusTimers"/> 而不是整体覆盖为 <c>default</c>）。
 /// </para>
 /// <para>
@@ -70,11 +72,15 @@ public static class AppointmentEntry
     /// 通用入口（供逻辑轨 ⑤ 的特奏名复用）：按**显式**途径置入待阙。
     /// </summary>
     /// <param name="person">无官职的成员。</param>
-    /// <param name="track">入仕途径。</param>
+    /// <param name="track">入仕途径；**记入 <see cref="Person.EntryTrack"/>**，授官时据此定初始官阶。</param>
     /// <param name="date">触发年月。</param>
     /// <param name="random">随机来源（待阙时长的唯一来源）。</param>
     /// <exception cref="ArgumentNullException"><paramref name="person"/> 或 <paramref name="random"/> 为 <c>null</c>。</exception>
     /// <exception cref="InvalidOperationException">已有官阶，或已在待阙（MUST NOT 重置剩余月数）。</exception>
+    /// <remarks>
+    /// 途径**由调用方负责正确**：它不再在授官时从功名记录派生，故「特奏名无需伪造一条进士记录」
+    /// 与「一甲进士在待阙期内被连坐降级也不会改判」同时成立（data-model §1.6）。
+    /// </remarks>
     public static void Begin(
         Person person, AppointmentTrack track, GameDate date, IRandomService random)
     {
@@ -85,15 +91,20 @@ public static class AppointmentEntry
 
         var months = OfficialCareerPolicy.NextAwaitingPostMonths(random);
 
-        // 位先真、计时后落（Person 的交叉校验方向：计时非空 ⇔ 位为真）。
+        // 位先真、计时与途径后落（Person 的交叉校验方向：计时/途径非空 ⇒ 位为真）。
         person.Status |= StatusFlag.AwaitingPost;
         person.Timers = ReplaceAwaitingPost(person.Timers, months);
+        person.EntryTrack = track;
     }
 
     /// <summary>
-    /// 从功名记录**派生**入仕途径（③-a 授官时复用）：进士按甲第映射；
-    /// 无进士记录者（特奏名等）取 <see cref="AppointmentTrack.SpecialTribute"/>。
+    /// 从功名记录**派生**入仕途径（**仅在入口**使用：<see cref="BeginForImperialGraduate"/> 与夹具）：
+    /// 进士按甲第映射；无进士记录者（特奏名等）取 <see cref="AppointmentTrack.SpecialTribute"/>。
     /// </summary>
+    /// <remarks>
+    /// 授官（③-a）**MUST NOT** 调用本方法：它只读 <see cref="Person.EntryTrack"/>——功名记录在待阙期内
+    /// 可能被逻辑轨 ⑥ 的连坐降级改写，届时重新派生会把已确定的途径改判（契约七 §3 条款 6）。
+    /// </remarks>
     /// <param name="person">成员。</param>
     /// <returns>入仕途径。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="person"/> 为 <c>null</c>。</exception>
