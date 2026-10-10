@@ -144,7 +144,8 @@ MUST NOT 同时置 `Family.HasShiStatus`（§10.2、FR-008）。
 | `LifespanMeanMale` / `LifespanSigmaMale` | 60.7 / 8 | §4.1 |
 | `LifespanMeanFemale` / `LifespanSigmaFemale` | 62.3 / 8 | §4.1 |
 | `NextNormal(mean, sigma, IRandomService)` | 纯函数；Box–Muller，**恰好消耗 2 次** `NextDouble()` | R-08 |
-| `NextTalent/NextStudy/NextHealth/NextLifespan` | 取样 → **四舍五入取整** → clamp 到 `AttributeLimits.Min~Max`（寿数**不 clamp 上限**，FR-006） | spec Assumptions |
+| `NextTalent/NextStudy/NextHealth` | 取样 → **四舍五入取整** → clamp 到 `AttributeLimits.Min~Max` | spec Assumptions |
+| `NextLifespan` | 取样 → **四舍五入取整** → **只 clamp 下界 `AttributeLimits.Min`（0）**、**不设上限**（FR-006） | spec Assumptions |
 
 **明确不含**：`AttributeLimits` 的 0~100 值域（属 `KFL.Core`）、遗传公式（§4.2 的新生儿口径
 属逻辑轨 ⑦）。
@@ -195,7 +196,9 @@ public static NewGameSetupResult Create(
 **编排步骤**（顺序即契约六 §2 的断言顺序）：
 1. 姓氏：`request.Surname` 非空则用它；否则取 `names.NextSurname()`。
 2. 构造家族 `Family(surname)` → 按 `OriginStartTable` 生成**家主 → 配偶 → 孩子**，
-   家主任 `AddFoundingMember`、配偶任 `AddFoundingMember`、孩子任 `AddChild`（辈分 1）。
+   家主任 `AddFoundingMember`（男、辈分 0、无父母）、配偶任 `AddOutsider`（女、辈分 0、无父母）、
+   孩子任 `AddChild`（辈分 1、父母引用同指二人）——配偶按**外来者**加入（`Family.AddOutsider`
+   的注释即把「娶入配偶」列为适用者），MUST NOT 改走 `AddFoundingMember`。
 3. `Family.Marry(head, spouse)`；孩子同时引用二人；`Family.SetHead(家主)`。
 4. 士出身：向家主的 `DegreeHistory` 追加一条
    `(JuRen, null, StartDate, Initial, null)`。
@@ -211,15 +214,17 @@ public static NewGameSetupResult Create(
 ### 3.6 `Career/SalaryModePolicy`——【新】三态判定（纯函数）
 
 ```csharp
-public static SalaryMode Of(Person person, GameDate date);
-public static Money MonthlySalary(Person person, SalaryMode mode, Origin origin,
-    Difficulty difficulty, Money annualSalaryFull);   // 或等价的额内计算
+public static SalaryMode Of(Person person);   // 只判态：无 Money / Origin / Difficulty / GameDate 入参
 ```
 
 判定优先级（R-05）：`Rank != null && Retired → Retired`；`Rank != null → Active`；
 `Rank == null && AwaitingPost → AwaitingPost`；否则 `None`。
-**幂等性**：判定是**只读**的纯函数，不改任何状态。
-**明确不含**：金额的乘区（难度收益系数与士出身 ×1.05 仍由 `IncomeCalculator` 的既有路径施加）。
+**幂等性**：判定是**只读**的纯函数，不改任何状态；判定只读 `Rank` 与 `Status`，与年月无关——
+故**不收** `GameDate`（`Directory.Build.props` 开了 `TreatWarningsAsErrors` + `EnforceCodeStyleInBuild`，
+未使用的参数会顶到「0 警告」门禁）。
+**明确不含**：金额与一切乘区。**半俸比例、难度收益系数与「士出身 ×1.05」的单点都在
+`IncomeCalculator`**（§3.11）——本类型 MUST NOT 出现 `Money` 参数、MUST NOT 返回已打折的金额
+（FR-021；契约七 §5 条款 3 的「不得累乘」）。
 
 ### 3.7 `Career/AppointmentEntry`——【新】及第入仕入口
 
@@ -239,17 +244,24 @@ public static void Begin(Person person, AppointmentTrack track, GameDate date, I
 public static CareerAdvanceResult Run(Family family, GameDate month, IRandomService random);
 ```
 
-内部次序（FR-019，逐条可断言；成员一律按 `PersonId` 升序处理以保证确定性）：
+内部次序（FR-019，逐条可断言）。
+**成员集合** MUST 取 002 的**在册**口径（`CountedMembers.Registered` = 未亡且未外嫁，**含服刑与待阙**），
+一律按 `PersonId` **升序**处理以保证确定性——因此**已亡与外嫁者 MUST NOT 被推进**（spec Edge Case
+「待阙期内死亡或外嫁 ⇒ 仕途停止」），服刑者仍在集合内、由 ③-a/③-b/③-d 的**显式暂停**处理。
 
 | 序 | 步骤 | 条件 | 随机 |
 | --- | --- | --- | --- |
 | ③-a | 待阙递减 → 递减到 0 的当月**授官**（写 `Rank`、`MonthsInOffice = 0`、清计时与状态位） | `AwaitingPost` ∧ 计口（未服刑） | 无 |
 | ③-b | `Merit += 1`（钳制 `<= MeritMaximum`） | `SalaryMode == Active` | 无 |
 | ③-c | **致仕**：置 `Retired` 位 | `SalaryMode == Active` ∧ `AgeAt(month) >= RetirementAge` ∧ 未致仕 | 无 |
-| ③-d | `MonthsInOffice += 1`；命中 `>= 36` ⇒ 考课判定；判定后**重置为 0**（含「因禁升被跳过」） | `SalaryMode == Active` ∧ 未禁升（禁升只跳过掷骰，仍重置计时） | 命中时 **1 次** `NextDouble()` |
+| ③-d | `MonthsInOffice += 1`；命中 `>= 36` ⇒ 考课判定；判定后**重置为 0** | `SalaryMode == Active` ∧ `AgeAt(month) < RetirementAge` ∧ 未禁升 | 命中时 **1 次** `NextDouble()` |
 
-**Q5 裁决**：`StatusFlag.ServingSentence` 为真者，③-a/③-b/③-d **一律跳过**（计时与政绩暂停）；
+**Q5 裁决**：`StatusFlag.ServingSentence` 为真者，③-a/③-b/③-d **一律暂停**——**不推进，也不重置**；
 ③-c 对服刑者无意义（必有官阶者才可能 `Active`，而服刑者已由计口排除在俸禄之外）。
+**两种「不判定」MUST 在代码与快照里区分**：**禁升** = *跳过*到期判定并**重置**计时（§4.4 第二行）；
+**服刑** = *暂停*（既不掷骰也不重置，刑满后从暂停处继续）。
+**③-d 的年龄闸门与 ③-c 的关系**：③-d 自带 `AgeAt(month) < RetirementAge`，故「满 70 岁当月的成员
+不参与考课」在 ③-c（US4）落地**之前**也成立，US3 因而不依赖 US4 的 ③-c；③-c 落地后两道闸门互为冗余。
 **不变量**：① 每月每名成员至多一次授官、至多一次晋升、至多一次致仕；
 ② MUST NOT 出现「有官阶却从未授官」或「先致仕、后授官」；
 ③ 官阶级数 MUST 落在 `SalaryTable.HighestLevel~LowestLevel`（成功升一级时 `Level - 1`，
@@ -258,9 +270,10 @@ public static CareerAdvanceResult Run(Family family, GameDate month, IRandomServ
 ### 3.9 `Career/CareerAdvanceResult`——【新】一次推进的可断言增量
 
 字段：`Appointments`（成员 → 新官阶）、`MeritGains`、`Promotions`（成员 → 旧级/新级）、
-`Retirements`、`AppraisalSkipped`（成员 → 原因 = 禁升/服刑）、以及**每人的三态**
-（`IReadOnlyDictionary<PersonId, SalaryMode>`）。它是本次结算的**增量快照**，
-MUST NOT 成为第二真源（R-15）。
+`Retirements`、**`AppraisalSkipped`（因禁升**跳过**到期判定，计时已重置为 0）**、
+**`AppraisalPaused`（因服刑**暂停**，计时未重置）**——两者是**不同的语义**，MUST NOT 合并为
+同一字段或同一「原因」枚举值；以及**每人的三态**（`IReadOnlyDictionary<PersonId, SalaryMode>`）。
+它是本次结算的**增量快照**，MUST NOT 成为第二真源（R-15）。
 
 ### 3.10 `Settlement/MonthlySettlementEngine.Settle`——【改】插入官吏推进步
 
@@ -272,13 +285,14 @@ MUST NOT 成为第二真源（R-15）。
 
 ### 3.11 `Settlement/IncomeCalculator`——【改】俸禄三态
 
-`AddSalaries` 由「`person.Rank` 非空即发全俸」改为按 `SalaryModePolicy.Of(person)` 分支：
+`AddSalaries` 由「`person.Rank` 非空即发全俸」改为先取 `SalaryModePolicy.Of(person)`，再按三态取
+**乘区系数**（这是**唯一**施加半俸的位置）：
 
-| 三态 | 月俸条目 |
-| --- | --- |
-| `Active` | `年俸 ÷ 12 × 难度收益系数 ×（士出身 ×1.05）` |
-| `Retired` | 上式 **× 50%** |
-| `AwaitingPost` / `None` | **不发**（MUST NOT 落 0 金额条目——资金类条目金额 MUST 非 0） |
+| 三态 | 乘区系数 | 月俸条目 |
+| --- | --- | --- |
+| `Active` | `1` | 年俸月摊额 × 难度收益系数 ×（士出身 ×1.05） |
+| `Retired` | `OfficialCareerPolicy.RetirementSalaryRatio` | 上式 **× 该系数**（全流程只乘一次，MUST NOT 再乘第二次） |
+| `AwaitingPost` / `None` | — | **不发**（MUST NOT 落 0 金额条目——资金类条目金额 MUST 非 0） |
 
 人群口径**不变**：仍遍历「计口成员」（002 的 `CountedMembers`，服刑与外嫁已排除）。
 **明确不含**：仕身份的加成（仕身份只影响录取率/婚嫁/划扣，与俸禄无关，FR-021）。
@@ -339,7 +353,9 @@ public interface INameGenerator                       // Abstractions/
 | 条件 | 行为 |
 | --- | --- |
 | `MonthsInOffice < 36` | 无判定 |
-| `MonthsInOffice >= 36` ∧ `PromotionBanned` | **不掷骰、不升迁**；计时重置为 0 |
+| `AgeAt(month) >= RetirementAge`（满 70 岁） | 无判定（③-c 已置 `Retired`；或由 ③-d 自带的年龄闸门挡住） |
+| 服刑（`ServingSentence`） | **暂停**：不 +1、不判定、**不重置**计时（Q5）——与下一行的禁升**不同** |
+| `MonthsInOffice >= 36` ∧ `PromotionBanned` | **跳过**：不掷骰、不升迁；计时**重置为 0** |
 | `MonthsInOffice >= 36` ∧ ¬`PromotionBanned` | 掷 1 次 `NextDouble()`；`< min(0.25 + merit × 0.003, 0.70)` ⇒ 级数 −1（到 L1 维持）；计时重置为 0 |
 
 ---
@@ -353,7 +369,7 @@ public interface INameGenerator                       // Abstractions/
 | FR-003 家族成员构成 | `OriginStartTable.ChildCount` / `SpouseCount` |
 | FR-004 年龄与性别 | `OriginStartTable.HeadAgeOffset`/`SpouseAge`/`ChildAgeRange` + `NewGameSetup` |
 | FR-005 属性初始化 | `AttributePolicy` + `OriginStartTable.{Head,Child}Study/Health` |
-| FR-006 天命寿数（出身无关、不设上下限） | `AttributePolicy.Lifespan*`；只 clamp 取整不下限 |
+| FR-006 天命寿数（出身无关、只 clamp 下界） | `AttributePolicy.NextLifespan`（取整 → clamp 下界 0，**不设上限**） |
 | FR-007 辈分/家主/婚姻/父母引用 | `Family.AddFoundingMember`/`AddChild`/`Marry`/`SetHead`（001 已交付，本特性只调用） |
 | FR-008 士出身功名记录 + 仕身份为假 | §3.5 步骤 4；`Family.HasShiStatus` 保持 `false`（R-14） |
 | FR-009 姓名来源抽象 + 确定性实现 | `INameGenerator` + `SongStyleNameGenerator`/`BogusNameGenerator` |
@@ -413,7 +429,7 @@ public interface INameGenerator                       // Abstractions/
 
 ### 6.4 其他按月转移（本特性的**全部**月度行为）
 
-- `Merit`：在任且未致仕时 +1/月（≤ 100）。
+- `Merit`：在任且未致仕时 +1/月（≤ 100）；**满 70 岁当月仍 +1**（③-b 先于 ③-c），次月起停止。
 - `MonthsInOffice`：在任且未致仕时 +1/月。
 - 待阙剩余月数：待阙且未服刑时 −1/月。
 - `Retired`：在任且年龄 ≥ 70 时置位（幂等）。
