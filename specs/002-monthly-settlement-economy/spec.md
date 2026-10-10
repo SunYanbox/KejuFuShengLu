@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-06
 
-**Status**: In Progress（T001~T026 已实现并提交，T027~T065 已排期）
+**Status**: Completed（002 已交付：T001~T065 全部完成，实现说明与门禁实测见 [implementation-notes.md](./implementation-notes.md)）；月度结算的步骤序列以 [contracts/monthly-settlement.md](./contracts/monthly-settlement.md) 的**七步**为准（第③步由 003 追加）
 
 **Input**: User description: "按规格书 §16 是进入阶段②（月度结算与经济）"
 

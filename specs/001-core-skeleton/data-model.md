@@ -14,10 +14,17 @@
 
 | 成员 | 类型 | 说明 | 来源 |
 | --- | --- | --- | --- |
-| `Year` | `int` | 架空纪年，从 1 起 | §3「从 1 年 1 月开始推演」 |
+| `Year` | `int` | 架空纪年；接受 `int` 全域，`<= 0` 为**前史纪年**（存档开始之前的世界历史） | §3「从 1 年 1 月开始推演」；§17 裁决回写（2026-10-08，Q4）|
 | `Month` | `int` | 1~12，无闰月 | §3「1 回合 = 1 游戏月，1 年 = 12 月」 |
 
-**不变量**：`Year >= 1`；`1 <= Month <= 12`。构造即校验，越界抛 `ArgumentOutOfRangeException`。
+**不变量**：`1 <= Month <= 12`；**年份无构造期约束**（接受 `int` 全域，含 `0` 与负数）。
+构造即校验，**只有月份越界**抛 `ArgumentOutOfRangeException`。
+
+**为什么年份可以早于 1 年**（§17 裁决回写，2026-10-08，Q4）：§10.1 要求开局家主 28±5 岁、
+配偶 25±5 岁、孩子 0~8 岁，而年龄只能由 `BirthDate` 派生（不落裸年龄字段，见 §2.1 不变量 5），
+从「1 年 1 月」起推演时开局家人的**父母辈必然出生于 1 年 1 月之前**。故年份放宽为前史纪年，
+月份仍 MUST 为 1~12；`GameState.CurrentDate` 仍从 **1 年 1 月**起推演（见 §2.3），
+`ElapsedMonths` / `AgeInYearsAt` / 比较运算符的语义不变。
 **行为**：`CompareTo` / 比较运算符；`ElapsedMonths(GameDate other)` 返回月差；
 `AgeInYearsAt(GameDate at)` 返回「已满几周岁」（生日当月即计入，§4.3）。
 **明确不含**：12/14 等成年年龄、生日月份之外的任何规则数值（成年判定属阶段②）。
@@ -92,9 +99,12 @@
 | `SentenceRemainingMonths` | `int?` | 服刑剩余月数 | §7.5「服刑以月为单位（5 年 = 60 月）」 |
 | `ExamBanRemainingMonths` | `int?` | 禁考剩余月数 | §7.5「禁考与服刑独立并行计时」 |
 | `PromotionBanRemainingMonths` | `int?` | 禁升剩余月数 | §7.5、§8.2「禁升来源…独立计时器」 |
+| `AwaitingPostRemainingMonths` | `int?` | 待阙剩余月数（**003 新增**，逻辑轨 ③） | §8.2 待阙 6~24 月；003 FR-013 |
 
-**不变量**：三个字段仅在对应状态位为真时可非空；非空值 MUST `>= 0`。
-**明确不含**：计时递减逻辑（阶段⑥）。
+**不变量**：四个字段各自仅在对应状态位为真时可非空；非空值 MUST `>= 0`。
+待阙项与 `Person.EntryTrack` **同生同灭**（见 §2.1 不变量 4），且 MUST NOT 以「0 + 状态位为真」的形态存续。
+**明确不含**：计时递减逻辑——服刑/禁考/禁升属逻辑轨 ⑥，待阙的递减与「递减到 0 的当月授官」
+属逻辑轨 ③（`OfficialCareerAdvance`），其 6~24 区间属 `OfficialCareerPolicy`。
 
 ---
 
@@ -230,8 +240,8 @@
    且**总共只变动两次**——落定一次 + 首次家族内成婚时对齐配偶辈分一次，此后 MUST NOT 再变更。
 
 **§17 裁决**: `HasShiStatus` 建在家族级而非成员级——§10.2 的效果（录取率 ×1.1、婚嫁规格、
-贷款划扣 20%）在本项目「一存档一家族」的模型下由家族统一承载；嫁入配偶的差异在阶段④/
-逻辑轨 ⑦ 真正实现该效果时再细分，本阶段不预置按人标记。
+贷款划扣 20%）在本项目「一存档一家族」的模型下由家族统一承载；嫁入配偶的差异在逻辑轨 ⑦
+真正实现该效果时再细分，本阶段不预置按人标记。
 
 **家主的分期**: `Family.HeadId` 进 001——它在 001 内**有真实消费者**：§4.4 的辈分规则
 要求「买来的旁系辈分 = 家主辈分 + 1」。但**继任判定不进 001**：它由死亡推进触发，属
@@ -248,15 +258,19 @@
 | `Difficulty` | `Difficulty` | 同一存档内可随时切换（切换逻辑属逻辑轨 ⑨） | §11 |
 | `Origin` | `Origin` | 创建存档时选择 | §10.1 |
 | `Family` | `Family` | 当前家族 | §2 |
+| `Economy` | `FamilyEconomy` | **002 新增**（逻辑轨 ②）：资金池、账本、持有物与饥馑状态。只读属性——一切资金流动经它的聚合方法落条目（SC-005） | 002 `data-model.md` §3.7；R-13 |
+| `PendingDifficulty` | `Difficulty?` | **002 新增**（逻辑轨 ②）：难度「次月生效」的待生效位，结算开头提升并清空 | 002 `data-model.md` §3.7；R-13 |
 
 **不变量**：`Id != Guid.Empty`；`CurrentDate.Month` 合法。
 
-> **写入通道**：五个字段里只有 `CurrentDate` 有写入通道，且是 `internal set`——即**只有
-> `KFL.Core` 汇编内部**能推进年月。001 内除构造参数外**没有第二个写入者**（时间推进属
-> 阶段②/⑥）；后续若需要由 `KFL.Core` 之外推进时间，须在彼时重新裁决该成员的可见性。
-> `Difficulty` 是唯一对外可写的字段（切换逻辑属逻辑轨 ⑨），其余三个字段只读。
+> **写入通道**：`CurrentDate` **只读**——唯一推进通道是 `AdvanceMonth()`（一次一个月、跨年进位）。
+> 001 内除构造参数外没有第二个写入者，002 起由 `MonthlySettlementEngine` 在结算末尾调用；
+> 因此**任何**跨月推进都 MUST 走 `AdvanceMonth()`，MUST NOT 重新引入公开 setter 或 `internal set`
+> （002 R-03/R-13 的边界守卫会拒绝）。`Economy` 只读；`Difficulty` 与 `PendingDifficulty` 可写
+> （切换逻辑属逻辑轨 ⑨）；其余字段只读。
 
-**明确不含**：资产池、商本、现金/储蓄/贷款、统计容器——均属阶段②及以后（spec Out of Scope）。
+**明确不含**：`GameState` **自身**不直接暴露资产池、商本、现金/储蓄/贷款、账本与统计容器
+——这些一律只在 `Economy`（`FamilyEconomy`）聚合之下（002 已交付；spec Out of Scope 的对应条目随之失效）。
 
 ---
 
@@ -266,6 +280,7 @@
 | --- | --- | --- | --- |
 | `IRandomService` | `double NextDouble()`；`int Next(int minInclusive, int maxExclusive)`；`void NextBytes(Span<byte> destination)` | `SeededRandomService(int seed)`：给定种子，序列完全可复现 | §1「可注入 IRandomService（可设种子、确定性）」；章程原则 IV |
 | `IGameClock` | `GameDate Current { get; }` | 以 `GameState.CurrentDate` 为后端；**不接触系统时钟** | §3；FR-013；R-04 |
+| `INameGenerator` | `string NextSurname()`；`string NextGivenName(Gender gender)` | **003 追加**（逻辑轨 ③ 首次消费，FR-009）：`SongStyleNameGenerator`（产品默认，内置宋风字库）与 `BogusNameGenerator`（Bogus `zh_CN` 适配器）。001 只交付前两组 | 003 FR-009；契约二 §3 |
 
 **关键约束**：非 UI 层 MUST NOT 出现系统时钟、全局随机、文件系统、网络（章程原则 II；
 FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 token），本节**不复制副本**；
@@ -291,7 +306,7 @@ FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 to
 | FR-010 | `StatusFlag` + `StatusTimers` | 九位可任意并存 + 计时一致性 |
 | FR-011 / SC-006 | `Family` 的索引与派生查询 + `HeadId` + 辈分规则 | 五类夹具：多代同堂、有配偶、有子女、娶入配偶、买来的旁系；双向一致与无环；**一夫一妻拒绝用例 + 丧偶再婚（`FormerSpouseIds` 承接前任、子女父母引用不断裂）**；家主为 `null` 或指向在册成员；血亲辈分不可变、外来者辈分落定规则；**开局成员辈分 = 0** |
 | FR-012 | `GameState` | 标识非空（`Guid.Empty` 被拒）、标识无公开 setter、起始年月；**改档名不变性属阶段④**（001 无落盘，无可验证对象） |
-| FR-013 / SC-004 | 两组接缝 + 静态扫描 | 源码级守卫 |
+| FR-013 / SC-004 | 三组接缝（`INameGenerator` 由 003 追加）+ 静态扫描 | 源码级守卫 |
 | FR-015 / SC-002 | `tests/KFL.Tests` 的领域与接缝目录 | `dotnet test`（领域/规则测试无环境依赖）；G-07 的扫描范围已按契约一扩至 `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`，`Architecture/` 显式豁免 |
 
 ---

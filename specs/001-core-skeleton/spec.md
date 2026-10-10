@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-05
 
-**Status**: Pending
+**Status**: Completed（001 已交付：T001~T055 全部完成，实现说明与门禁实测见 [implementation-notes.md](./implementation-notes.md)）；后续阶段的形状变更以 [data-model.md](./data-model.md) 与 `contracts/` 为准
 
 **Input**: User description: "按《科举浮生录规格书》第 16 节阶段① 起草 001：slnx 解决方案 + Core 实体"
 
@@ -207,7 +207,7 @@
 - 四项出身开局的交互流程与初始资产发放（规格书 §10.1）：其数值落地属逻辑轨 ③，
   本阶段只保证档案能表达「出身」这一属性。
 - 存档、成就与事件总线三组跨层接口的具体定义：各自阶段引入，本阶段只引入时间与
-  随机来源两组抽象。
+  随机来源两组抽象（**第三组 `INameGenerator` 由 003 追加**，见契约二 §3）。
 
 ## Success Criteria *(mandatory)*
 
