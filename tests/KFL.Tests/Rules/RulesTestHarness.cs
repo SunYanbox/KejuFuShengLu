@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Career;
 using KFL.Rules.Settlement;
 using KFL.Tests.Fixtures;
 
@@ -118,11 +119,16 @@ internal static class RulesHarness
     }
 
     /// <summary>
-    /// 待阙夹具（003）：位与计时**成对**设置（位先真、计时后落），并保留其余计时字段。
+    /// 待阙夹具（003）：位、计时与**入仕途径**成对设置（位先真、计时与途径后落），
+    /// 并保留其余计时字段。
     /// </summary>
     /// <param name="person">待置入待阙的成员。</param>
     /// <param name="remainingMonths">待阙剩余月数。</param>
-    public static Person Awaiting(Person person, int remainingMonths)
+    /// <param name="track">
+    /// 入仕途径；<c>null</c> = 按 <see cref="AppointmentEntry.TrackOf"/> 从功名记录派生
+    /// （与「及第入仕」入口同口径）。
+    /// </param>
+    public static Person Awaiting(Person person, int remainingMonths, AppointmentTrack? track = null)
     {
         ArgumentNullException.ThrowIfNull(person);
 
@@ -133,6 +139,7 @@ internal static class RulesHarness
             timers.ExamBanRemainingMonths,
             timers.PromotionBanRemainingMonths,
             remainingMonths);
+        person.EntryTrack = track ?? AppointmentEntry.TrackOf(person);
 
         return person;
     }

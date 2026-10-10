@@ -31,7 +31,7 @@ public class PersonTests
         "CurrentPlacement",
     };
 
-    /// <summary><see cref="Person"/> 自持的可写属性，只有这九个。</summary>
+    /// <summary><see cref="Person"/> 自持的可写属性，只有这十个。</summary>
     public static TheoryData<string> WritableMembers => new()
     {
         "Name",
@@ -43,6 +43,7 @@ public class PersonTests
         "Timers",
         "Occupation",
         "MonthsInOffice",
+        "EntryTrack",
     };
 
     [Fact]
@@ -119,6 +120,37 @@ public class PersonTests
         Assert.Equal(StatusFlag.Retired, person.Status);
         Assert.Equal(Occupation.Farming, person.Occupation);
         Assert.Equal(3, person.MonthsInOffice);
+    }
+
+    [Fact]
+    public void 入仕途径与待阙位成对且清位前必须先清途径()
+    {
+        var person = FamilyFixtures.NewPerson(503, "待阙者", Gender.Male, 1, 1, generation: 0);
+
+        // 默认无途径。
+        Assert.Null(person.EntryTrack);
+
+        // 位为假时禁止落途径（与计时字段同款交叉校验）。
+        Assert.Throws<ArgumentException>(() => person.EntryTrack = AppointmentTrack.FirstClass);
+
+        person.Status |= StatusFlag.AwaitingPost;
+        person.Timers = new StatusTimers(null, null, null, 6);
+        person.EntryTrack = AppointmentTrack.FirstClass;
+
+        Assert.Equal(AppointmentTrack.FirstClass, person.EntryTrack.GetValueOrDefault());
+
+        // 清位前 MUST 先把途径与计时都置空（次序：计时 → 途径 → 位）。
+        Assert.Throws<ArgumentException>(() => person.Status &= ~StatusFlag.AwaitingPost);
+
+        person.EntryTrack = null;
+
+        Assert.Throws<ArgumentException>(() => person.Status &= ~StatusFlag.AwaitingPost);
+
+        person.Timers = default;
+        person.Status &= ~StatusFlag.AwaitingPost;
+
+        Assert.Null(person.EntryTrack);
+        Assert.False(person.Status.HasFlag(StatusFlag.AwaitingPost));
     }
 
     [Fact]

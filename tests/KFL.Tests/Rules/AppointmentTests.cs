@@ -109,6 +109,74 @@ public class AppointmentTests
     }
 
     [Fact]
+    public void 显式途径就是授官依据而不是功名记录的末条()
+    {
+        // 无任何功名记录者：显式给「一甲」⇒ 期满授 L11（若按末条派生会落到特奏名的 L18）。
+        var person = RulesHarness.Member(40, Gender.Male, 40);
+
+        AppointmentEntry.Begin(person, AppointmentTrack.FirstClass, Date, new FixedRandomService(0.0d));
+
+        Assert.Equal(AppointmentTrack.FirstClass, person.EntryTrack.GetValueOrDefault());
+
+        var family = RulesHarness.FamilyOf(person);
+
+        for (var index = 0; index < GameConfig.Career.AwaitingPostMinMonths; index++)
+        {
+            OfficialCareerAdvance.Run(family, Date, new FixedRandomService(0.0d));
+        }
+
+        Assert.Equal(
+            GameConfig.Career.InitialRankOf(AppointmentTrack.FirstClass), person.Rank!.Value.Level);
+
+        // 授官后途径与计时一并清空（生命周期与「待阙」严格相同）。
+        Assert.Null(person.EntryTrack);
+    }
+
+    [Fact]
+    public void 待阙期内功名被降级不改判已记录的途径()
+    {
+        // 一甲进士入仕 ⇒ 待阙期内被逻辑轨 ⑥ 的连坐降级追加一条「举人」记录（§7.4）。
+        // 授官 MUST 仍按入口记录的一甲途径给 L11；若从末条重新派生会改判成 L18。
+        var person = Graduate(41, ImperialClass.FirstClass);
+
+        AppointmentEntry.BeginForImperialGraduate(person, Date, new FixedRandomService(0.0d));
+        person.AppendDegree(new DegreeRecord(
+            DegreeLevel.JuRen, null, Date, DegreeChangeCause.PunishmentDemotion));
+
+        var family = RulesHarness.FamilyOf(person);
+
+        for (var index = 0; index < GameConfig.Career.AwaitingPostMinMonths; index++)
+        {
+            OfficialCareerAdvance.Run(family, Date, new FixedRandomService(0.0d));
+        }
+
+        Assert.Equal(
+            GameConfig.Career.InitialRankOf(AppointmentTrack.FirstClass), person.Rank!.Value.Level);
+    }
+
+    [Fact]
+    public void 待阙期内末条进士甲第缺失也不会让月度推进抛异常()
+    {
+        // 反向：若 ③-a 在授官时才派生，这条「进士但 Class == null」会抛 InvalidOperationException，
+        // 使同月已改写的其他成员留下半成品（契约七 §7 的失败原子性）。入口记录的途径使其不可能发生。
+        var person = Graduate(42, ImperialClass.ThirdClass);
+
+        AppointmentEntry.BeginForImperialGraduate(person, Date, new FixedRandomService(0.0d));
+        person.AppendDegree(new DegreeRecord(
+            DegreeLevel.JinShi, null, Date, DegreeChangeCause.ExamPass, imperialClass: null));
+
+        var family = RulesHarness.FamilyOf(person);
+
+        for (var index = 0; index < GameConfig.Career.AwaitingPostMinMonths; index++)
+        {
+            OfficialCareerAdvance.Run(family, Date, new FixedRandomService(0.0d));
+        }
+
+        Assert.Equal(
+            GameConfig.Career.InitialRankOf(AppointmentTrack.ThirdClass), person.Rank!.Value.Level);
+    }
+
+    [Fact]
     public void 重复触发及第入仕被拒且剩余月数不被重置()
     {
         var person = Graduate(20, ImperialClass.FirstClass);
