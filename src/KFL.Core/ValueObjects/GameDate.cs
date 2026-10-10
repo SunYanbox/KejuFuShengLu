@@ -42,6 +42,14 @@ public readonly record struct GameDate : IComparable<GameDate>, IComparable
     /// <summary>从本年月到 <paramref name="other"/> 的月差（可为负）。</summary>
     /// <param name="other">另一个年月。</param>
     /// <returns>月差；<paramref name="other"/> 在后为正。</returns>
+    /// <remarks>
+    /// <b>极端年份的溢出行为（有意保留）</b>：年份是 <see cref="int"/> 全域，故
+    /// <c>(other.Year - Year) * 12</c> 在 <c>int</c> 溢出时不抛异常，而按 <c>unchecked</c>
+    /// 静默回绕——与 <c>Money</c>（溢出即抛）口径不同，见 spec Assumptions「开局出生年月的
+    /// 实际下界…故本特性不会构造极端年份；<c>GameDate</c> 的算术溢出行为沿用 001 现状」。
+    /// 产品路径上不可达：<c>GameState.CurrentDate</c> 自 1 年 1 月起推演，开局出生年月
+    /// 最多前推约 33 年——本类型 MUST NOT 因此被当作可校验的日期库。
+    /// </remarks>
     public int ElapsedMonths(GameDate other) => ((other.Year - Year) * 12) + (other.Month - Month);
 
     /// <summary>在本年月出生者于 <paramref name="at"/> 时已满几周岁（生日当月即计入，规格书 §4.3）。</summary>
