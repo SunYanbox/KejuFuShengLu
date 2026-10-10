@@ -108,14 +108,19 @@ public static class OfficialCareerAdvance
     /// <param name="person">待阙中的成员。</param>
     /// <param name="appointment">授官记录；本月未授官为 <c>null</c>。</param>
     /// <returns>本月是否发生了授官。</returns>
+    /// <remarks>
+    /// 途径**只读** <see cref="Person.EntryTrack"/>（入口写入的入仕途径），MUST NOT 从功名记录重新派生
+    /// ——见 <see cref="AppointmentEntry.TrackOf"/> 的注记。
+    /// </remarks>
     private static bool TryAppoint(Person person, out CareerAppointment appointment)
     {
         appointment = null!;
 
-        if (person.Timers.AwaitingPostRemainingMonths is not { } remaining)
+        // 「位为真而计时或途径缺失」在类型层可表达，但本特性不建立该形态（入口必定成对写入）：
+        // 无计时可递减、或无途径可授官，故不推进——不猜一个月数、也不猜一个途径，也不清位。
+        if (person.EntryTrack is not { } track
+            || person.Timers.AwaitingPostRemainingMonths is not { } remaining)
         {
-            // 「位为真而计时缺失」在类型层可表达，但本特性不建立该形态（入口必定成对写入）：
-            // 无计时可递减，故不推进——不猜一个月数，也不清位。
             return false;
         }
 
@@ -126,14 +131,14 @@ public static class OfficialCareerAdvance
         }
 
         // remaining <= 1：本月的递减归零（或已是 0 的残留）⇒ 当月授官。
-        var track = AppointmentEntry.TrackOf(person);
         var rank = new OfficialRank(OfficialCareerPolicy.InitialRankOf(track));
 
         person.Rank = rank;
         person.MonthsInOffice = 0;
 
-        // 先清计时、后清位（Person 的交叉校验方向）。
+        // 先清计时与途径、后清位（Person 的交叉校验方向）。
         person.Timers = AppointmentEntry.ReplaceAwaitingPost(person.Timers, null);
+        person.EntryTrack = null;
         person.Status &= ~StatusFlag.AwaitingPost;
 
         appointment = new CareerAppointment(person.Id, track, rank);
