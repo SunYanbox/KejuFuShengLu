@@ -329,3 +329,27 @@ Task: "T033 G-07 in tests/KFL.Tests/Architecture/EnvironmentDependencyTests.cs"
   **完成（2026-10-05）**：已登记进 `plan.md`「Documentation (this feature)」并注明其为 `$speckit-implement` 产物。**本任务完成。**
 - [X] T055 复核 `tests/KFL.Tests/KFL.Tests.csproj` 的 `_MSTestEnableParentProcessQuery=false`：确认其仅在本机 testhost 父进程查询被拒时才必要，并登记保留理由与移除条件（上游 `Microsoft.NET.Test.Sdk` 修复、或 CI 环境不触发时移除）；若改用 `-p:BaseOutputPath=<工作区外>` 等不入仓库的方式即可绕过，则移除该开关 per tasks.md T009 / FR-015（spec / plan / tasks 均未要求该开关）(unrequested)
   **裁决（2026-10-05，改口径）**：它绕的是**受限宿主（Agent 沙箱）**的权限限制，故改为**默认注释、MUST NOT 以启用状态提交**；受阻时**首选命令行覆盖** `dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`（实测 **165 项全绿、0 skipped**，且无需改任何文件），确需改文件时验证后 MUST 立即改回注释。同类沙箱权限经验已另存为仓库根 `AGENTS.md`。**本任务完成。**
+
+---
+
+## Phase 8: Convergence（2026-10-10，`specs/` 一致性审计）
+
+> 本节由 2026-10-10 的一次性 `specs/` 一致性审计追加（审计为只读产出、不随仓库保留）：001 共 21 条发现（高 3 / 中 12 / 低 6）。
+> 既有任务（T001~T055，含 Phase 7）一律**未改动、未重排、未重编号**，本节只追加。
+> 历史记录类条目（`tasks.md` 既有文字、`implementation-notes.md`、既有 `checklists/`）按规格书
+> §16.2 **MUST NOT 回改内容**，其处置是「复核确认不回改」而非改文件。
+> 标 `[X]` 者由本次审计**一次性完成**（同一批次提交）。
+
+- [X] T056 回写 `data-model.md` §1.1：`GameDate` 年份接受 `int` 全域（`<= 0` 为前史纪年），不变量改为**仅约束月份**，并补 §17 裁决回写的理由段 per 规格书 §3 §17 裁决回写（2026-10-08 Q4）+ 003 `research.md` R-01 (contradicts) —— **本次审计已完成**
+- [X] T057 回写 `data-model.md` §1.7：`StatusTimers` 增第 4 个计时 `AwaitingPostRemainingMonths`、「三个字段」改「四个字段」、递减归属改为「服刑/禁考/禁升属 ⑥、待阙属 ③」 per 003 FR-013 + 规格书 §8.2 (partial) —— **已完成**
+- [X] T058 回写 `data-model.md` §2.3：`CurrentDate` 由 `internal set` 改为**只读 + `AdvanceMonth()`**，补 `Economy`/`PendingDifficulty` 两行与「7 个公开属性」口径 per 002 `research.md` R-13 + 002 `data-model.md` §3.7 (contradicts) —— **已完成**
+- [X] T059 回写 `data-model.md` §3 接缝表与 §4 的 FR-013 行：补第三组接缝 `INameGenerator`（003 追加） per 003 FR-009 + 契约二 §3 (partial) —— **已完成**
+- [X] T060 回写 `data-model.md` §2.2 的 §17 裁决段：删去与配偶差异无关的「阶段④/」半句 per 规格书 §16.2 迁移口径 (contradicts) —— **已完成**
+- [X] T061 回写 `spec.md`：Status 由 `Pending` 改为 Completed；Out of Scope 末条「两组抽象」补第三组 `INameGenerator` 的指向 per FR-013 (partial) —— **已完成**
+- [X] T062 复核历史记录类条目（M7 测试总数 165/170、M8 同文件两套数字、M9 `arch-guard:allow` 两处、M10 `GameStateFactory` 4 参、M11 `Year=0` 拒绝用例、L1 可写属性八个、L2 `GameState` 五字段、L5 checklist 的「无实现细节」勾选）：确认为**当时事实**，按规格书 §16.2 不回改，不产生文件改动 per 规格书 §16.2 (unrequested) —— **复核完毕，无需改动**
+- [ ] T063 修 `data-model.md` §1.5 与 `spec.md` FR-008：区分甲第的**构造参数** `imperialClass` 与**公开只读属性** `Class` per 003 `data-model.md` §1.5 (contradicts)
+- [ ] T064 修 `data-model.md` §4 的 FR-015/SC-002 行与契约一 `architecture-guard.md`：G-07 扫描范围补 `tests/KFL.Tests/{Core,Infrastructure,Fixtures,Rules}` per 契约一 G-07 + `ArchitectureRules.ScannedTestRoots` (partial)
+- [ ] T065 修 `quickstart.md` 的 SC-004 步骤：扫描范围表述与契约一 G-07 对齐（含 4 个测试目录） per SC-004 (contradicts)
+- [ ] T066 回写 `plan.md` 的依赖与规模段：四个 NuGet 包的引入时点（Bogus 已由 003 首次消费）、`KFL.Core` 类型数、`KFL.Infrastructure` 接缝与实现数、`KFL.Rules` 规模——改为「001 交付时」限定或按现状更新 per 002/003 的实际形状 (partial)
+- [ ] T067 修 `spec.md` Out of Scope：为已由 002/003 交付的条目（月度结算、资产与现金/储蓄/贷款池、账本、官职晋升、四项出身初始资产）补「已交付」指向 per spec Out of Scope + 002/003 实现 (partial)
+

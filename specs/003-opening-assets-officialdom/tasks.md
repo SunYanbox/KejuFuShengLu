@@ -344,3 +344,27 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 - 配置数值**只在** `KFL.Rules/Config/` 声明（SC-009）；测试 MUST 经配置成员取期望值，只有俸禄锚点 **72 / 420 / 5100** 允许字面量并加行级豁免注释
 - `KFL.Presentation` / `KFL.App` 一行不动；无存档落盘、无科举、无惩罚矩阵、无婚育疾病死亡、无官名
 - 避免：含糊任务、同一文件并发改写、破坏故事独立性的跨故事依赖
+
+---
+
+## Phase 9: Convergence（2026-10-10，`specs/` 一致性审计）
+
+> 本节由 2026-10-10 的一次性 `specs/` 一致性审计追加（审计为只读产出、不随仓库保留）：003 共 17 条发现（高 1 / 中 3 / 低 13）。
+> 既有任务（T001~T051）一律**未改动、未重排、未重编号**，本节只追加。
+> 历史记录类条目（`tasks.md` 既有文字、`implementation-notes.md`、既有 `checklists/`）按规格书
+> §16.2 **MUST NOT 回改内容**，其处置是「复核确认不回改」而非改文件。
+> 标 `[X]` 者由本次审计**一次性完成**（同一批次提交）。
+
+- [X] T052 回写 `spec.md`（Key Entities 与 FR-012/FR-013/FR-014/FR-015）：补 `Person.EntryTrack`——入仕途径由**入口写入**、授官**只读**它、与待阙状态位/计时**同生同灭**，MUST NOT 在授官时从功名记录重新派生；并把不存在的类型名 `OfficialCareer` 改为 `OfficialCareerPolicy`/`OfficialCareerAdvance` per 契约七 §1/§3/§5 + PR #4 复审 §1（T046）(contradicts) —— **本次审计已完成**
+- [X] T053 回写 `spec.md` 的 Status：`Draft` → Completed（T001~T052 全部完成） per tasks.md 52/52 + `implementation-notes.md` 门禁实测 (partial) —— **已完成**
+- [X] T054 复核历史记录类条目（M20/T029 的赋值次序、L19/T020 的成员名、L21 的 `tasks.md` 部分、L25 `implementation-notes.md` 的定位、L27/T001 的分支名）：确认为**当时记录**或**规划期写法**，按规格书 §16.2 不回改，不产生文件改动 per 规格书 §16.2 (unrequested) —— **复核完毕，无需改动**
+- [ ] T055 修 `plan.md:148` 与 `research.md` R-02：甲第相容性不变量「**三条**」→「**四条**」（同处表列已是 ①~④） per `data-model.md` §1.5 + T007 + `DegreeRecord.cs` (contradicts)
+- [ ] T056 修 `plan.md:254-258` 的「下一步」：`tasks.md` 已生成且实现已交付，改为已完成并指向 `implementation-notes.md` per `plan.md` (partial)
+- [ ] T057 修 `plan.md` 的 Scale/Scope 与结构树：类型/文件计数按现状回写（`KFL.Rules` 约 8 个类型、`KFL.Core` 5 个文件），补漏列的 `Career/CareerAdvanceResult.cs` per T030 + 实际目录 (missing)
+- [ ] T058 统一 `contracts/config-registry.md` 等 6 处的「三态/两态」口径冲突（同一句既称「三态下复核」又给测试名「两态下复核」） per 契约七 §5 + `SalaryModeTests` (contradicts)
+- [ ] T059 修 `data-model.md:276` 的 ③-d 行条件列（「∧ 未禁升」与「禁升则跳过并重置计时」相反） per 契约七 §4 条款 7 + `OfficialCareerAdvance` (contradicts)
+- [ ] T060 修 `research.md` R-17 与 `tasks.md:83` 引用的夹具签名（漏 `index`/`level` 等必填参数） per `RulesTestHarness` 实际签名 (missing)
+- [ ] T061 修 `plan.md:246` 引用的 001 时代测试名（`DegreeRecord四个成员均为必需`、`GameDate拒绝非法年份` 均已由 T014 改名/改述） per T014 + `ValueObjectTests` (partial)
+- [ ] T062 修 `research.md` 的过时清单：R-09 把 Bogus 适配器列为「实现期自证」、R-18 称「只剩三项」——均已完成（`BogusNameGenerator` + T002/T003/T010） per 实现 + `NameGeneratorTests` (partial)
+- [ ] T063 统一 `spec.md` FR-009 与 `plan.md`/`data-model.md`/`research.md` 的姓名来源口径（「Bogus 为主、内置兜底」vs「内置为产品默认」） per 契约二 §3 的「产品默认实现」 (contradicts)
+
