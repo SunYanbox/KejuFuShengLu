@@ -97,6 +97,115 @@ internal static class RulesHarness
     /// <summary>以「贯」为单位的金额。</summary>
     /// <param name="value">贯数。</param>
     public static Money Guan(decimal value) => Money.FromGuan(value);
+
+    /// <summary>
+    /// 在任官员夹具（003）：给定官阶、在职月数与政绩；其余字段同 <see cref="Member"/>。
+    /// </summary>
+    /// <param name="index">夹具标识下标。</param>
+    /// <param name="level">官阶级数（1~18）。</param>
+    /// <param name="monthsInOffice">在职月数（&gt;= 0）。</param>
+    /// <param name="merit">政绩（&gt;= 0）。</param>
+    /// <param name="gender">性别。</param>
+    /// <param name="age">参照年月下的周岁数。</param>
+    public static Person Official(
+        int index, int level, int monthsInOffice = 0, int merit = 0, Gender gender = Gender.Male, int age = 40)
+    {
+        var person = Member(index, gender, age);
+        person.Rank = new OfficialRank(level);
+        person.MonthsInOffice = monthsInOffice;
+        person.Merit = merit;
+        return person;
+    }
+
+    /// <summary>
+    /// 待阙夹具（003）：位与计时**成对**设置（位先真、计时后落），并保留其余计时字段。
+    /// </summary>
+    /// <param name="person">待置入待阙的成员。</param>
+    /// <param name="remainingMonths">待阙剩余月数。</param>
+    public static Person Awaiting(Person person, int remainingMonths)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        var timers = person.Timers;
+        person.Status |= StatusFlag.AwaitingPost;
+        person.Timers = new StatusTimers(
+            timers.SentenceRemainingMonths,
+            timers.ExamBanRemainingMonths,
+            timers.PromotionBanRemainingMonths,
+            remainingMonths);
+
+        return person;
+    }
+
+    /// <summary>
+    /// 禁升期官员夹具（003）：本特性**只消费**该计时、不清算也不建立（逻辑轨 ⑥）。
+    /// </summary>
+    /// <param name="index">夹具标识下标。</param>
+    /// <param name="remainingMonths">禁升剩余月数。</param>
+    /// <param name="level">官阶级数。</param>
+    /// <param name="monthsInOffice">在职月数。</param>
+    /// <param name="merit">政绩。</param>
+    public static Person PromotionBannedOfficial(
+        int index, int remainingMonths, int level, int monthsInOffice = 0, int merit = 0)
+    {
+        var person = Official(index, level, monthsInOffice, merit);
+        var timers = person.Timers;
+
+        person.Status |= StatusFlag.PromotionBanned;
+        person.Timers = new StatusTimers(
+            timers.SentenceRemainingMonths,
+            timers.ExamBanRemainingMonths,
+            remainingMonths,
+            timers.AwaitingPostRemainingMonths);
+
+        return person;
+    }
+
+    /// <summary>服刑成员夹具（003）：位与计时成对设置；Q5 裁决下其仕途计时与政绩一律暂停。</summary>
+    /// <param name="person">服刑的成员。</param>
+    /// <param name="remainingMonths">服刑剩余月数。</param>
+    public static Person ServingSentence(Person person, int remainingMonths)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        var timers = person.Timers;
+        person.Status |= StatusFlag.ServingSentence;
+        person.Timers = new StatusTimers(
+            remainingMonths,
+            timers.ExamBanRemainingMonths,
+            timers.PromotionBanRemainingMonths,
+            timers.AwaitingPostRemainingMonths);
+
+        return person;
+    }
+}
+
+/// <summary>
+/// 固定姓名来源替身（003；与 <see cref="FixedRandomService"/> 同款）：无论性别都返回固定姓名，
+/// 使开局的随机消费只由随机替身决定。
+/// </summary>
+internal sealed class FixedNameGenerator : INameGenerator
+{
+    private readonly string _surname;
+    private readonly string _maleGivenName;
+    private readonly string _femaleGivenName;
+
+    /// <summary>用固定姓氏与固定名构造。</summary>
+    /// <param name="surname">姓氏。</param>
+    /// <param name="maleGivenName">男性名。</param>
+    /// <param name="femaleGivenName">女性名。</param>
+    public FixedNameGenerator(string surname = "测", string maleGivenName = "文", string femaleGivenName = "婉")
+    {
+        _surname = surname;
+        _maleGivenName = maleGivenName;
+        _femaleGivenName = femaleGivenName;
+    }
+
+    /// <inheritdoc />
+    public string NextSurname() => _surname;
+
+    /// <inheritdoc />
+    public string NextGivenName(Gender gender) => gender == Gender.Male ? _maleGivenName : _femaleGivenName;
 }
 
 /// <summary>

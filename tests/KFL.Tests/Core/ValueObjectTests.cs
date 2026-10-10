@@ -23,8 +23,16 @@ public class ValueObjectTests
     [InlineData(0, 1)]
     [InlineData(-1, 6)]
     [InlineData(int.MinValue, 1)]
-    public void GameDate拒绝非法年份(int year, int month) =>
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameDate(year, month));
+    [InlineData(-27, 12)]
+    public void GameDate接受前史纪年(int year, int month)
+    {
+        // §17 裁决回写（2026-10-08，Q4）：年份接受 int 全域（含 0 与负数 = 前史纪年）。
+        // 开局家人的父母辈必然生于 1 年 1 月之前（§10.1 的 28±5 / 25±5 / 0~8 岁）。
+        var date = new GameDate(year, month);
+
+        Assert.Equal(year, date.Year);
+        Assert.Equal(month, date.Month);
+    }
 
     [Theory]
     [InlineData(1, 0)]
@@ -132,10 +140,15 @@ public class ValueObjectTests
     public void DegreeRecord允许进士带一甲名次()
     {
         var record = new DegreeRecord(
-            DegreeLevel.JinShi, ImperialPlacement.ZhuangYuan, AnyDate, DegreeChangeCause.ExamPass);
+            DegreeLevel.JinShi,
+            ImperialPlacement.ZhuangYuan,
+            AnyDate,
+            DegreeChangeCause.ExamPass,
+            ImperialClass.FirstClass);
 
         Assert.Equal(DegreeLevel.JinShi, record.Level);
         Assert.Equal(ImperialPlacement.ZhuangYuan, record.Placement.GetValueOrDefault());
+        Assert.Equal(ImperialClass.FirstClass, record.Class.GetValueOrDefault());
     }
 
     [Theory]
@@ -147,17 +160,67 @@ public class ValueObjectTests
             () => new DegreeRecord(level, ImperialPlacement.TanHua, AnyDate, DegreeChangeCause.Initial));
 
     [Fact]
-    public void DegreeRecord四个成员均为必需()
+    public void DegreeRecord五个成员其中甲第可选()
     {
         var constructor = Assert.Single(typeof(DegreeRecord).GetConstructors());
         var parameters = constructor.GetParameters();
 
-        Assert.Equal(4, parameters.Length);
+        Assert.Equal(5, parameters.Length);
         Assert.Contains(parameters, p => p.Name == "level");
         Assert.Contains(parameters, p => p.Name == "placement");
         Assert.Contains(parameters, p => p.Name == "changedAt");
         Assert.Contains(parameters, p => p.Name == "cause");
-        Assert.DoesNotContain(parameters, p => p.IsOptional);
+        Assert.Contains(parameters, p => p.Name == "imperialClass");
+
+        // 前四个必需（连可选标记都没有），第五个（甲第）可选且默认 null —— 003 的向后兼容扩展。
+        Assert.All(parameters[..4], p => Assert.False(p.IsOptional));
+        var imperialClass = parameters[4];
+        Assert.True(imperialClass.IsOptional);
+        Assert.Null(imperialClass.DefaultValue);
+
+        // 四参调用保持合法，且 Class 为 null（= 本条记录未表达甲第）。
+        var legacy = new DegreeRecord(DegreeLevel.JuRen, null, AnyDate, DegreeChangeCause.Initial);
+        Assert.Null(legacy.Class);
+    }
+
+    [Fact]
+    public void DegreeRecord甲第相容性四条不变量的反例()
+    {
+        // ① 甲第非空 ⇒ 功名是进士。
+        Assert.Throws<ArgumentException>(() => new DegreeRecord(
+            DegreeLevel.JuRen, null, AnyDate, DegreeChangeCause.Initial, ImperialClass.FirstClass));
+
+        // ② 名次非空 ⇒ 甲第 = 一甲。
+        Assert.Throws<ArgumentException>(() => new DegreeRecord(
+            DegreeLevel.JinShi, ImperialPlacement.ZhuangYuan, AnyDate, DegreeChangeCause.ExamPass));
+
+        // ③ 甲第 = 一甲 ⇒ 名次非空。
+        Assert.Throws<ArgumentException>(() => new DegreeRecord(
+            DegreeLevel.JinShi, null, AnyDate, DegreeChangeCause.ExamPass, ImperialClass.FirstClass));
+
+        // ④ 二甲 / 三甲 ⇒ 名次为空。
+        Assert.Throws<ArgumentException>(() => new DegreeRecord(
+            DegreeLevel.JinShi, ImperialPlacement.TanHua, AnyDate, DegreeChangeCause.ExamPass, ImperialClass.SecondClass));
+        Assert.Throws<ArgumentException>(() => new DegreeRecord(
+            DegreeLevel.JinShi, ImperialPlacement.BangYan, AnyDate, DegreeChangeCause.ExamPass, ImperialClass.ThirdClass));
+    }
+
+    [Fact]
+    public void DegreeRecord二甲三甲与进士甲第缺失都是合法状态()
+    {
+        var second = new DegreeRecord(
+            DegreeLevel.JinShi, null, AnyDate, DegreeChangeCause.ExamPass, ImperialClass.SecondClass);
+        var third = new DegreeRecord(
+            DegreeLevel.JinShi, null, AnyDate, DegreeChangeCause.ExamPass, ImperialClass.ThirdClass);
+
+        // 「进士但 Class == null」是**合法状态**（未表达甲第），由授官入口拒绝，构造期不抛。
+        var missing = new DegreeRecord(DegreeLevel.JinShi, null, AnyDate, DegreeChangeCause.ExamPass);
+
+        Assert.Equal(ImperialClass.SecondClass, second.Class.GetValueOrDefault());
+        Assert.Equal(ImperialClass.ThirdClass, third.Class.GetValueOrDefault());
+        Assert.Null(second.Placement);
+        Assert.Null(third.Placement);
+        Assert.Null(missing.Class);
     }
 
     [Fact]
@@ -193,6 +256,7 @@ public class ValueObjectTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new StatusTimers(sentenceRemainingMonths: -1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new StatusTimers(examBanRemainingMonths: -1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new StatusTimers(promotionBanRemainingMonths: -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new StatusTimers(awaitingPostRemainingMonths: -1));
     }
 
     [Fact]
@@ -203,6 +267,30 @@ public class ValueObjectTests
         Assert.Equal(0, timers.SentenceRemainingMonths.GetValueOrDefault(-1));
         Assert.Null(timers.ExamBanRemainingMonths);
         Assert.Null(timers.PromotionBanRemainingMonths);
+        Assert.Null(timers.AwaitingPostRemainingMonths);
+
+        // 第 4 个计时（待阙剩余月数）同样只约束 >= 0。
+        Assert.Equal(0, new StatusTimers(awaitingPostRemainingMonths: 0).AwaitingPostRemainingMonths.GetValueOrDefault(-1));
+        Assert.Equal(
+            24,
+            new StatusTimers(awaitingPostRemainingMonths: 24).AwaitingPostRemainingMonths.GetValueOrDefault(-1));
+    }
+
+    [Fact]
+    public void 三个新枚举齐备()
+    {
+        Assert.Equal(3, Enum.GetValues<ImperialClass>().Length);
+        Assert.Equal(4, Enum.GetValues<SalaryMode>().Length);
+        Assert.Equal(4, Enum.GetValues<AppointmentTrack>().Length);
+
+        // 甲第取值顺序即高低；入仕途径含特奏名。
+        Assert.True(ImperialClass.FirstClass < ImperialClass.SecondClass);
+        Assert.True(ImperialClass.SecondClass < ImperialClass.ThirdClass);
+        Assert.True(Enum.IsDefined(AppointmentTrack.SpecialTribute));
+        Assert.True(Enum.IsDefined(SalaryMode.None));
+        Assert.True(Enum.IsDefined(SalaryMode.Active));
+        Assert.True(Enum.IsDefined(SalaryMode.AwaitingPost));
+        Assert.True(Enum.IsDefined(SalaryMode.Retired));
     }
 
     [Fact]

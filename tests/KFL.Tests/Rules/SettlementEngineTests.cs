@@ -330,6 +330,7 @@ public class SettlementEngineTests
             nameof(SettlementResult.Entries),
             nameof(SettlementResult.TreasuryPoolBefore),
             nameof(SettlementResult.TreasuryPoolAfter),
+            nameof(SettlementResult.Career),
         }.Order(StringComparer.Ordinal).ToArray();
 
         var actualProperties = typeof(SettlementResult)

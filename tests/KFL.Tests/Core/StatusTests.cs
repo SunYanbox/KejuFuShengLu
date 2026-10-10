@@ -107,6 +107,40 @@ public class StatusTests
     }
 
     [Fact]
+    public void 待阙位与计时同款交叉校验()
+    {
+        var person = FamilyFixtures.NewPerson(805, "待阙者", Gender.Male, 1, 1, generation: 0);
+
+        // 位为假时计时 MUST 为空（003 的第 4 个计时与既有三个同款）。
+        Assert.Throws<ArgumentException>(
+            () => person.Timers = new StatusTimers(awaitingPostRemainingMonths: 12));
+
+        // 置位后计时方可非空；清除位前 MUST 先把计时置空。
+        person.Status = StatusFlag.AwaitingPost;
+        person.Timers = new StatusTimers(awaitingPostRemainingMonths: 12);
+        Assert.Equal(12, person.Timers.AwaitingPostRemainingMonths.GetValueOrDefault(-1));
+        Assert.Throws<ArgumentException>(() => person.Status = StatusFlag.None);
+
+        person.Timers = default;
+        person.Status = StatusFlag.None;
+        Assert.Null(person.Timers.AwaitingPostRemainingMonths);
+    }
+
+    [Fact]
+    public void 待阙与服刑禁考等状态位并存且计时互不覆盖()
+    {
+        var person = FamilyFixtures.NewPerson(806, "并存者", Gender.Male, 1, 1, generation: 0);
+
+        person.Status = StatusFlag.ServingSentence | StatusFlag.AwaitingPost;
+        person.Timers = new StatusTimers(sentenceRemainingMonths: 60, awaitingPostRemainingMonths: 6);
+
+        Assert.Equal(60, person.Timers.SentenceRemainingMonths.GetValueOrDefault(-1));
+        Assert.Equal(6, person.Timers.AwaitingPostRemainingMonths.GetValueOrDefault(-1));
+        Assert.True(person.Status.HasFlag(StatusFlag.ServingSentence));
+        Assert.True(person.Status.HasFlag(StatusFlag.AwaitingPost));
+    }
+
+    [Fact]
     public void 已亡与外嫁决定归档归类()
     {
         var fixture = FamilyFixtures.MultiGeneration();

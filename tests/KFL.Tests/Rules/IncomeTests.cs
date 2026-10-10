@@ -385,6 +385,45 @@ public class IncomeTests
         Assert.DoesNotContain(computation.Lines, l => l.Category == LedgerCategory.OfficialSalary);
     }
 
+    [Fact]
+    public void 俸禄按三态计算在任全俸致仕半俸而待阙与非官员无条目()
+    {
+        const int level = 15;
+
+        var active = RulesHarness.Member(60, Gender.Male, 40);
+        active.Rank = new OfficialRank(level);
+
+        var retired = RulesHarness.Member(61, Gender.Male, 40);
+        retired.Rank = new OfficialRank(level);
+        retired.Status |= StatusFlag.Retired;
+
+        var awaiting = RulesHarness.Awaiting(RulesHarness.Member(62, Gender.Male, 40), remainingMonths: 12);
+        var none = RulesHarness.Member(63, Gender.Male, 40);
+
+        var computation = Compute(
+            RulesHarness.FamilyOf(active, retired, awaiting, none),
+            RulesHarness.HoldingsOf(),
+            Money.Zero);
+
+        var lines = computation.Lines.Where(l => l.Category == LedgerCategory.OfficialSalary).ToList();
+
+        // 待阙与无官 MUST NOT 落 0 金额条目 ⇒ 只有两名有官阶者有条目。
+        Assert.Equal(2, lines.Count);
+        Assert.Contains(lines, l => l.PersonId == active.Id);
+        Assert.Contains(lines, l => l.PersonId == retired.Id);
+        Assert.DoesNotContain(lines, l => l.PersonId == awaiting.Id);
+        Assert.DoesNotContain(lines, l => l.PersonId == none.Id);
+
+        var monthly = SalaryTable.MonthlySalaryGuan(level) * DifficultyRates.RevenueFactor(Normal);
+
+        Assert.Equal(RulesHarness.Guan(monthly), lines.Single(l => l.PersonId == active.Id).Amount);
+
+        // 半俸 = 全俸 × RetirementSalaryRatio，且**只乘一次**（不得 50% → 25%）。
+        Assert.Equal(
+            RulesHarness.Guan(monthly * OfficialCareerPolicy.RetirementSalaryRatio),
+            lines.Single(l => l.PersonId == retired.Id).Amount);
+    }
+
     private static IncomeComputation Compute(
         Family family, Holdings holdings, Money merchantCapital, Origin origin = Origin.Artisan) =>
         RulesHarness.Income(
