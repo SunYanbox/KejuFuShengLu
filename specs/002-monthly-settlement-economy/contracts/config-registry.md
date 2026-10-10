@@ -75,8 +75,35 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 5. `GameConfig`（数值总表入口）MUST 只转发既有成员，MUST NOT 声明自己的数值字面量：
    它是**视图**，不是第二出处。
 
-## 6. 本契约明确不包含
+## 6. 003 新增数值（只指向，不复制）
+
+本节由 `003-opening-assets-officialdom` 追加：本表 §7「本契约明确不包含」中的**开局资产业务**
+（§10.1，逻辑轨 ③）与**官吏体系数值**（§8.2，逻辑轨 ③）已由 003 落地。按契约分工，本表
+**只登记名称与指向**，**MUST NOT 复制数值本身**——数值的唯一出处仍是 003 契约八
+（[`specs/003-opening-assets-officialdom/contracts/config-registry.md`](../../003-opening-assets-officialdom/contracts/config-registry.md)）
+所指向的 `KFL.Rules/Config/` 常量，冲突时以源码为准。
+
+| 新增项 | 003 契约八的位置与配置成员 |
+| --- | --- |
+| 开局 §10.1 四出身资产（初始现金 / 初始田 / 农村宅 / 城市宅 / 商本） | 该契约 **§1 开局**：`GameConfig.NewGame.InitialCashGuan` / `InitialFarmlandMu` / `InitialRuralHouses` / `InitialUrbanHouses` / `InitialMerchantCapitalGuan` |
+| 开局成员口径（配偶人数、孩子人数按出身） | 该契约 **§1 开局**：`GameConfig.NewGame.SpouseCount` / `ChildCount` |
+| 开局年龄口径（家主、士出身家主、配偶、孩子） | 该契约 **§1 开局**：`GameConfig.NewGame.HeadAge` / `SpouseAge` / `ChildAgeRange` |
+| 天赋与寿数分布（天赋、无父母参照的学业/体质、天命寿数按性别） | 该契约 **§1 开局**：`GameConfig.Attributes.Talent` / `UnparentedStudy` / `UnparentedHealth` / `Lifespan` |
+| 官吏体系：待阙期区间 | 该契约 **§2 官吏体系**：`GameConfig.Career.AwaitingPostMinMonths` / `AwaitingPostMaxMonths` |
+| 官吏体系：初始官阶按甲第/特奏名映射 | 该契约 **§2 官吏体系**：`GameConfig.Career.InitialRankOf` |
+| 官吏体系：政绩月增与上限 | 该契约 **§2 官吏体系**：`GameConfig.Career.MeritPerMonth` / `MeritMaximum` |
+| 官吏体系：考课周期 | 该契约 **§2 官吏体系**：`GameConfig.Career.AppraisalPeriodMonths` |
+| 官吏体系：升级率基础值、政绩加成与封顶 | 该契约 **§2 官吏体系**：`GameConfig.Career.PromotionBaseChance` / `PromotionChancePerMerit` / `PromotionChanceCap` / `PromotionChance` |
+| 官吏体系：致仕年龄与半俸比例 | 该契约 **§2 官吏体系**：`GameConfig.Career.RetirementAge` / `RetirementSalaryRatio` |
+
+**沿用项**（俸禄 18 级与月摊、士出身 ×1.05、难度收益系数、开局生活费档位、开局米价系数）
+002 已在本表登记，003 **不复制、不重登记**，只在 003 契约八 **§2 官吏体系** 中复核锚点。
+
+## 7. 本契约明确不包含
 
 §6 科举与 §7 贿赂的全部数值（阶段⑤/⑥）、§8.2 的考课/政绩/致仕数值（逻辑轨 ③）、
 §9 婚育与买人口数值（逻辑轨 ⑦）、§10.1 的开局资产发放（逻辑轨 ③）、§13 调试控制台上限（界面轨 U4）、
 §14 成就与存档（阶段④/逻辑轨 ⑧）。
+
+> 后记（2026-10-08）：上述 §8.2 与 §10.1 两项数值**已由 `003-opening-assets-officialdom` 交付**，
+> 本表以 §6 登记指向（只指向，不复制）；本节的其余排除项不变。
