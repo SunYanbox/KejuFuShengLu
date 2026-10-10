@@ -12,7 +12,8 @@ namespace KFL.Core.Entities;
 /// <para>
 /// **写入通道只有两类**（data-model §2.1 不变量 2）：<see cref="Person"/> 自持的可写属性只有
 /// <see cref="Name"/>、<see cref="Study"/>、<see cref="Health"/>、<see cref="Rank"/>、
-/// <see cref="Merit"/>、<see cref="Status"/>、<see cref="Timers"/>、<see cref="Occupation"/>；
+/// <see cref="Merit"/>、<see cref="Status"/>、<see cref="Timers"/>、<see cref="Occupation"/>、
+/// <see cref="MonthsInOffice"/>；
 /// 跨实体引用（配偶、父母、辈分）的唯一入口是 <see cref="Family"/>——因此
 /// <see cref="SpouseId"/>、<see cref="FormerSpouseIds"/>、<see cref="Generation"/> 在这里
 /// 只有只读属性，没有公开 setter。
@@ -35,6 +36,7 @@ public sealed class Person
     private int _study;
     private int _health;
     private int _merit;
+    private int _monthsInOffice;
     private PersonId? _spouseId;
     private StatusFlag _status;
     private StatusTimers _timers;
@@ -45,7 +47,7 @@ public sealed class Person
     /// <param name="gender">性别，出生即定。</param>
     /// <param name="birthDate">出生年月，出生即定；年龄由它派生。</param>
     /// <param name="talents">四项天赋，出生即定。</param>
-    /// <param name="lifespan">天命寿数（年）。**只约束 <c>&gt;= 0</c>，无上界**——上界来自规格书 §4.2 的天命寿数分布，属阶段⑧。</param>
+    /// <param name="lifespan">天命寿数（年）。**只约束 <c>&gt;= 0</c>，无上界**——上界来自规格书 §4.2 的天命寿数分布，属逻辑轨 ⑦。</param>
     /// <param name="generation">辈分；血亲 = 父母辈分 + 1，外来者由 <see cref="Family"/> 指定。</param>
     /// <param name="fatherId">父亲引用；<c>null</c> 表示家族内无父母参照。</param>
     /// <param name="motherId">母亲引用；<c>null</c> 表示家族内无父母参照。</param>
@@ -67,7 +69,7 @@ public sealed class Person
         if (lifespan < 0)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(lifespan), lifespan, "天命寿数 MUST >= 0（规格书 §4.1）；上界属阶段⑧，本阶段不设。");
+                nameof(lifespan), lifespan, "天命寿数 MUST >= 0（规格书 §4.1）；上界属逻辑轨 ⑦，本阶段不设。");
         }
 
         if (generation < 0)
@@ -150,7 +152,7 @@ public sealed class Person
         }
     }
 
-    /// <summary>天命寿数（年）。**无公开写入通道**；只约束 <c>&gt;= 0</c>，**无上界**（阶段⑧）。</summary>
+    /// <summary>天命寿数（年）。**无公开写入通道**；只约束 <c>&gt;= 0</c>，**无上界**（逻辑轨 ⑦）。</summary>
     public int Lifespan { get; }
 
     /// <summary>
@@ -170,7 +172,10 @@ public sealed class Person
     /// <summary>官阶；<c>null</c> = 无官职（规格书 §8、FR-009）。</summary>
     public OfficialRank? Rank { get; set; }
 
-    /// <summary>政绩，<c>&gt;= 0</c>（上限 100 属规格书 §8.2 规则，阶段⑧）。</summary>
+    /// <summary>
+    /// 政绩，<c>&gt;= 0</c>。上限（100）属规格书 §8.2 的规则数值，单点在**逻辑轨 ③** 的
+    /// <c>KFL.Rules/Config/OfficialCareerPolicy.MeritMaximum</c>，本类型 MUST NOT 复制它。
+    /// </summary>
     public int Merit
     {
         get => _merit;
@@ -195,6 +200,7 @@ public sealed class Person
             EnsureStatusFlagBacksTimers(value, StatusFlag.ServingSentence, _timers.SentenceRemainingMonths, nameof(value));
             EnsureStatusFlagBacksTimers(value, StatusFlag.ExamBanned, _timers.ExamBanRemainingMonths, nameof(value));
             EnsureStatusFlagBacksTimers(value, StatusFlag.PromotionBanned, _timers.PromotionBanRemainingMonths, nameof(value));
+            EnsureStatusFlagBacksTimers(value, StatusFlag.AwaitingPost, _timers.AwaitingPostRemainingMonths, nameof(value));
             _status = value;
         }
     }
@@ -209,12 +215,37 @@ public sealed class Person
             EnsureTimerBackedByStatus(_status, StatusFlag.ServingSentence, value.SentenceRemainingMonths, nameof(value));
             EnsureTimerBackedByStatus(_status, StatusFlag.ExamBanned, value.ExamBanRemainingMonths, nameof(value));
             EnsureTimerBackedByStatus(_status, StatusFlag.PromotionBanned, value.PromotionBanRemainingMonths, nameof(value));
+            EnsureTimerBackedByStatus(_status, StatusFlag.AwaitingPost, value.AwaitingPostRemainingMonths, nameof(value));
             _timers = value;
         }
     }
 
     /// <summary>职业指派。</summary>
     public Occupation Occupation { get; set; }
+
+    /// <summary>
+    /// 在职月数（自授官起算），<c>&gt;= 0</c>；默认 <c>0</c>（FR-013、FR-015、FR-017）。
+    /// </summary>
+    /// <remarks>
+    /// 授官时置 <c>0</c>、逐月 <c>+1</c>、考课判定后重置为 <c>0</c>；
+    /// 「满 <c>AppraisalPeriodMonths</c> 个月即考课」的阈值属**逻辑轨 ③** 的
+    /// <c>OfficialCareerPolicy</c>，本类型只承载状态与自不变量。
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> 为负。</exception>
+    public int MonthsInOffice
+    {
+        get => _monthsInOffice;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value), value, "在职月数 MUST >= 0（data-model §2.1 不变量 6）。");
+            }
+
+            _monthsInOffice = value;
+        }
+    }
 
     /// <summary>父亲引用。**无公开写入通道**。</summary>
     public PersonId? FatherId { get; }

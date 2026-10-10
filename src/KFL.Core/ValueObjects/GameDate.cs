@@ -4,22 +4,26 @@ namespace KFL.Core.ValueObjects;
 /// 游戏年月（规格书 §3：从 1 年 1 月开始推演，1 回合 = 1 游戏月，1 年 = 12 月）。
 /// </summary>
 /// <remarks>
-/// **明确不含**：12 / 14 等成年年龄，以及生日月份之外的任何规则数值——成年判定属阶段②
+/// <para>
+/// **年份接受 <see cref="int"/> 全域（含 <c>0</c> 与负数）= 前史纪年**（规格书 §17 裁决回写
+/// 2026-10-08，Q4）：开局家人的父母辈必然生于 1 年 1 月之前——规格书 §10.1 要求家主 28±5 岁、
+/// 配偶 25±5、孩子 0~8 岁，而年龄只能由出生年月派生（本类型不落裸年龄字段），
+/// 故若把年份下界钉在 1，四出身开局在 1 年 1 月不可能成立。
+/// <see cref="Entities.GameState.CurrentDate"/> 仍自 **1 年 1 月**起推演，本类型不强制该起点。
+/// </para>
+/// <para>
+/// **明确不含**：12 / 14 等成年年龄，以及生日月份之外的任何规则数值——成年判定属逻辑轨 ②
 /// （research R-07）。本类型只做日期算术。
+/// </para>
 /// </remarks>
 public readonly record struct GameDate : IComparable<GameDate>, IComparable
 {
     /// <summary>构造并校验。</summary>
-    /// <param name="year">架空纪年，从 1 起。</param>
+    /// <param name="year">架空纪年，<see cref="int"/> 全域（含前史纪年）。</param>
     /// <param name="month">1~12，无闰月。</param>
-    /// <exception cref="ArgumentOutOfRangeException">年 &lt; 1 或月不在 1~12。</exception>
+    /// <exception cref="ArgumentOutOfRangeException">月不在 1~12。</exception>
     public GameDate(int year, int month)
     {
-        if (year < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(year), year, "游戏纪年从 1 起（规格书 §3）。");
-        }
-
         if (month is < 1 or > 12)
         {
             throw new ArgumentOutOfRangeException(nameof(month), month, "月份必须在 1~12 之间（规格书 §3）。");
