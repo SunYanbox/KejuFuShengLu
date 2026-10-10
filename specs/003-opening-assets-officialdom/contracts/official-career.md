@@ -11,7 +11,7 @@ SC-003~SC-007 的可验收边界。字段与不变量见 [data-model.md](../data
 
 | 概念 | 表达 | 说明 |
 | --- | --- | --- |
-| 待阙 | `StatusFlag.AwaitingPost` + `StatusTimers.AwaitingPostRemainingMonths` | 剩余月数为 0 时 MUST NOT 保留状态位（FR-013） |
+| 待阙 | `StatusFlag.AwaitingPost` + `StatusTimers.AwaitingPostRemainingMonths` + `Person.EntryTrack` | 剩余月数为 0 时 MUST NOT 保留状态位（FR-013）；入仕途径与待阙同生命周期 |
 | 在任 | `Person.Rank != null` ∧ ¬`Retired` | 官阶唯一存储处是 `Person.Rank`（001 已交付） |
 | 致仕 | `StatusFlag.Retired`（官阶**保留**） | 幂等；MUST NOT 清官阶 |
 | 在职月数 | `Person.MonthsInOffice`（`>= 0`） | 授官时置 0，逐月 +1，判定后重置为 0 |
@@ -30,7 +30,7 @@ spec Edge Case）；服刑者仍在集合内、按下一条**显式暂停**。
 ① 提升待生效的难度与生活费档位                      （002 原有）
 ② 米价系数游走并 clamp                              （002 原有）
 ③ 官吏推进（成员按 PersonId 升序）                  ← 本特性新增
-   ③-a 待阙计时递减；递减到 0 的当月【授官】
+   ③-a 待阙计时递减；递减到 0 的当月【授官】（按入口记录的入仕途径）
    ③-b 政绩 +1（在任者；钳制 ≤ MeritMaximum）
    ③-c 致仕判定（在任 ∧ 年龄 ≥ RetirementAge ⇒ 置 Retired）
    ③-d 在职计时 +1；命中 AppraisalPeriodMonths ⇒ 考课判定
@@ -56,9 +56,9 @@ spec Edge Case）；服刑者仍在集合内、按下一条**显式暂停**。
 | 1 | 「及第入仕」入口 MUST 把无官职的进士置为待阙，剩余月数 = `Next(AwaitingPostMinMonths, AwaitingPostMaxMonths + 1)`（**整数均匀、含两端点**，消耗 1 次 `Next`） |
 | 2 | 入口 MUST NOT 写官阶、MUST NOT 写 `MonthsInOffice`、MUST NOT 动账本 |
 | 3 | 待阙期间该成员 MUST NOT 产生俸禄条目（其计口身份照常计入生活费，§5.1） |
-| 4 | 剩余月数 MUST 逐月递减 1；**递减到 0 的当月**授官：写 `Rank = InitialRankOf(track)`、`MonthsInOffice = 0`、清 `AwaitingPostRemainingMonths` 与 `AwaitingPost` 位（**先清计时、后清位**） |
+| 4 | 剩余月数 MUST 逐月递减 1；**递减到 0 的当月**授官：读 `Person.EntryTrack` 得 track，写 `Rank = InitialRankOf(track)`、`MonthsInOffice = 0`、清 `AwaitingPostRemainingMonths`、`EntryTrack` 与 `AwaitingPost` 位（**先清计时与途径、后清位**） |
 | 5 | 授官 MUST 幂等/互斥：已有官阶或已在待阙者再触发入口 MUST 被拒绝，且 MUST NOT 重置剩余月数 |
-| 6 | 初始官阶 MUST 按 track 映射：`FirstClass→L11`、`SecondClass→L13`、`ThirdClass→L15`、`SpecialTribute→L18` |
+| 6 | 初始官阶 MUST 按 track 映射：`FirstClass→L11`、`SecondClass→L13`、`ThirdClass→L15`、`SpecialTribute→L18`；track 取自**入口写入** `Person.EntryTrack` 的值，MUST NOT 在授官时从功名记录重新派生（待阙期内功名记录可能被逻辑轨 ⑤/⑥改写） |
 | 7 | 进士的甲第缺失（末条记录 `Class == null`）或与名次矛盾时，入口 MUST **拒绝**，MUST NOT 猜一个等级 |
 | 8 | 官阶级数 MUST 始终落在 `SalaryTable.HighestLevel ~ LowestLevel`（无 L0、无 L19） |
 

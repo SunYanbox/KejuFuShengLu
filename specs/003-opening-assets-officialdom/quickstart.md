@@ -181,6 +181,6 @@ git diff --stat -- src/KFL.Presentation src/KFL.App      # 期望：无输出
    **0.25 / 0.003 / 60.7 / 62.3**（详见 [contracts/config-registry.md](./contracts/config-registry.md) §3 条款 3）。
 4. 001 的既有断言更新：`ValueObjectTests.GameDate拒绝非法年份`（→ 前史纪年）、
    `DegreeRecord四个成员均为必需`（→ 五个成员、第 5 个可选）、一甲记录构造点补甲第、
-   `StatusTimers` 第 4 字段与 `Person` 可写属性由八个变九个。
+   `StatusTimers` 第 4 字段与 `Person` 可写属性由八个变十个（`MonthsInOffice`、`EntryTrack`）。
 5. **历史记录类工件保留旧编号，MUST NOT 回改**（001/002 的 `tasks.md`、`implementation-notes.md`、
    既有 `checklists/`），见规格书 §16.2 的迁移口径。

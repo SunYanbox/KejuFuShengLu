@@ -87,8 +87,8 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 | --- | --- |
 | 开局 §10.1 四出身资产（初始现金 / 初始田 / 农村宅 / 城市宅 / 商本） | 该契约 **§1 开局**：`GameConfig.NewGame.InitialCashGuan` / `InitialFarmlandMu` / `InitialRuralHouses` / `InitialUrbanHouses` / `InitialMerchantCapitalGuan` |
 | 开局成员口径（配偶人数、孩子人数按出身） | 该契约 **§1 开局**：`GameConfig.NewGame.SpouseCount` / `ChildCount` |
-| 开局年龄口径（家主、士出身家主、配偶、孩子） | 该契约 **§1 开局**：`GameConfig.NewGame.HeadAge` / `SpouseAge` / `ChildAgeRange` |
-| 天赋与寿数分布（天赋、无父母参照的学业/体质、天命寿数按性别） | 该契约 **§1 开局**：`GameConfig.Attributes.Talent` / `UnparentedStudy` / `UnparentedHealth` / `Lifespan` |
+| 开局年龄口径（家主、士出身家主、配偶、孩子） | 该契约 **§1 开局**：`GameConfig.NewGame.HeadAge` / `SpouseAge` / `ChildAge`（区间常量在 `OriginStartTable.HeadAgeMean` 一族 / `SpouseAgeMean` / `ChildAgeMin` / `ChildAgeMax`） |
+| 天赋与寿数分布（天赋、无父母参照的学业/体质、天命寿数按性别） | 该契约 **§1 开局**：`GameConfig.Attributes.TalentMean` / `TalentSigma` / `StudyMean` / `StudySigma` / `HealthMean` / `HealthSigma` / `LifespanMean(gender)` / `LifespanSigma(gender)` 与取样 `NextTalent` / `NextStudy` / `NextHealth` / `NextLifespan` |
 | 官吏体系：待阙期区间 | 该契约 **§2 官吏体系**：`GameConfig.Career.AwaitingPostMinMonths` / `AwaitingPostMaxMonths` |
 | 官吏体系：初始官阶按甲第/特奏名映射 | 该契约 **§2 官吏体系**：`GameConfig.Career.InitialRankOf` |
 | 官吏体系：政绩月增与上限 | 该契约 **§2 官吏体系**：`GameConfig.Career.MeritPerMonth` / `MeritMaximum` |
@@ -101,9 +101,9 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 
 ## 7. 本契约明确不包含
 
-§6 科举与 §7 贿赂的全部数值（阶段⑤/⑥）、§8.2 的考课/政绩/致仕数值（逻辑轨 ③）、
-§9 婚育与买人口数值（逻辑轨 ⑦）、§10.1 的开局资产发放（逻辑轨 ③）、§13 调试控制台上限（界面轨 U4）、
-§14 成就与存档（阶段④/逻辑轨 ⑧）。
+§6 科举与 §7 贿赂的全部数值（阶段⑤/⑥）、§9 婚育与买人口数值（逻辑轨 ⑦）、
+§13 调试控制台上限（界面轨 U4）、§14 成就与存档（阶段④/逻辑轨 ⑧）。
 
-> 后记（2026-10-08）：上述 §8.2 与 §10.1 两项数值**已由 `003-opening-assets-officialdom` 交付**，
-> 本表以 §6 登记指向（只指向，不复制）；本节的其余排除项不变。
+> 后记（2026-10-08）：本表**原有**的两项排除内容——§8.2 的考课/政绩/致仕数值与 §10.1 的
+> 开局资产发放（逻辑轨 ③）——**已由 `003-opening-assets-officialdom` 交付**，故自本节移出，
+> 改由 §6 登记指向（只指向，不复制）。本节余下的排除项不变。
