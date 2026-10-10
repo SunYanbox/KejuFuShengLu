@@ -197,7 +197,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 **方法**：`void TransitionTo(FamineStage stage)`（置阶段并把 `ElapsedMonths` 置 1；仅
 `TransitionTo(None)` 例外，按 `Clear()` 语义归 0——否则会破坏下面的不变量）、
 `void Tick()`（阶段非 `None` 时 +1）、`void Clear()`（归 `None`/0）。
-**计时时点（§17 裁决 E-14）**：`Tick()` MUST 在每月第④步的**足额判定之前**被调用一次，
+**计时时点（§17 裁决 E-14）**：`Tick()` MUST 在每月第⑤步的**足额判定之前**被调用一次，
 消费方再用**推进后**的 `ElapsedMonths` 比较阈值——转入当月记 1，故「满 3 月」在第 3 个饥馑月
 当月成立（`X` 月进入 → `X+2` 月计 3 → 转 `Relief`）。`Tick()` 本身不判阈值、不知道时限
 （时限在 `FamineTimeline`）。
@@ -293,6 +293,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `SavingsInterest` / `ArtisanBonus` | `Money` | 只可能出现在 12 月（工 bonus 需工出身且基数为正） |
 | `FamineBefore` / `FamineAfter` | `FamineState` 快照 | 阶段迁移（US4） |
 | `Entries` | `IReadOnlyList<LedgerEntry>` | 本次结算产生的**全部**条目（含事件类） |
+| `Career` | `CareerAdvanceResult` | **003 追加**（required）：第③步官吏推进的**增量快照**（授官 / 政绩 / 晋升 / 致仕 / `AppraisalSkipped` / `AppraisalPaused` / 每人三态）。它是增量、**不是与 `Person` 并存的第二真源** |
 | `TreasuryPoolBefore` / `After` | `Money` | 资金池前后值，供 SC-005 直接断言 |
 
 **不变量**：`Entries` MUST 与本次结算向 `Ledger` 追加的条目**逐条相同**；
@@ -304,14 +305,14 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 | 类型 | 公开形状 | 职责 |
 | --- | --- | --- |
-| `MonthlySettlementEngine` | `ctor(IRandomService, IGameClock)`；`SettlementResult Settle(GameState)` | 唯一编排入口：按契约「月度结算」§1 的六步顺序执行，就地推进 `GameState` 与 `CurrentDate` |
-| `LivingCostCalculator` | `static ... Compute(计口成员, LivingStandard, 米价系数, 难度, 出身, FamineStage)` | §5.1/§5.4 生活费与逐档明细（四个乘区，R-17）；**不碰**资金池 |
-| `IncomeCalculator` | `static ... Compute(计口成员, Holdings, Treasury, HasShiStatus, 难度, 出身)` | §5.2 各来源分项与归属成员；**不碰**资金池。成员集合 = **计口 ∧ 成年**（E-16，成年按 §4.3）；城市宅加成按人归属并逐人乘本人 `(1+工/400)`（E-15）；`TradeIncome` 归属被采用的那名成员（E-18） |
+| `MonthlySettlementEngine` | `ctor(IRandomService, IGameClock)`；`SettlementResult Settle(GameState)` | 唯一编排入口：按契约「月度结算」§1 的**七步**顺序执行（第③步「官吏推进」由 003 追加），就地推进 `GameState` 与 `CurrentDate` |
+| `LivingCostCalculator` | `static LivingCostComputation Compute(IReadOnlyList<Person> countedMembers, GameDate date, LivingStandard livingStandard, decimal grainPriceIndex, Difficulty difficulty, Origin origin, FamineStage famineStage)` | §5.1/§5.4 生活费与逐档明细（四个乘区，R-17）；**不碰**资金池 |
+| `IncomeCalculator` | `static IncomeComputation Compute(Family family, GameDate date, Holdings holdings, Treasury treasury, Difficulty difficulty, Origin origin)` | §5.2 各来源分项与归属成员；**不碰**资金池。成员集合 = **计口 ∧ 成年**（E-16，成年按 §4.3）；城市宅加成按人归属并逐人乘本人 `(1+工/400)`（E-15）；`TradeIncome` 归属被采用的那名成员（E-18）；俸禄按三态（MUST NOT 接收仕身份 `HasShiStatus`） |
 | `SavingsSettlement` | `static decimal RollRate(IRandomService)`；`static Money Accrue(Money savings, decimal rate)` | §5.4 的 1 月 roll 与 12 月计息 |
 | `LoanSettlement` | `static bool IsInterestDue(Loan)`；`static decimal RollRate(IRandomService)`；`static Money ComputeRepayment(Money netProfit, bool hasShiStatus, Origin origin, Loan)` | §5.4 的计息节点与划扣额（含封顶） |
 | `FamineController` | `static FamineDecision Evaluate(FamineState, Money payable, Money pool)` | §5.4 四阶段流转与「解除优先」（R-12）；`pool` 是**可付额**（现金 + 储蓄，不含商本，见 R-05），不是 SC-005 求和的资金池 |
 | `AssetMarket` | `static ... Buy/Sell(GameState, AssetKind, int count)` | §5.3 田宅铺买入口（购售同价） |
-| `PaymentPrimitive` | `static PaymentResult Pay(FamilyEconomy, Money amount)` | FR-017「现金 → 储蓄 → 余额转贷款」；本阶段无罚金调用方 |
+| `PaymentPrimitive` | `static PaymentResult Pay(FamilyEconomy economy, LedgerCategory category, GameDate date, Money amount)` | FR-017「现金 → 储蓄 → 余额转贷款」；本阶段无罚金调用方 |
 
 ---
 
@@ -328,7 +329,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | FR-014、FR-016 | `Loan` + `LoanSettlement` + `InterestPolicy` | 先本后息；跨 12 月节点按当时本金计息；本金清零后转冲欠息；皆清即结清；计时按自然月（E-07）；任意金额手动提前还款（`FamilyEconomy.RepayLoan` 承载） | T012、T043、T045、T046 |
 | FR-017 | `PaymentPrimitive` | 「现金 → 储蓄 → 余额转贷款」三步各一断言；本阶段无罚金入口 | T044、T046 |
 | FR-018、FR-019 | `FamineState` + `FamineController` + `FamineTimeline` | 4 阶段转移 4/4 + 解除后计时归零；**「恰好第 3 月转救济 / 恰好第 12 月转 Severe」两条边界断言**（E-14）；阶段与剩余月数可读 | T014、T050、T051、T052、T053 |
-| FR-020 | `MonthlySettlementEngine` | 六步顺序契约（E-04）；越界步骤（随机事件/成长/科举/绝嗣）**不存在** | T037、T041、T045、T048、T052 |
+| FR-020 | `MonthlySettlementEngine` | 七步顺序契约（E-04；第③步由 003 追加）；越界步骤（随机事件/成长/科举/绝嗣）**不存在** | T037、T041、T045、T048、T052 |
 | FR-021、FR-022、SC-005 | `FamilyEconomy.Apply` / `RepayLoan` + `Ledger` | 资金池变动与条目一一对应；家族/角色两维度聚合同一批条目；归档成员历史可读 | T016、T017、T025、T054、T055 |
 | FR-023 | `KFL.Rules/Config/` 全部配置类 | 配置登记表 + 「配置类之外无第二份副本」扫描测试 | T027~T033、T058、T059 |
 | FR-024、FR-025、SC-006、SC-007 | `MonthlySettlementEngine` 的注入与随机消费次序 | 同种子复跑逐位相同；G-07 静态断言（扫描范围含新 `Rules/` 目录） | T002、T037、T060 |
@@ -368,8 +369,8 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | 状态 | 触发 | 结果 |
 | --- | --- | --- |
 | 无贷款 | `PaymentPrimitive` 遇现金 + 储蓄不足 | `Principal += 差额`（本阶段唯一产生路径；罚金属阶段⑥） |
-| `MonthsSinceInterest` 0→12 | 每次结算第⑤步（**先计息**） | `AccruedInterest += 当时本金 × 新 roll 利率`，计数归零，落事件类条目 |
-| 净利润 > 0 且未结清 | 每次结算第⑤步（**后划扣**） | 划扣 `min(净利润 × 比例, Total)`，先本后息，落 1~2 条资金类条目 |
+| `MonthsSinceInterest` 0→12 | 每次结算第⑥步（**先计息**） | `AccruedInterest += 当时本金 × 新 roll 利率`，计数归零，落事件类条目 |
+| 净利润 > 0 且未结清 | 每次结算第⑥步（**后划扣**） | 划扣 `min(净利润 × 比例, Total)`，先本后息，落 1~2 条资金类条目 |
 | `Principal == 0` 且 `AccruedInterest == 0` | 划扣后 | `IsSettled`，此后不再产生划扣条目 |
 
 ### 6.3 其他按月转移
