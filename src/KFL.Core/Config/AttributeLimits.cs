@@ -10,7 +10,9 @@ namespace KFL.Core.Config;
 /// 会让 FR-005/FR-006 退化成只在测试里口头成立（research R-06，所有者已确认）。
 /// </para>
 /// <para>
-/// **MUST NOT** 把政绩上限 100 放进来——它属规格书 §8.2 的规则数值，随阶段⑧落地。
+/// **MUST NOT** 把政绩上限 100 放进来——它属规格书 §8.2 的**规则数值**，单点在**逻辑轨 ③** 的
+/// <c>KFL.Rules/Config/OfficialCareerPolicy.MeritMaximum</c>（与这里的「属性值域」同名不同义，
+/// 两处 MUST NOT 互相引用）。
 /// </para>
 /// </remarks>
 public static class AttributeLimits
