@@ -121,6 +121,8 @@
 | `Status` | `StatusFlag` | 是 | §4.1 九种状态，可并存 |
 | `Timers` | `StatusTimers` | 是 | §7.5 |
 | `Occupation` | `Occupation` | 是 | §4.1「职业指派」 |
+| `MonthsInOffice` | `int`（>= 0） | 是 | **003 新增**（逻辑轨 ③）：在任月数，自授官起算；考课周期 36 属 `OfficialCareerPolicy` |
+| `EntryTrack` | `AppointmentTrack?` | 是 | **003 新增**（逻辑轨 ③）：待阙期记录的入仕途径，与「待阙」同生命周期；授官时读它定初始官阶 |
 | `FatherId` / `MotherId` | `PersonId?` | 否 | §4.1 父母引用 |
 | `SpouseId` | `PersonId?` | 是 | §4.1 婚姻关系；一夫一妻（§9.1） |
 | `FormerSpouseIds` | `IReadOnlyList<PersonId>` | 是 | §9.1「丧偶可再婚」+ spec Edge Case（须能表达既往婚姻） |
@@ -144,13 +146,15 @@
    `Talents`、`Lifespan`、`Generation`、`FatherId`、`MotherId`、`SpouseId`、
    `FormerSpouseIds`、`DegreeHistory`、`CurrentDegree`、`CurrentPlacement`——均为只读
    属性，**不存在公开 setter**（FR-005、FR-007、FR-008、§4.4）。
-   **`Person` 自持的可写属性**只有八个：`Name`、`Study`、`Health`、`Rank`、`Merit`、
-   `Status`、`Timers`、`Occupation`。
+   **`Person` 自持的可写属性**只有十个：`Name`、`Study`、`Health`、`Rank`、`Merit`、
+   `Status`、`Timers`、`Occupation`、`MonthsInOffice`（003 新增）、`EntryTrack`（003 新增）。
    分界依据：凡「出生即定」或「跨实体一致性」的字段一律只读——前者如 `Gender` /
    `Talents` / `Lifespan`，后者如 `SpouseId` / `FatherId` / `MotherId` / `Generation`
    （唯一入口在 `Family`，见 §2.2 不变量 4）。
 3. `FatherId != Id`、`MotherId != Id`、`SpouseId != Id`；`FormerSpouseIds` 不含 `SpouseId` 且不重复。
-4. `Timers` 与 `Status` 一致（见 1.7）。
+4. `Timers` 与 `Status` 一致（见 1.7）；003 新增的 `EntryTrack` 同向一致
+   （非空 ⇒ `AwaitingPost` 位为真；清除该位前 MUST 先置 `null`——`Timers` 的
+   `AwaitingPostRemainingMonths` 与它 MUST 同生同灭）。
 5. **年龄不落裸字段**：`AgeAt(GameDate)` = `BirthDate.AgeInYearsAt(at)`（R-07）。
 6. 出生时辰与「已亡」时间不落字段：§4.1 未列，且 §12.1 的归档排序属界面轨 U2。
 7. `DegreeHistory` 按 `ChangedAt` **非降序**（追加式）；既有记录 MUST NOT 被改写或删除。

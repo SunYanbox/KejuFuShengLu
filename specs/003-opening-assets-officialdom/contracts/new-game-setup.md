@@ -78,6 +78,14 @@ public static NewGameSetupResult Create(
 | 6 | 正态结果 MUST **四舍五入取整**后 clamp 到 0~100；**天命寿数是唯一例外——只 clamp 下界 0、不设上限**（FR-006） |
 | 7 | 相同 `request` + 相同种子 MUST 产生逐字段相同的结果（成员数、性别、年龄、姓名、四项天赋、学业、体质、寿数、辈分、婚姻与父母引用、资产与资金池、功名记录） |
 
+> **注（`INameGenerator` 实现自身的随机消耗）**：上表的次序**只描述 `Create` 内部的消费**。
+> 实现可自带消耗——产品默认的 `SongStyleNameGenerator` 构造期不消耗随机；
+> `BogusNameGenerator(IRandomService)` 在**构造期**取一次 `Next(int.MinValue, int.MaxValue)` 作局部种子
+> （`new Randomizer(seed)`，不碰全局 `Randomizer.Seed`）。若调用方把同一个 `IRandomService` 既
+> 交给它、又交给 `Create`，则 `Create` 的消费从该流的**下一个槽位**开始——**仍然确定**
+> （同种子 → 同结果），但不再是「流的第 1 次调用」。故两者 MUST **各自持有独立的随机来源**，
+> 或在构造姓名来源之后再开始记录契约六的次序。
+
 ## 4. 四出身表（逐格断言对象）
 
 | 出身 | 现金（贯） | 田（亩） | 宅 | 商本（贯） | 成员 | 家主年龄 | 家主学业 |

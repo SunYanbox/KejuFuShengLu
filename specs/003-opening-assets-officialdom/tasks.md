@@ -191,6 +191,25 @@ MUST NOT 致仕。
 
 ---
 
+## Phase 8: 复审响应（PR #4，2026-10-10）
+
+**Purpose**：处置 PR 复审的 1 处行为缺陷（§1）、1 类证据强度问题（§2）与若干文档问题（§3/§4）。
+逐条处置与验证物见 [implementation-notes.md](./implementation-notes.md) §6。
+
+> T009/T016 的「可写属性八个/九个」与 T020 的 `HeadAgeOffset`/`ChildAgeRange`/`HeadHealthRange`/
+> `ChildHealthRange`/`HeadStudy` 等名字是**规划期的写法**，与实现不一致（实现用
+> `HeadAgeMin`/`HeadAgeMax`/`ChildAgeMin`/`ChildAgeMax`/`ScholarHeadStudy`/…）。以 T046~T051
+> 与 data-model §2.1/§3.1 为准；本阶段的工件已按真实成员名同步。
+
+- [X] T046 [US2] 修 `AppointmentEntry.Begin` 的 `track` 被静默丢弃（复审 §1）：`KFL.Core` 增可写属性 `Person.EntryTrack`（`AppointmentTrack?`，与「待阙」同生命周期：非空 ⇒ `AwaitingPost` 位为真；清位前 MUST 先置 `null`），入口写入、③-a 授官**只读**它并与计时一并清空；`TrackOf` 退为**入口专用**，MUST NOT 出现在授官路径（契约七 §1/§3、data-model §1.6/§2.1/§3.7/§3.8/§6.1/§6.2）
+- [X] T047 [US2] 补三条回归断言（复审 §1 的三条后果）：显式途径即授官依据（无功名记录给 `FirstClass` ⇒ L11 而非 L18）、待阙期内功名被连坐降级不改判、待阙期内末条进士甲第缺失也不会让 ③-a 抛异常（契约七 §7 失败原子性）；`PersonTests` 侧补 `EntryTrack` 的成对不变量与可写属性清单（八 → 十）
+- [X] T048 新增数值锚点测试（复审 §2；SC-002/003/004/005/007）：`tests/KFL.Tests/Rules/SpecAnchorTests.cs` 用带 `// arch-guard:allow 锚点即被验证对象` 的字面量把 §10.1/§4.1/§8.2 的资产、成员构成、年龄/学业/体质区间、分布参数、天命寿数、待阙区间、初始官阶四档、政绩、考课周期、概率与公式、致仕年龄、半俸比例与 ×1.05 逐项钉在配置成员上；判据是「改坏配置必须变红」（实测 `InitialCashGuan(Merchant)` 500 → 5 时行为测试 41 项全绿而锚点测试失败）；契约八 §1/§2 的「断言锚点」列改为真实测试名
+- [X] T049 修正登记表里不存在的符号（复审 §3）：003 契约八 §1/§2 与 002 契约五 §6 的「配置成员」列改为真实成员名（`ChildAge`、`ChildHealth`、`TalentMean/TalentSigma`、`StudyMean/StudySigma`、`HealthMean/HealthSigma`、`LifespanMean(gender)`、`NextLifespan`、`OriginStartTable.HeadAgeMin/Max` 等），并同步 data-model §3.1/§5 的成员名
+- [X] T050 边界层注记（复审 §4）：`GameDate.ElapsedMonths` 写明极端年份的 `unchecked` 回绕行为（spec Assumptions 已裁决沿用 001 现状，故不改算术）；契约六 §3 增「实现自身的随机消耗」注记并同步 `BogusNameGenerator` 的 `<remarks>`；002 契约五 §7 改写（把已交付的 §8.2/§10.1 两项移出排除列表）；003 data-model §3.6 改述 `SalaryModePolicy.Of` 不收 `GameDate` 的理由（原「未使用形参会顶到 0 警告门禁」不成立：无 `.editorconfig` 时 `IDE0060` 非警告级）
+- [X] T051 同步活工件与门禁：001 `data-model.md` §2.1 的可写属性由八个改十个（补 `MonthsInOffice`/`EntryTrack`）；003 `quickstart.md` §6 同步；四条门禁全跑（build 0 警告 0 错误、test 421 通过 / 0 skipped、恰好六个工程、无 `.sln` 共存）
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

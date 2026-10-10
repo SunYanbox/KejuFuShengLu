@@ -57,13 +57,22 @@
 （FNV-1a 混合式 → 16 字节 → `Guid`），**不消耗注入的随机**；若改从随机取，会挤掉后续成员的
 取值槽位，使契约六 §3 的次序不可断言。存档标识仍走 `GameStateFactory`（与契约六 §2 步骤 6 一致）。
 
-### 3.2 入仕途径的派生（③-a 授官时）
+### 3.2 入仕途径的落点（入口写入、③-a 只读）
 
-`AwaitingPostRemainingMonths` 归零时授官需要知道「按哪一甲授官」，而 `Person` **不存**入仕途径
-（data-model §2.1 的「明确不含」）。实现的派生规则（`AppointmentEntry.TrackOf`）：
-功名记录末条是**进士** ⇒ 按 `Class` 映射一甲/二甲/三甲（`Class == null` 时**抛异常**，不猜等级）；
-末条不是进士或**无功名记录** ⇒ `AppointmentTrack.SpecialTribute`（特奏名本就没有进士记录，
-逻辑轨 ⑤ 的入口只经 `AppointmentEntry.Begin(person, track, …)` 写入待阙）。
+**初版设计**：`Person` **不存**入仕途径，③-a 授官时从功名记录末条派生（`AppointmentEntry.TrackOf`）。
+**复审确认该口径有缺陷**：`Begin(person, track, …)` 的 `track` 形参从未被读取，真正生效的是
+「授官那一刻功名记录末条」，于是
+
+- 显式 `FirstClass` 而该成员无功名记录时，授的是 **L18**（派生落到 `SpecialTribute`）而非 L11；
+- 待阙期内被逻辑轨 ⑥ 的连坐降级追加一条「举人」记录后，**一甲进士会被改判成 L18**；
+- 若逻辑轨 ⑤ 在待阙期内补记一条「进士但 `Class == null`」的记录，`TrackOf` 会在 **③-a 内部**
+  抛 `InvalidOperationException`——此时同月其他成员可能已被改写，与契约七 §7 的**失败原子性**不符。
+
+**现行实现（已按复审首选方案修正）**：`Person.EntryTrack`（`AppointmentTrack?`，与「待阙」**同生命周期**）
+由入口写入，③-a **只读**它、并在授官时与待阙计时一并清空；`TrackOf` 只在**入口**
+（`BeginForImperialGraduate`）与夹具里使用，MUST NOT 出现在授官路径上。
+回归测试：`AppointmentTests.显式途径就是授官依据而不是功名记录的末条` /
+`待阙期内功名被降级不改判已记录的途径` / `待阙期内末条进士甲第缺失也不会让月度推进抛异常`。
 
 ### 3.3 `AppraisalPaused` 的登记时机
 
@@ -96,3 +105,32 @@
 320 → 409 项测试（新增 89 项，0 skipped）；六工程不变、无 .sln 共存；
 KFL.Presentation / KFL.App 零改动。
 ```
+
+---
+
+## 6. 复审响应（2026-10-10，PR #4 的复审意见）
+
+复审结论为「门禁实测通过、主体设计建议合入」，但列出 1 处行为缺陷、1 类证据强度问题与若干文档问题。
+逐条处置如下（**未在评论里争论、全部落到工件**）：
+
+| 复审条目 | 处置 | 落地物 |
+| --- | --- | --- |
+| §1 `Begin` 的 `track` 被静默丢弃 | **修**（取复审的首选方案：把途径落进状态） | `Person.EntryTrack`、`AppointmentEntry.Begin`、`OfficialCareerAdvance.TryAppoint`；契约七 §1/§3；data-model §1.6/§2.1/§3.7/§3.8/§6.1；三条回归测试 |
+| §1 附注：data-model §3.6 用「未使用形参会顶到 0 警告门禁」解释 `SalaryModePolicy.Of` 不收 `GameDate` | **改述**（该理由不成立：仓库无 `.editorconfig`，`IDE0060` 非警告级） | data-model §3.6 |
+| §2 SC-002/003/004/005/007 的**数值**只有结构锚定、没有字面量锚定 | **补锚点**（新增 `Rules/SpecAnchorTests.cs`） | §10.1/§4.1/§8.2 的资产、成员构成、年龄/学业/体质区间、分布参数、寿数、待阙、官阶、政绩、考期、概率与公式、致仕、半俸、×1.05 逐项字面量；契约八 §1/§2 的「断言锚点」列改为真实测试名 |
+| §3 契约八（003 与 002）的「配置成员」列有不存在的符号 | **改为真实成员名** | 003 契约八 §1/§2；002 契约五 §6 |
+| §4 `GameDate.ElapsedMonths` 极端年份静默回绕 | **写明行为**（spec Assumptions 已裁决「沿用 001 现状」，故不改算术，只补注记） | `GameDate.ElapsedMonths` 的 `<remarks>` |
+| §4 `BogusNameGenerator` 构造期消耗一次 `Next` 会挪动契约六 §3 的槽位 | **写进契约与代码**（不改 API：产品默认实现不消耗，改签名会波及已交付接缝） | 契约六 §3 的注记；`BogusNameGenerator` 的 `<remarks>` |
+| §4 002 契约五 §7 与新增 §6 措辞自相矛盾 | **改写 §7**（把已交付的两项移出排除列表） | 002 契约五 §7 |
+
+**本条响应后的门禁**：`dotnet build` **0 警告 0 错误**；`dotnet test` **421 通过 / 0 失败 / 0 skipped**
+（409 → 421：`SpecAnchorTests` 6 项、`AppointmentTests` 3 项、`PersonTests` 1 项，另 2 项为既有
+Theory 的新用例）；`dotnet sln list` 恰好**六个**工程；递归 `*.sln` **无输出**。
+
+**验证物**：`SpecAnchorTests` 的判据不是「有断言」而是「改坏配置必须变红」——实测把
+`OriginStartTable.InitialCashGuan(Merchant)` 由 `500m` 改成 `5m` 后，行为测试 41 项全绿
+（与复审的判断一致），而 `SpecAnchorTests.四出身的初始资产逐格等于规格书` 失败。
+
+**顺带同步**（复审未提、但同属「活工件」口径）：001 的 `data-model.md` §2.1 仍写「可写属性八个」，
+本次随 `Person` 的字段变更一并更新为**十个**（`MonthsInOffice`、`EntryTrack`），并补上两条字段行与
+「计时/途径与状态位一致」的不变量。

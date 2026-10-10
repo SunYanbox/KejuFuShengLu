@@ -81,22 +81,29 @@ public DegreeRecord(
 `FirstClass` / `SecondClass` / `ThirdClass` / `SpecialTribute`（特奏名）。
 它是**授官入口的入参**：把「怎么入仕」与「功名记录的形状」解耦，
 使逻辑轨 ⑤ 的**特奏名**（§6：50 岁 + 省试 6 败 → 授 L18，可拒绝）无需伪造一条进士记录。
+入口把它**记入 `Person.EntryTrack`**（与「待阙」同生命周期，见 §2.1），③-a 授官**只读该字段**——
+故 `Begin` 的 `track` 的语义是「授官时初始官阶的唯一依据」，不再于授官时从功名记录重新派生。
 
 ---
 
 ## 2. 实体与聚合（`KFL.Core/Entities`）
 
-### 2.1 `Person`——【改】新增在职月数 + 待阙计时的交叉校验
+### 2.1 `Person`——【改】新增在职月数 + 待阙计时与入仕途径的交叉校验
 
 | 成员 | 变更 | 不变量 |
 | --- | --- | --- |
 | `MonthsInOffice` | **【新】** `int`，可写（在任月数，自授官起算） | `>= 0`；赋负值抛 `ArgumentOutOfRangeException` |
-| `Status` | 语义扩展 | ⑦ 清除 `AwaitingPost` 位前 MUST 先把 `Timers.AwaitingPostRemainingMonths` 置 `null` |
+| `EntryTrack` | **【新】** `AppointmentTrack?`，可写（待阙期记录的入仕途径） | 非空 ⇒ `AwaitingPost` 位为真；清位前 MUST 先置 `null`；授官时与计时一并清空 |
+| `Status` | 语义扩展 | ⑦ 清除 `AwaitingPost` 位前 MUST 先把 `Timers.AwaitingPostRemainingMonths` **与 `EntryTrack`** 置 `null` |
 | `Timers` | 语义扩展 | ⑦ `AwaitingPostRemainingMonths` 非空时 `AwaitingPost` 位 MUST 为真 |
 | `Rank` / `Merit` / `Status`（其余位）/ `DegreeHistory` / `AppendDegree` | 不变 | `Merit` 仍只保证 `>= 0`（上限 100 在 Rules，R-04） |
 
-**可写属性由八个变九个**：`Name`、`Study`、`Health`、`Rank`、`Merit`、`Status`、`Timers`、
-`Occupation`、**`MonthsInOffice`**。001 的「无写入通道」反射断言（`PersonTests`）随之更新。
+**可写属性由八个变十个**：`Name`、`Study`、`Health`、`Rank`、`Merit`、`Status`、`Timers`、
+`Occupation`、`MonthsInOffice`、**`EntryTrack`**。001 的「无写入通道」反射断言（`PersonTests`）随之更新。
+**`EntryTrack` 为什么落成状态、而不是每次从功名记录派生**：途径经入口确定后 MUST NOT 随功名记录变化
+——逻辑轨 ⑥ 的连坐降级会在待阙期内向历史追加一条降级记录（§7.4），若授官时重新派生，
+「一甲进士」会被改判成 `SpecialTribute`（授 L18 而非 L11）；若 ⑤ 补记一条「进士但 `Class == null`」
+的记录，派生还会在 ③-a 内部抛异常，破坏契约七 §7 的失败原子性。派生只发生在**入口**。
 **明确不含**：待阙月数（在 `Timers` 里）、甲第（在功名记录里）、`SalaryMode`（派生）、
 官名（规格书未定义，§17 禁止自创）。
 
@@ -121,14 +128,20 @@ public DegreeRecord(
 | `InitialMerchantCapitalGuan` | 商 300 / 其余 0（**入商本池，不入现金**） | §10.1、§5.2 |
 | `SpouseCount` | 恒 1 | §10.1（「夫妇」） |
 | `ChildCount` | 农 2 / 工 1 / 商 2 / 士 1 | §10.1、FR-003 |
-| `HeadAgeOffset` | 农/工/商 28±5、**士 30±5** | §10.1 |
-| `SpouseAge` | 25±5 | §10.1 |
-| `ChildAgeRange` | 0~8 | §10.1 |
-| `HeadStudy` | 士 **60**（常量）/ 其余 10~30 | §10.1 |
-| `HeadHealthRange` | 80~100 | §10.1 |
-| `ChildStudy` | 0（常量） | §10.1 |
-| `ChildHealthRange` | 90~100 | §10.1 |
+| `AgeSpread` / `HeadAgeMean`（内部） | ±5；农/工/商 28、**士 30** | §10.1 |
+| `HeadAgeMin` / `HeadAgeMax` | `HeadAgeMean ∓ AgeSpread`（农/工/商 23~33、士 25~35） | §10.1 |
+| `SpouseAgeMean` | 25 | §10.1 |
+| `ChildAgeMin` / `ChildAgeMax` | 0 / 8 | §10.1 |
+| `ScholarHeadStudy` | 士 **60**（常量） | §10.1 |
+| `CommonerHeadStudyMin` / `CommonerHeadStudyMax` | 10 / 30（其余出身） | §10.1 |
+| `HeadHealthMin` / `HeadHealthMax` | 80 / 100 | §10.1 |
+| `ChildStudyValue` | 0（常量） | §10.1 |
+| `ChildHealthMin` / `ChildHealthMax` | 90 / 100 | §10.1 |
 | `ScholarOriginHasJuRenRecord` | 士 = 是（开局带入一条举人记录，`Cause = Initial`） | §10.1、FR-008 |
+
+**取样入口**（`GameConfig.NewGame` 的转发名）：`NextHeadAge` / `NextSpouseAge` / `NextChildAge` /
+`NextHeadStudy` / `NextHeadHealth` / `NextChildHealth`（对外分别叫 `HeadAge` / `SpouseAge` /
+`ChildAge` / `HeadStudy` / `HeadHealth` / `ChildHealth`）；常量以 `ChildStudy` 转发。
 
 **不变量/说明**：所有区间一律「整数均匀、**含端点**」；`ScholarOriginHasJuRenRecord` 为真时
 MUST NOT 同时置 `Family.HasShiStatus`（§10.2、FR-008）。
@@ -220,8 +233,12 @@ public static SalaryMode Of(Person person);   // 只判态：无 Money / Origin 
 判定优先级（R-05）：`Rank != null && Retired → Retired`；`Rank != null → Active`；
 `Rank == null && AwaitingPost → AwaitingPost`；否则 `None`。
 **幂等性**：判定是**只读**的纯函数，不改任何状态；判定只读 `Rank` 与 `Status`，与年月无关——
-故**不收** `GameDate`（`Directory.Build.props` 开了 `TreatWarningsAsErrors` + `EnforceCodeStyleInBuild`，
-未使用的参数会顶到「0 警告」门禁）。
+故**不收** `GameDate`：入参只保留它真正读取的东西，以免调用方以为「三态随时点变化」。
+**这不是为了躲编译警告**（该理由曾写在本节，是错的）：仓库没有 `.editorconfig`，
+未使用形参（`IDE0060`）默认不是警告级，`Directory.Build.props` 的
+`TreatWarningsAsErrors` + `EnforceCodeStyleInBuild` 不会因未使用形参报错——
+反例是 `AppointmentEntry.Begin` 的 `track` 曾为未使用形参而构建仍 0 警告
+（该形参已按 §3.7 改为记入 `Person.EntryTrack`）。
 **明确不含**：金额与一切乘区。**半俸比例、难度收益系数与「士出身 ×1.05」的单点都在
 `IncomeCalculator`**（§3.11）——本类型 MUST NOT 出现 `Money` 参数、MUST NOT 返回已打折的金额
 （FR-021；契约七 §5 条款 3 的「不得累乘」）。
@@ -233,8 +250,10 @@ public static void BeginForImperialGraduate(Person person, GameDate date, IRando
 public static void Begin(Person person, AppointmentTrack track, GameDate date, IRandomService random);
 ```
 
-行为：校验（§4.3 的拒绝矩阵）→ `Next(6, 25)` 掷待阙月数 → 置 `AwaitingPost` 位与计时
-（**赋值次序**：先 `Timers`、后 `Status`，与 `Person` 的交叉校验方向一致）。
+行为：校验（§4.3 的拒绝矩阵）→ `Next(6, 25)` 掷待阙月数 → 置 `AwaitingPost` 位、待阙计时
+**与 `EntryTrack`**（**赋值次序**：先 `Status`、后 `Timers`、最后 `EntryTrack`，与 `Person` 的
+交叉校验方向一致：计时/途径非空 ⇒ 位为真，见 `implementation-notes.md` §2）。
+`Begin` 的 `track` 因而**必然被读取**：它是 ③-a 授官时初始官阶的唯一依据。
 **MUST NOT**：写官阶、写 `MonthsInOffice`、动账本、消耗除「待阙时长」以外的随机。
 **明确不含**：科举细节（解试/省试/殿试、免解、特奏名的触发与拒绝，逻辑轨 ⑤）。
 
@@ -251,7 +270,7 @@ public static CareerAdvanceResult Run(Family family, GameDate month, IRandomServ
 
 | 序 | 步骤 | 条件 | 随机 |
 | --- | --- | --- | --- |
-| ③-a | 待阙递减 → 递减到 0 的当月**授官**（写 `Rank`、`MonthsInOffice = 0`、清计时与状态位） | `AwaitingPost` ∧ 计口（未服刑） | 无 |
+| ③-a | 待阙递减 → 递减到 0 的当月**授官**（读 `Person.EntryTrack` 定初始官阶；写 `Rank`、`MonthsInOffice = 0`、清计时、途径与状态位） | `AwaitingPost` ∧ 计口（未服刑） | 无 |
 | ③-b | `Merit += 1`（钳制 `<= MeritMaximum`） | `SalaryMode == Active` | 无 |
 | ③-c | **致仕**：置 `Retired` 位 | `SalaryMode == Active` ∧ `AgeAt(month) >= RetirementAge` ∧ 未致仕 | 无 |
 | ③-d | `MonthsInOffice += 1`；命中 `>= 36` ⇒ 考课判定；判定后**重置为 0** | `SalaryMode == Active` ∧ `AgeAt(month) < RetirementAge` ∧ 未禁升 | 命中时 **1 次** `NextDouble()` |
@@ -367,7 +386,7 @@ public interface INameGenerator                       // Abstractions/
 | FR-001 新建存档入口（纯函数/可注入） | `Start/NewGameSetup` + `NewGameRequest`/`NewGameSetupResult` |
 | FR-002 四出身初始资产（三池不错池） | `OriginStartTable`（现金/商本/田宅）；§3.5 步骤 5 |
 | FR-003 家族成员构成 | `OriginStartTable.ChildCount` / `SpouseCount` |
-| FR-004 年龄与性别 | `OriginStartTable.HeadAgeOffset`/`SpouseAge`/`ChildAgeRange` + `NewGameSetup` |
+| FR-004 年龄与性别 | `OriginStartTable.HeadAgeMin`/`HeadAgeMax`/`SpouseAgeMean`/`ChildAgeMin`/`ChildAgeMax`（取样 `NextHeadAge`/`NextSpouseAge`/`NextChildAge`）+ `NewGameSetup` |
 | FR-005 属性初始化 | `AttributePolicy` + `OriginStartTable.{Head,Child}Study/Health` |
 | FR-006 天命寿数（出身无关、只 clamp 下界） | `AttributePolicy.NextLifespan`（取整 → clamp 下界 0，**不设上限**） |
 | FR-007 辈分/家主/婚姻/父母引用 | `Family.AddFoundingMember`/`AddChild`/`Marry`/`SetHead`（001 已交付，本特性只调用） |
@@ -398,10 +417,10 @@ public interface INameGenerator                       // Abstractions/
 
 ```text
 （无官职，进士）
-   │ AppointmentEntry.Begin*（掷 6~24；消耗 1 次 Next）
+   │ AppointmentEntry.Begin*（掷 6~24；消耗 1 次 Next；把 track 记入 Person.EntryTrack）
    ▼
 待阙 AwaitingPost（无俸）── 逐月剩余月数 −1 ──► 递减到 0 的当月
-   │                                              │ ③-a 授官
+   │                                              │ ③-a 授官（读 EntryTrack；清计时、途径与位）
    │                                              ▼
    │                                    在任 Active（全俸，MonthsInOffice 从 0 起算）
    │                                              │
@@ -412,10 +431,11 @@ public interface INameGenerator                       // Abstractions/
    └─────────────────────────────────────► 致仕 Retired（半俸，官阶保留）
 ```
 
-### 6.2 待阙计时（逐月，R-11）
+### 6.2 待阙计时与入仕途径（逐月，R-11）
 
 授官当月剩余月数 = 掷出的 `n`；此后每月 ③-a 递减 1；**递减到 0 的当月**授官
-（即「在任月数从 0 起算」与「待阙计时归零」在同一次结算里相邻发生）。
+（即「在任月数从 0 起算」与「待阙计时与途径清空」在同一次结算里相邻发生）。
+途径自入口写入起**只读**：待阙期内功名记录的任何变动（逻辑轨 ⑤/⑥）MUST NOT 改变已记录的途径。
 金额后果：授官当月起，当月**收入步**即按新官阶计全俸（FR-019）。
 
 ### 6.3 考课与在职计时（逐月，R-11）
