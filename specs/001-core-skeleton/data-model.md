@@ -74,6 +74,11 @@
 与一次降级都能被如实读出。举人被降为白身会追加一条 `Level = BaiShen` 的记录，这是
 **合法的历史条目**，与「尚无记录（出生即白身）」是两回事。
 
+**向后兼容扩展（2026-10-08，003）**：`DegreeRecord` 新增第 5 个**可选**成员
+`ImperialClass? imperialClass = null`（甲第：一甲 / 二甲 / 三甲），由
+`003-opening-assets-officialdom` 引入，见该特性 FR-014。既有**四参调用保持合法**；
+上表前四项的语义与不变量不变（一甲名次非空 ⇒ 甲第 = 一甲）。
+
 ### 1.6 `OfficialRank`（readonly record struct）
 
 包装 1~18 的级别（`Level`），**不表示「无官职」**——无官职由 `Person.Rank is null` 表达
