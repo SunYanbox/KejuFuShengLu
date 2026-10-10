@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Career;
 using KFL.Rules.Config;
 
 namespace KFL.Rules.Settlement;
@@ -11,13 +12,14 @@ namespace KFL.Rules.Settlement;
 /// </summary>
 /// <remarks>
 /// <para>
-/// **唯一的编排入口**（FR-020）：按契约三 §1 的六步顺序执行一次，**就地**推进传入的
+/// **唯一的编排入口**（FR-020）：按契约三 §1（003 后为契约七 §2 的七步）执行一次，**就地**推进传入的
 /// <see cref="GameState"/> 与 <see cref="GameState.CurrentDate"/>，并返回可断言的快照。
 /// </para>
 /// <list type="number">
 /// <item><description>提升待生效的难度 / 生活费档位并清空待生效位（R-09）。</description></item>
 /// <item><description>米价系数游走并 clamp（消耗 1 次 <see cref="IRandomService.NextDouble"/>，当月生效）。</description></item>
-/// <item><description>收入：1 月 roll 当年储蓄利率、12 月计息并入本金 + 工出身 bonus，再按 §6 各来源入账。</description></item>
+/// <item><description>官吏推进（003 新增；<c>OfficialCareerAdvance.Run</c>，按 <c>PersonId</c> 升序）。</description></item>
+/// <item><description>收入：1 月 roll 当年储蓄利率、12 月计息并入本金 + 工出身 bonus，再按 §6 各来源入账（俸禄按三态）。</description></item>
 /// <item><description>生活费：足额或部分支付 + 饥馑四阶段状态机（先解除、后升级；R-12）。</description></item>
 /// <item><description>贷款：**先计息、后划扣**（E-05；US2 已接入）。</description></item>
 /// <item><description><see cref="GameState.AdvanceMonth"/> 并返回快照。</description></item>
@@ -76,8 +78,12 @@ public sealed class MonthlySettlementEngine
         var grainAfter = GrainPricePolicy.Walk(grainBefore, _randomService.NextDouble());
         economy.GrainPriceIndex = new GrainPriceIndex(grainAfter);
 
-        // ③ 收入：先处理年度项（1 月的储蓄利率 roll），再按 §6 各来源入账。
-        //    随机消费次序在此被钉住：米价（②）→ 储蓄利率（仅 1 月，③）→ 贷款计息利率（⑤）。
+        // ③ 官吏推进（**必须在收入之前**，FR-019）：当月授官者当月起领俸、当月满 70 岁者当月即按半俸计。
+        //    随机消费次序在此被钉住：米价（②）→ 考课掷骰（③-d，逐人升序）→ 储蓄利率（仅 1 月）→ 计息利率。
+        var career = OfficialCareerAdvance.Run(state.Family, month, _randomService);
+
+        // ④ 收入：先处理年度项（1 月的储蓄利率 roll），再按 §6 各来源入账。
+        //    随机消费次序在此被钉住：米价（②）→ 考课掷骰（③）→ 储蓄利率（仅 1 月，④）→ 贷款计息利率（⑥）。
         if (month.Month == SavingsRollMonth)
         {
             var rolledRate = SavingsSettlement.RollRate(_randomService);
@@ -100,7 +106,7 @@ public sealed class MonthlySettlementEngine
         // 本月的年度收入合计（储蓄利息 + 工出身 bonus），计入净利润但不乘同一套系数。
         var annualIncome = Money.Zero;
 
-        // ③-a 12 月末：利息 = 当时储蓄本金 × 当年利率，**并入储蓄本金**（复利）。
+        // ④-a 12 月末：利息 = 当时储蓄本金 × 当年利率，**并入储蓄本金**（复利）。
         //      **MUST NOT** 乘难度收益系数（FR-012「储蓄利息除外」）。
         var savingsInterest = Money.Zero;
 
@@ -116,7 +122,7 @@ public sealed class MonthlySettlementEngine
             }
         }
 
-        // ③-b 12 月末工出身 bonus：基数 = 现金 + 储蓄 + 田宅铺市值 − 本金 − 欠息（**不含商本池**），
+        // ④-b 12 月末工出身 bonus：基数 = 现金 + 储蓄 + 田宅铺市值 − 本金 − 欠息（**不含商本池**），
         //      为**正**才发，且**乘**难度收益系数（§5.2「储蓄利息除外」的反面）。
         var artisanBonus = Money.Zero;
 
@@ -138,7 +144,7 @@ public sealed class MonthlySettlementEngine
             }
         }
 
-        // ④ 生活费 + 饥馑状态机：应付额按**月初**阶段算（转入当月的应付额已按饥馑阶段算出），
+        // ⑤ 生活费 + 饥馑状态机：应付额按**月初**阶段算（转入当月的应付额已按饥馑阶段算出），
         //    再交 FamineController 判定「先解除、后升级」（Tick 在足额判定之前，E-14）。
         //    可付额 = 现金 + 储蓄，MUST NOT 含商本（R-05）。
         var counted = CountedMembers.Counted(state.Family);
@@ -171,12 +177,12 @@ public sealed class MonthlySettlementEngine
         // （E-04 与契约三 §7 的口径；不含划扣本身、不含资产买卖的现金流）。
         var netProfit = income.Total + annualIncome - paid;
 
-        // ⑤ 贷款：**先计息、后划扣**（E-05）。
+        // ⑥ 贷款：**先计息、后划扣**（E-05）。
         var (interestAccrued, loanRepayment) = SettleLoan(economy, state, month, netProfit);
 
         var famineAfter = new FamineState(economy.Famine);
 
-        // ⑥ 推进时间并返回快照。
+        // ⑦ 推进时间并返回快照。
         state.AdvanceMonth();
 
         return new SettlementResult
@@ -198,6 +204,7 @@ public sealed class MonthlySettlementEngine
             Entries = Slice(economy.Ledger.Entries, firstEntryIndex),
             TreasuryPoolBefore = poolBefore,
             TreasuryPoolAfter = economy.TreasuryPool,
+            Career = career,
         };
     }
 
@@ -217,9 +224,7 @@ public sealed class MonthlySettlementEngine
         }
     }
 
-    /// <summary>
-    /// 第⑤步：**先计息、后划扣**（E-05；契约三 §7）。
-    /// </summary>
+    /// <summary>第⑥步：**先计息、后划扣**（E-05；契约三 §7）。</summary>
     /// <remarks>
     /// <para>
     /// **计时按自然月推进**：先 +1、再比阈值（与 E-14 的饥馑计时同口径），故新建贷款在

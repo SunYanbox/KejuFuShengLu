@@ -1,6 +1,8 @@
+using KFL.Core.Config;
 using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
+using KFL.Infrastructure.Abstractions;
 
 namespace KFL.Rules.Config;
 
@@ -287,5 +289,155 @@ public static class GameConfig
         /// <summary>按身份与出身取划扣比例。</summary>
         public static decimal RepaymentRatio(bool hasShiStatus, Origin origin) =>
             LoanPolicy.RepaymentRatio(hasShiStatus, origin);
+    }
+
+    /// <summary>四出身开局表（§10.1、§5.3；003）：初始资产、成员构成、年龄与属性口径（只转发）。</summary>
+    public static class NewGame
+    {
+        /// <summary>配偶人数。</summary>
+        public static int SpouseCount => OriginStartTable.SpouseCount;
+
+        /// <summary>孩子人数。</summary>
+        public static int ChildCount(Origin origin) => OriginStartTable.ChildCount(origin);
+
+        /// <summary>初始现金（贯）。</summary>
+        public static decimal InitialCashGuan(Origin origin) => OriginStartTable.InitialCashGuan(origin);
+
+        /// <summary>初始田（亩）。</summary>
+        public static int InitialFarmlandMu(Origin origin) => OriginStartTable.InitialFarmlandMu(origin);
+
+        /// <summary>初始农村宅（座）。</summary>
+        public static int InitialRuralHouses(Origin origin) => OriginStartTable.InitialRuralHouses(origin);
+
+        /// <summary>初始城市宅（座）。</summary>
+        public static int InitialUrbanHouses(Origin origin) => OriginStartTable.InitialUrbanHouses(origin);
+
+        /// <summary>初始商本（贯，入商本池）。</summary>
+        public static decimal InitialMerchantCapitalGuan(Origin origin) =>
+            OriginStartTable.InitialMerchantCapitalGuan(origin);
+
+        /// <summary>家主年龄（整数均匀、含端点）。</summary>
+        public static int HeadAge(Origin origin, IRandomService random) =>
+            OriginStartTable.NextHeadAge(origin, random);
+
+        /// <summary>配偶年龄（整数均匀、含端点）。</summary>
+        public static int SpouseAge(IRandomService random) => OriginStartTable.NextSpouseAge(random);
+
+        /// <summary>孩子年龄（整数均匀、含端点）。</summary>
+        public static int ChildAge(IRandomService random) => OriginStartTable.NextChildAge(random);
+
+        /// <summary>家主学业（士为常量、不掷骰）。</summary>
+        public static int HeadStudy(Origin origin, IRandomService random) =>
+            OriginStartTable.NextHeadStudy(origin, random);
+
+        /// <summary>家主体质（整数均匀、含端点）。</summary>
+        public static int HeadHealth(IRandomService random) => OriginStartTable.NextHeadHealth(random);
+
+        /// <summary>孩子学业（常量 0、不掷骰）。</summary>
+        public static int ChildStudy => OriginStartTable.ChildStudyValue;
+
+        /// <summary>孩子体质（整数均匀、含端点）。</summary>
+        public static int ChildHealth(IRandomService random) => OriginStartTable.NextChildHealth(random);
+
+        /// <summary>该出身是否带入一条「举人 / Initial」功名记录。</summary>
+        public static bool ScholarOriginHasJuRenRecord(Origin origin) =>
+            OriginStartTable.ScholarOriginHasJuRenRecord(origin);
+    }
+
+    /// <summary>属性分布（§4.1、§4.2；003）：四项属性与天命寿数的分布参数、值域与取样（只转发）。</summary>
+    public static class Attributes
+    {
+        /// <summary>天赋正态均值。</summary>
+        public static decimal TalentMean => AttributePolicy.TalentMean;
+
+        /// <summary>天赋正态标准差。</summary>
+        public static decimal TalentSigma => AttributePolicy.TalentSigma;
+
+        /// <summary>学业正态均值（无父母参照者）。</summary>
+        public static decimal StudyMean => AttributePolicy.StudyMean;
+
+        /// <summary>学业正态标准差。</summary>
+        public static decimal StudySigma => AttributePolicy.StudySigma;
+
+        /// <summary>体质正态均值（无父母参照者）。</summary>
+        public static decimal HealthMean => AttributePolicy.HealthMean;
+
+        /// <summary>体质正态标准差。</summary>
+        public static decimal HealthSigma => AttributePolicy.HealthSigma;
+
+        /// <summary>属性值域下界（实体自不变量）。</summary>
+        public static int Min => AttributeLimits.Min;
+
+        /// <summary>属性值域上界（实体自不变量）。</summary>
+        public static int Max => AttributeLimits.Max;
+
+        /// <summary>天命寿数均值。</summary>
+        public static decimal LifespanMean(Gender gender) =>
+            gender == Gender.Male ? AttributePolicy.LifespanMeanMale : AttributePolicy.LifespanMeanFemale;
+
+        /// <summary>天命寿数标准差。</summary>
+        public static decimal LifespanSigma(Gender gender) =>
+            gender == Gender.Male ? AttributePolicy.LifespanSigmaMale : AttributePolicy.LifespanSigmaFemale;
+
+        /// <summary>标准正态取样（Box–Muller，恰好消耗 2 次 <c>NextDouble</c>）。</summary>
+        public static double NextNormal(decimal mean, decimal sigma, IRandomService random) =>
+            AttributePolicy.NextNormal((double)mean, (double)sigma, random);
+
+        /// <summary>天赋取样（取整 + clamp 0~100）。</summary>
+        public static int NextTalent(IRandomService random) => AttributePolicy.NextTalent(random);
+
+        /// <summary>学业取样（取整 + clamp 0~100）。</summary>
+        public static int NextStudy(IRandomService random) => AttributePolicy.NextStudy(random);
+
+        /// <summary>体质取样（取整 + clamp 0~100）。</summary>
+        public static int NextHealth(IRandomService random) => AttributePolicy.NextHealth(random);
+
+        /// <summary>天命寿数取样（只 clamp 下界，无上限）。</summary>
+        public static int NextLifespan(Gender gender, IRandomService random) =>
+            AttributePolicy.NextLifespan(gender, random);
+    }
+
+    /// <summary>官吏政策（§8.2；003）：待阙、授官、政绩、考课、致仕与半俸（只转发）。</summary>
+    public static class Career
+    {
+        /// <summary>待阙剩余月数下界（含）。</summary>
+        public static int AwaitingPostMinMonths => OfficialCareerPolicy.AwaitingPostMinMonths;
+
+        /// <summary>待阙剩余月数上界（含）。</summary>
+        public static int AwaitingPostMaxMonths => OfficialCareerPolicy.AwaitingPostMaxMonths;
+
+        /// <summary>政绩月增。</summary>
+        public static int MeritPerMonth => OfficialCareerPolicy.MeritPerMonth;
+
+        /// <summary>政绩上限。</summary>
+        public static int MeritMaximum => OfficialCareerPolicy.MeritMaximum;
+
+        /// <summary>考课周期（在职月数）。</summary>
+        public static int AppraisalPeriodMonths => OfficialCareerPolicy.AppraisalPeriodMonths;
+
+        /// <summary>考课基础升级概率。</summary>
+        public static decimal PromotionBaseChance => OfficialCareerPolicy.PromotionBaseChance;
+
+        /// <summary>每点政绩的升级概率加成。</summary>
+        public static decimal PromotionChancePerMerit => OfficialCareerPolicy.PromotionChancePerMerit;
+
+        /// <summary>升级概率封顶。</summary>
+        public static decimal PromotionChanceCap => OfficialCareerPolicy.PromotionChanceCap;
+
+        /// <summary>致仕年龄。</summary>
+        public static int RetirementAge => OfficialCareerPolicy.RetirementAge;
+
+        /// <summary>致仕后的俸禄比例（半俸）。</summary>
+        public static decimal RetirementSalaryRatio => OfficialCareerPolicy.RetirementSalaryRatio;
+
+        /// <summary>入仕途径 → 初始官阶级数。</summary>
+        public static int InitialRankOf(AppointmentTrack track) => OfficialCareerPolicy.InitialRankOf(track);
+
+        /// <summary>考课升级概率。</summary>
+        public static decimal PromotionChance(int merit) => OfficialCareerPolicy.PromotionChance(merit);
+
+        /// <summary>掷一次待阙时长（整数均匀、含端点）。</summary>
+        public static int NextAwaitingPostMonths(IRandomService random) =>
+            OfficialCareerPolicy.NextAwaitingPostMonths(random);
     }
 }

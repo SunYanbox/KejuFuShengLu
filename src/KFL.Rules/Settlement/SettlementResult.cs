@@ -1,6 +1,7 @@
 using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
+using KFL.Rules.Career;
 
 namespace KFL.Rules.Settlement;
 
@@ -96,4 +97,10 @@ public sealed record SettlementResult
 
     /// <summary>本次结算**结束后**的资金池，供 SC-005 直接断言。</summary>
     public required Money TreasuryPoolAfter { get; init; }
+
+    /// <summary>
+    /// 本次结算**第③步（官吏推进）**的增量快照（授官 / 政绩 / 晋升 / 致仕 / 禁升跳过 / 服刑暂停 / 三态）。
+    /// 它是增量、不是第二真源（契约七 §9）。
+    /// </summary>
+    public required CareerAdvanceResult Career { get; init; }
 }
