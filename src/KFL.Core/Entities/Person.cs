@@ -13,7 +13,7 @@ namespace KFL.Core.Entities;
 /// **写入通道只有两类**（data-model §2.1 不变量 2）：<see cref="Person"/> 自持的可写属性只有
 /// <see cref="Name"/>、<see cref="Study"/>、<see cref="Health"/>、<see cref="Rank"/>、
 /// <see cref="Merit"/>、<see cref="Status"/>、<see cref="Timers"/>、<see cref="Occupation"/>、
-/// <see cref="MonthsInOffice"/>；
+/// <see cref="MonthsInOffice"/>、<see cref="EntryTrack"/>；
 /// 跨实体引用（配偶、父母、辈分）的唯一入口是 <see cref="Family"/>——因此
 /// <see cref="SpouseId"/>、<see cref="FormerSpouseIds"/>、<see cref="Generation"/> 在这里
 /// 只有只读属性，没有公开 setter。
@@ -37,6 +37,7 @@ public sealed class Person
     private int _health;
     private int _merit;
     private int _monthsInOffice;
+    private AppointmentTrack? _entryTrack;
     private PersonId? _spouseId;
     private StatusFlag _status;
     private StatusTimers _timers;
@@ -191,7 +192,9 @@ public sealed class Person
     }
 
     /// <summary>状态标记，九位可并存（规格书 §4.1、§7.5）。</summary>
-    /// <exception cref="ArgumentException">清除某个状态位时，对应的计时字段仍非空。</exception>
+    /// <exception cref="ArgumentException">
+    /// 清除某个状态位时，对应的计时字段或（<c>AwaitingPost</c> 的）入仕途径仍非空。
+    /// </exception>
     public StatusFlag Status
     {
         get => _status;
@@ -201,6 +204,7 @@ public sealed class Person
             EnsureStatusFlagBacksTimers(value, StatusFlag.ExamBanned, _timers.ExamBanRemainingMonths, nameof(value));
             EnsureStatusFlagBacksTimers(value, StatusFlag.PromotionBanned, _timers.PromotionBanRemainingMonths, nameof(value));
             EnsureStatusFlagBacksTimers(value, StatusFlag.AwaitingPost, _timers.AwaitingPostRemainingMonths, nameof(value));
+            EnsureStatusFlagBacksEntryTrack(value, _entryTrack, nameof(value));
             _status = value;
         }
     }
@@ -244,6 +248,39 @@ public sealed class Person
             }
 
             _monthsInOffice = value;
+        }
+    }
+
+    /// <summary>
+    /// 入仕途径（待阙期间记录）：<c>null</c> = 不在待阙、无可授官的途径。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 它由「及第入仕」入口在置入待阙时**写入一次**，是授官时初始官阶的**唯一来源**
+    /// （契约七 §3 条款 6：初始官阶 MUST 按 track 映射）。待阙期满授官时与
+    /// <see cref="Timers"/> 的待阙计时一并清空——故它的生命周期与「待阙」严格相同。
+    /// </para>
+    /// <para>
+    /// **为何落成状态而不是每次从 <see cref="DegreeHistory"/> 派生**：途径一旦确定就不应随
+    /// 功名记录变化——逻辑轨 ⑥ 的连坐降级会在待阙期内向历史追加一条降级记录（§7.4），
+    /// 若在授官时重新派生，一甲进士会被改判成 <c>SpecialTribute</c>。派生只发生在入口
+    /// （<c>KFL.Rules/Career/AppointmentEntry.TrackOf</c>）。
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentException"><paramref name="value"/> 非 <c>null</c>，但「待阙」状态位为假。</exception>
+    public AppointmentTrack? EntryTrack
+    {
+        get => _entryTrack;
+        set
+        {
+            if (value is not null && !_status.HasFlag(StatusFlag.AwaitingPost))
+            {
+                throw new ArgumentException(
+                    "入仕途径仅在「AwaitingPost」状态位为真时可非空（data-model §2.1 不变量 5）。",
+                    nameof(value));
+            }
+
+            _entryTrack = value;
         }
     }
 
@@ -344,6 +381,16 @@ public sealed class Person
         {
             throw new ArgumentException(
                 $"计时字段仅在「{flag}」状态位为真时可非空（data-model §2.1 不变量 4）。", paramName);
+        }
+    }
+
+    private static void EnsureStatusFlagBacksEntryTrack(
+        StatusFlag status, AppointmentTrack? entryTrack, string paramName)
+    {
+        if (!status.HasFlag(StatusFlag.AwaitingPost) && entryTrack is not null)
+        {
+            throw new ArgumentException(
+                "清除「AwaitingPost」状态位前 MUST 先把入仕途径置空（data-model §2.1 不变量 5）。", paramName);
         }
     }
 }
