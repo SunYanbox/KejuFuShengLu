@@ -1,6 +1,7 @@
 using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
+using KFL.Rules.Career;
 using KFL.Rules.Config;
 
 namespace KFL.Rules.Settlement;
@@ -222,7 +223,10 @@ public static class IncomeCalculator
         Add(lines, LedgerCategory.TradeIncome, chosen.Id, guan);
     }
 
-    /// <summary>官俸：`年俸 ÷ 12 × 收益系数`，士出身当官再 ×1.05。</summary>
+    /// <summary>
+    /// 官俸：按**三态**发——在任全俸、致仕半俸（<c>× RetirementSalaryRatio</c>）、待阙与无官**不发**。
+    /// 算式 `年俸 ÷ 12 × 收益系数 ×（士出身 ×1.05） × 三态系数`；半俸的 50% **只在此处乘一次**。
+    /// </summary>
     private static void AddSalaries(
         List<IncomeLine> lines,
         IReadOnlyList<Person> counted,
@@ -238,7 +242,21 @@ public static class IncomeCalculator
                 continue;
             }
 
-            var guan = SalaryTable.MonthlySalaryGuan(rank.Level) * originMultiplier * revenue;
+            var mode = SalaryModePolicy.Of(person);
+
+            // 待阙与无官 MUST NOT 落 0 金额条目（资金类条目金额 MUST 非 0）。
+            // 半俸比例只能在这里施加一次：SalaryModePolicy MUST NOT 返回已打折的金额，
+            // 否则 50% → 25%（契约七 §5 条款 3 的「不得累乘」）。
+            if (mode is not (SalaryMode.Active or SalaryMode.Retired))
+            {
+                continue;
+            }
+
+            var coefficient = mode == SalaryMode.Retired
+                ? OfficialCareerPolicy.RetirementSalaryRatio
+                : 1m;
+
+            var guan = SalaryTable.MonthlySalaryGuan(rank.Level) * originMultiplier * revenue * coefficient;
             Add(lines, LedgerCategory.OfficialSalary, person.Id, guan);
         }
     }
