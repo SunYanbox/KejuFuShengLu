@@ -20,6 +20,13 @@ namespace KFL.Infrastructure.Services;
 /// （Box–Muller），Bogus 只负责姓名。本类也 MUST NOT 出现任何游戏数值。
 /// </para>
 /// <para>
+/// <b>构造期消耗一次 <see cref="IRandomService.Next"/>（契约六 §3 的注记）</b>：种子取自注入的
+/// 随机来源，故「同一个 <see cref="IRandomService"/> 既交给本类、又交给
+/// <c>NewGameSetup.Create</c>」会让后者的消费整体后移一个槽位——**仍然确定**，
+/// 但不再是「该流的第 1 次调用」。两者 MUST 各自持有独立的随机来源（产品默认的
+/// <c>SongStyleNameGenerator</c> 构造期不消耗随机，故默认路径不受影响）。
+/// </para>
+/// <para>
 /// 「两个实例交替取值互不干扰」由 T013a 的断言侧证：局部随机器不再是共享全局状态。
 /// </para>
 /// </remarks>
