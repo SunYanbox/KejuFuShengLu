@@ -93,7 +93,8 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
   概率 = `min(25% + 政绩 × 0.3%, 70%)`（用固定取值的随机替身逐点断言）；
   成功级数 −1、失败不变、L1 时成功仍维持 L1。
 - 禁升期成员到期时 MUST **跳过**判定（不消耗随机、不升迁），且 MUST NOT 补判。
-- 边界断言：`Merit = 100` 时概率 55%（规格书的封顶 70% 在 0~100 区间内不可达，故以边界值断言）。
+- 边界断言：`Merit = 100` 时概率 55%；`PromotionChance(200)` MUST 返回封顶
+  `PromotionChanceCap` = 0.70（封顶分支用**超出政绩区间**的入参直接断言，MUST NOT 以「不可达」为由省略）。
 
 ### S5 致仕与半俸（US4、SC-007）
 
