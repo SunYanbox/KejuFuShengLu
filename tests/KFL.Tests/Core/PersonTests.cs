@@ -31,7 +31,7 @@ public class PersonTests
         "CurrentPlacement",
     };
 
-    /// <summary><see cref="Person"/> 自持的可写属性，只有这八个。</summary>
+    /// <summary><see cref="Person"/> 自持的可写属性，只有这九个。</summary>
     public static TheoryData<string> WritableMembers => new()
     {
         "Name",
@@ -42,6 +42,7 @@ public class PersonTests
         "Status",
         "Timers",
         "Occupation",
+        "MonthsInOffice",
     };
 
     [Fact]
@@ -108,6 +109,7 @@ public class PersonTests
         person.Status = StatusFlag.Retired;
         person.Timers = default;
         person.Occupation = Occupation.Farming;
+        person.MonthsInOffice = 3;
 
         Assert.Equal("改名", person.Name);
         Assert.Equal(37, person.Study);
@@ -116,6 +118,19 @@ public class PersonTests
         Assert.Equal(12, person.Merit);
         Assert.Equal(StatusFlag.Retired, person.Status);
         Assert.Equal(Occupation.Farming, person.Occupation);
+        Assert.Equal(3, person.MonthsInOffice);
+    }
+
+    [Fact]
+    public void 在职月数默认零且赋负值被拒()
+    {
+        var person = FamilyFixtures.NewPerson(502, "官员", Gender.Male, 1, 1, generation: 0);
+
+        Assert.Equal(0, person.MonthsInOffice);
+        Assert.Throws<ArgumentOutOfRangeException>(() => person.MonthsInOffice = -1);
+
+        person.MonthsInOffice = 0;
+        Assert.Equal(0, person.MonthsInOffice);
     }
 
     [Theory]
@@ -207,7 +222,11 @@ public class PersonTests
         Assert.Equal(DegreeLevel.GongShi, person.CurrentDegree);
 
         person.AppendDegree(new DegreeRecord(
-            DegreeLevel.JinShi, ImperialPlacement.ZhuangYuan, new GameDate(16, 1), DegreeChangeCause.ExamPass));
+            DegreeLevel.JinShi,
+            ImperialPlacement.ZhuangYuan,
+            new GameDate(16, 1),
+            DegreeChangeCause.ExamPass,
+            ImperialClass.FirstClass));
         Assert.Equal(DegreeLevel.JinShi, person.CurrentDegree);
         Assert.Equal(ImperialPlacement.ZhuangYuan, person.CurrentPlacement.GetValueOrDefault());
 
@@ -296,5 +315,10 @@ public class PersonTests
         Assert.DoesNotContain("ChildIds", properties);
         Assert.DoesNotContain("IsShiIdentity", properties);
         Assert.DoesNotContain("Origin", properties);
+
+        // 003 新增的三态与甲第都是**派生量**，MUST NOT 落成 Person 的字段/属性。
+        Assert.DoesNotContain("SalaryMode", properties);
+        Assert.DoesNotContain("ImperialClass", properties);
+        Assert.DoesNotContain("AwaitingPostRemainingMonths", properties);
     }
 }
