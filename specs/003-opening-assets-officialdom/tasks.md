@@ -358,13 +358,74 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 - [X] T052 回写 `spec.md`（Key Entities 与 FR-012/FR-013/FR-014/FR-015）：补 `Person.EntryTrack`——入仕途径由**入口写入**、授官**只读**它、与待阙状态位/计时**同生同灭**，MUST NOT 在授官时从功名记录重新派生；并把不存在的类型名 `OfficialCareer` 改为 `OfficialCareerPolicy`/`OfficialCareerAdvance` per 契约七 §1/§3/§5 + PR #4 复审 §1（T046）(contradicts) —— **本次审计已完成**
 - [X] T053 回写 `spec.md` 的 Status：`Draft` → Completed（T001~T052 全部完成） per tasks.md 52/52 + `implementation-notes.md` 门禁实测 (partial) —— **已完成**
 - [X] T054 复核历史记录类条目（M20/T029 的赋值次序、L19/T020 的成员名、L21 的 `tasks.md` 部分、L25 `implementation-notes.md` 的定位、L27/T001 的分支名）：确认为**当时记录**或**规划期写法**，按规格书 §16.2 不回改，不产生文件改动 per 规格书 §16.2 (unrequested) —— **复核完毕，无需改动**
-- [ ] T055 修 `plan.md:148` 与 `research.md` R-02：甲第相容性不变量「**三条**」→「**四条**」（同处表列已是 ①~④） per `data-model.md` §1.5 + T007 + `DegreeRecord.cs` (contradicts)
-- [ ] T056 修 `plan.md:254-258` 的「下一步」：`tasks.md` 已生成且实现已交付，改为已完成并指向 `implementation-notes.md` per `plan.md` (partial)
-- [ ] T057 修 `plan.md` 的 Scale/Scope 与结构树：类型/文件计数按现状回写（`KFL.Rules` 约 8 个类型、`KFL.Core` 5 个文件），补漏列的 `Career/CareerAdvanceResult.cs` per T030 + 实际目录 (missing)
-- [ ] T058 统一 `contracts/config-registry.md` 等 6 处的「三态/两态」口径冲突（同一句既称「三态下复核」又给测试名「两态下复核」） per 契约七 §5 + `SalaryModeTests` (contradicts)
-- [ ] T059 修 `data-model.md:276` 的 ③-d 行条件列（「∧ 未禁升」与「禁升则跳过并重置计时」相反） per 契约七 §4 条款 7 + `OfficialCareerAdvance` (contradicts)
-- [ ] T060 修 `research.md` R-17 与 `tasks.md:83` 引用的夹具签名（漏 `index`/`level` 等必填参数） per `RulesTestHarness` 实际签名 (missing)
-- [ ] T061 修 `plan.md:246` 引用的 001 时代测试名（`DegreeRecord四个成员均为必需`、`GameDate拒绝非法年份` 均已由 T014 改名/改述） per T014 + `ValueObjectTests` (partial)
-- [ ] T062 修 `research.md` 的过时清单：R-09 把 Bogus 适配器列为「实现期自证」、R-18 称「只剩三项」——均已完成（`BogusNameGenerator` + T002/T003/T010） per 实现 + `NameGeneratorTests` (partial)
-- [ ] T063 统一 `spec.md` FR-009 与 `plan.md`/`data-model.md`/`research.md` 的姓名来源口径（「Bogus 为主、内置兜底」vs「内置为产品默认」） per 契约二 §3 的「产品默认实现」 (contradicts)
+- [X] T055 修 `plan.md:148` 与 `research.md` R-02：甲第相容性不变量「**三条**」→「**四条**」（同处表列已是 ①~④） per `data-model.md` §1.5 + T007 + `DegreeRecord.cs` (contradicts)
+- [X] T056 修 `plan.md:254-258` 的「下一步」：`tasks.md` 已生成且实现已交付，改为已完成并指向 `implementation-notes.md` per `plan.md` (partial)
+- [X] T057 修 `plan.md` 的 Scale/Scope 与结构树：类型/文件计数按现状回写（`KFL.Rules` 约 8 个类型、`KFL.Core` 5 个文件），补漏列的 `Career/CareerAdvanceResult.cs` per T030 + 实际目录 (missing)
+- [X] T058 统一 `contracts/config-registry.md` 等 6 处的「三态/两态」口径冲突（同一句既称「三态下复核」又给测试名「两态下复核」） per 契约七 §5 + `SalaryModeTests` (contradicts)
+- [X] T059 修 `data-model.md:276` 的 ③-d 行条件列（「∧ 未禁升」与「禁升则跳过并重置计时」相反） per 契约七 §4 条款 7 + `OfficialCareerAdvance` (contradicts)
+- [X] T060 修 `research.md` R-17 与 `tasks.md:83` 引用的夹具签名（漏 `index`/`level` 等必填参数） per `RulesTestHarness` 实际签名 (missing)
+- [X] T061 修 `plan.md:246` 引用的 001 时代测试名（`DegreeRecord四个成员均为必需`、`GameDate拒绝非法年份` 均已由 T014 改名/改述） per T014 + `ValueObjectTests` (partial)
+- [X] T062 修 `research.md` 的过时清单：R-09 把 Bogus 适配器列为「实现期自证」、R-18 称「只剩三项」——均已完成（`BogusNameGenerator` + T002/T003/T010） per 实现 + `NameGeneratorTests` (partial)
+- [X] T063 统一 `spec.md` FR-009 与 `plan.md`/`data-model.md`/`research.md` 的姓名来源口径（「Bogus 为主、内置兜底」vs「内置为产品默认」） per 契约二 §3 的「产品默认实现」 (contradicts)
+
+---
+
+## Phase 10: Convergence（`$speckit-converge`，2026-10-10）
+
+> 本节由 `$speckit-converge` 对 003 的 `spec.md` / `plan.md` / `tasks.md` / Constitution 与当前代码
+> 逐条复核后追加：共 13 条发现（中 2 / 低 11），全部**未改动、未重排、未重编号**既有条目
+> （T001~T063 一律保持原样）。其中 9 条（T068~T076）是 Phase 9 已登记但**仍未落地**的
+> T055~T063 的重登记（同源、不同 ID，按本命令的 append-only 契约不得复用旧 ID）；另 4 条
+> （T064~T067）为本次复核**新发现**。门禁实测（`-m:1 -nodeReuse:false` +
+> `-p:_MSTestEnableParentProcessQuery=false`）：构建 0 警告 0 错误、测试 **421 通过 / 0 失败 /
+> 0 skipped**、`.slnx` 恰好六个工程、无 `.sln` 共存；工作树干净。**不含代码缺陷**——
+> 全部发现都在活工件与「声称被守卫覆盖但其实没有」的一类上。
+
+- [X] T064 裁决并回写 `spec.md` FR-019 的 ④ 条件括号「未禁升者」，消除与 FR-018 的口径冲突：FR-019 把「未禁升」列为 **④ 整步**的条件，而 FR-018「跳过**到期的那次**考课判定」、US3/AC3「跳过之后 MUST **重新开始 36 个月计时**」、Assumptions「按『跳过判定』而非『暂存判定』处理」与契约七 §4 条款 6/7（「判定结束后（成功、失败、或因禁升被跳过）在职月数 MUST 重置为 0」）都要求禁升期内**计时照常 +1、命中 36 时只跳过掷骰/升迁再重置**；实现 `OfficialCareerAdvance.AdvanceOfficeTimer` 按后者执行（`OfficialCareerAdvance.cs:177` 先 `MonthsInOffice += 1`，`:184` 才判 `PromotionBanned`）。请经规格书 §17 裁决后回写 spec.md FR-019 与规格书 §8.2（`data-model.md:276` 的同款措辞归 T072）per FR-018 + US3/AC3 + 契约七 §4 条款 6/7 + `OfficialCareerAdvance` (contradicts)
+- [X] T065 落实 001 `contracts/injection-seams.md` §3「规则层依赖」行的 MUST 并订正其不实的覆盖声明：该行称「`KFL.Rules` 的源码文本 MUST NOT 出现 `Bogus` 类型（含 `Bogus` 命名空间与类型名，**由架构守卫覆盖**）」，但 `ArchitectureRules.ForbiddenEnvironmentTokens` 只有 **14** 个 token（无 `Bogus`，见 `ArchitectureRules.cs:72`）且契约一 §2.1 明令该清单 MUST NOT 增删改；G-05 只读 `ProjectReference`、不读 `PackageReference`（`ArchitectureRules.cs:360`），故该 MUST 目前仅靠「`KFL.Rules.csproj` 未引用 Bogus 包」间接成立，**没有任何守卫断言**；`tests/KFL.Tests/Infrastructure/NameGeneratorTests.cs:18` 的「由架构守卫（G-07 的扫描 + 依赖方向 G-05）覆盖」同款不成立。二选一：① 增一条独立判据（`KFL.Core`/`KFL.Rules` 的源码文本与 `PackageReference` 均不得出现 Bogus），并同步契约一 §2.1/§4 的清单与用例表、`NameGeneratorTests.cs:18`——注意 `src/KFL.Rules/Config/AttributePolicy.cs:14` 的注释含「Bogus」字样，G-07 不做注释剥离、会命中，须一并改述；或 ② 把两处「由架构守卫覆盖」改为「由 `KFL.Rules.csproj` 的依赖边保证」。per 001 契约二 §3 + 章程原则 II/IV（MUST 可核验） (contradicts)
+- [X] T066 修 002 `contracts/config-registry.md` §6「开局年龄口径」行指向的符号：`OriginStartTable.HeadAgeMean` 是 **private**（`OriginStartTable.cs:171`），核对链在该符号处断（003 契约八 §1 已用公开的 `HeadAgeMin(origin)`/`HeadAgeMax(origin)`）；改为 `OriginStartTable.AgeSpread` / `HeadAgeMin(origin)` / `HeadAgeMax(origin)` / `SpouseAgeMean` / `ChildAgeMin`·`ChildAgeMax` per T049 + 003 契约八 §1 + `OriginStartTable` (partial)
+- [X] T067 修 `quickstart.md` §6 的过时测试名与将来时叙述：所引 `ValueObjectTests.GameDate拒绝非法年份`、`DegreeRecord四个成员均为必需` 已由 T014 改名为 `GameDate拒绝非法月份`/`GameDate接受前史纪年` 与 `DegreeRecord五个成员其中甲第可选`（`ValueObjectTests.cs:27/42/163`）；§6 又以「落地时必须同步提交」的将来时描述 T002/T003/T004/T013/T014~T019 早已完成的回写。改为「已同步（含当前测试名）」或按 T056 的口径指向 `implementation-notes.md` per T014 + `ValueObjectTests` + T002/T003/T004 (contradicts)
+- [X] T068 【T055 重登记】修 `plan.md:148` 与 `research.md` R-02（标题 `research.md:41` 与正文 `:48` 两处）的「**三条**相容性不变量」→「**四条**」：同处表列已是 ①~④，`DegreeRecord.EnsureCompatible` 也实为四条（`DegreeRecord.cs:71`） per `DegreeRecord.cs` + 规格书 §4.1 裁决回写（规格书 §4.1，2026-10-08 甲第） (contradicts)
+- [X] T069 【T056 重登记】修 `plan.md:254-258` 的「下一步」：`tasks.md` 已由 `$speckit-tasks` 生成、实现已交付，改为「已完成」并指向 `implementation-notes.md` per `plan.md` 自身 + T043/T045 (partial)
+- [X] T070 【T057 重登记】按现状回写 `plan.md:76-80` 的 Scale/Scope 与 `plan.md:139-214` 的结构树：`KFL.Core` 改 4 → **5** 个文件（漏 `Config/AttributeLimits.cs`，T010）；`KFL.Rules` 增 6 → **8** 个类型/文件（3 配置 + `Start/NewGameSetup.cs` + `Career/` 的 4 个）；测试增 6 → **7** 个文件（漏 `Rules/SpecAnchorTests.cs`，T048）；结构树补漏列的 `Career/CareerAdvanceResult.cs`（含 `CareerAppointment`/`CareerPromotion`）与 `Rules/SpecAnchorTests.cs` per 实际目录 + `src/KFL.Rules/Career/CareerAdvanceResult.cs` + T048 (missing)
+- [X] T071 【T058 重登记】统一「三态 / 两态」口径：`contracts/config-registry.md:49` 写「**三态**下复核锚点 **72 / 420 / 5100**」，配的测试名却是 `SalaryModeTests.俸禄锚点在两态下复核`（`SalaryModeTests.cs:79`，实为 `Active` + `Retired` 两态逐级复核）；`quickstart.md:112` 同款（标题「锚点**三态**复核」，正文只给在任与致仕两态）。按契约七 §5 的既有用法（「三态」专指有官阶的三种发放口径，`AwaitingPost`/`None` 不发故无从锚定）择一统一，或直接把测试名改为与实际一致并同步 `contracts/config-registry.md` / `quickstart.md` per 契约七 §5 + `SalaryModeTests` (contradicts)
+- [X] T072 【T059 重登记】修 `data-model.md:276` 的 ③-d 行条件列：现写作 `SalaryMode == Active` ∧ `AgeAt(month) < RetirementAge` ∧ **未禁升**，与同行「判定后**重置为 0**」、`data-model.md:280` 的「**禁升** = *跳过*到期判定并**重置**计时」以及 `OfficialCareerAdvance.AdvanceOfficeTimer` 的实现在禁升期照常 `MonthsInOffice += 1`、命中 36 时**跳过掷骰后重置**相反；「未禁升」不是 ③-d 整步的条件，而是「到期判定的掷骰与升迁」的条件 per 契约七 §4 条款 6/7 + `OfficialCareerAdvance` (contradicts)
+- [X] T073 【T060 重登记，并修正范围】修 `research.md` R-17 列的夹具签名使其与 `RulesTestHarness.cs` 实际一致：`Official(index, level, monthsInOffice = 0, merit = 0, gender = Male, age = 40)`（原文漏必填 `index`）与 `PromotionBannedOfficial(index, remainingMonths, level, monthsInOffice = 0, merit = 0)`（原文漏必填 `index`/`level`）（`RulesTestHarness.cs:111/155`）。**范围修正**：T060 原文要求一并改 `tasks.md:83`（T019），但 `tasks.md` 的既有条目属**历史记录类**，按规格书 §16.2 与本节 Phase 9 的处置口径 MUST NOT 回改——只改 `research.md` 等活工件，`tasks.md:83` 保留规划期写法 per `RulesTestHarness` 实际签名 + 规格书 §16.2 (partial)
+- [X] T074 清理活工件中的 001 时代测试名：`plan.md:246` 与 `research.md:44`/`:72` 仍引 `ValueObjectTests.DegreeRecord四个成员均为必需`，该测试已由 T014 改为 `DegreeRecord五个成员其中甲第可选`；`plan.md:244-245` 的「在任官员服刑」叙述同步按 Q5 全文（待阙/在职计时**与政绩**一律暂停）核对 per T014 + `ValueObjectTests` + T002 (partial)
+- [X] T075 【T062 重登记】清 `research.md` 的过时清单：R-09 的「已登记的取舍」仍把 Bogus 适配器列为「实现期自证 / 回退方案是只交付内置生成器」（`research.md:250-252`）、R-19 前的过时行仍称「Bogus 适配器的 `DataSet.Randomizer` 赋值通路未能离线核实 … 实现期自证」（`research.md:478`）——`BogusNameGenerator` 已交付且 `NameGeneratorTests` 已通过；R-18（`research.md:429-446`）仍称「本特性**只剩三项**」（§17 回写、001 工件补注、`KFL.Core` 三处注释改标），三项均已由 T002/T003/T010 完成 per 实现 + `NameGeneratorTests` + T002/T003/T010 (partial)
+- [X] T076 【T063 重登记，并修正真源指向】统一姓名来源的「为主 / 兜底 / 产品默认」口径——**真源指向修正**：规格书 §2（「姓名生成（Bogus zh_CN，内置宋风姓氏/名字字库兜底）」）与 §4.2（「姓名用 Bogus zh_CN 生成」）都以 **Bogus 为主**，故偏离真源的是 `plan.md:30`/`:43`/`:164`、`research.md` R-09（`:231`/`:250`）、`data-model.md:335` 与 001 `contracts/injection-seams.md` §3（`:67`，由 T004 写入）的「**产品默认 = `SongStyleNameGenerator`**」，且该偏离**未经 §17 裁决**（工程理由见 R-09：Bogus 的 `Randomizer` 算法不保证跨 .NET 版本稳定）。请先经规格书 §17 裁决：若采纳 R-09 的取舍，则回写规格书 §2/§4.2 并保留「产品默认」；否则把上述四处改为「Bogus 为主、内置兜底」；随后同步全部工件。本特性无产品装配点（无 DI 组合根），故两种裁决下都**不改代码** per 规格书 §2/§4.2 + 章程「需求真源」 + research R-09 (contradicts)
+
+---
+
+## Phase 11: Convergence 执行记录（`$speckit-implement`，2026-10-11）
+
+> 本次只执行 `tasks.md` 里**尚未勾选**的收敛项（Phase 9 的 T055~T063 与 Phase 10 的 T064~T076），
+> **不新增任务、不回改既有条目文字**。T068~T076 是 T055~T063 的重登记，故本轮一次落地同时满足
+> 两组。两条真源裁决（2026-10-11 经用户逐项确认）：① **T064** 取「跳过判定」口径——禁升期内
+> **在职计时照常 +1**，只有掷骰与升迁被作废并重置计时；② **T076** 取「采纳 R-09」——**内置宋风
+> 为产品默认**、Bogus `zh_CN` 适配器为可选实现，回写规格书 §2/§4.2。两条均**不新增或改动任何
+> 数值、不改动任何代码行为**（本特性无 DI 组合根，姓名来源的装配属界面轨）。
+
+**回写范围（供审计核对；活工件按规格书 §16.2 同步，历史记录类条目一律未回改）**：
+
+| 任务 | 同步的文件 | 同步的位置 |
+| --- | --- | --- |
+| T055 / T068 | `plan.md`、`research.md` | `plan.md` 结构树的 `DegreeRecord` 行；`research.md` R-02 标题与「结论」段（「三条」→「四条」） |
+| T056 / T069 | `plan.md` | 「下一步」整节（改为已完成，指向 `implementation-notes.md`） |
+| T057 / T070 | `plan.md` | `Scale/Scope` 段 + 结构树（补 `Career/CareerAdvanceResult.cs` 与 `Rules/SpecAnchorTests.cs`；计数改为 `KFL.Core` 5 文件 / `KFL.Rules` 8 类型 / 测试 7 文件） |
+| T058 / T071 | `contracts/config-registry.md`、`quickstart.md` | 契约八 §2 末行、quickstart S5 的锚点行（统一为「在任与致仕**两态**」，并写明待阙态不发故无锚点） |
+| T059 / T072 | `data-model.md` | §3.8 的 ③-d 行条件列与「两种『不判定』」段（「未禁升」只约束掷骰与升迁） |
+| T060 / T073 | `research.md` | R-17 的夹具签名（`Official` / `Awaiting` / `PromotionBannedOfficial` / `ServingSentence`）；`tasks.md` 既有条目（含 :83）**未回改** |
+| T061 / T074 | `plan.md`、`research.md` | `plan.md` 阶段小结第 2/3 条（Q5 全文含政绩 + 当前测试名）；`research.md` R-02 第 1 段与「受控的工件修订」段 |
+| T062 / T075 | `research.md` | R-09「已登记的取舍」、R-18 结论（「只剩三项」→ 三项已完成）、未决事项表中 Bogus 一行（标记已关闭） |
+| T063 / T076 | `科举浮生录规格书.md`、`plan.md`、`research.md`、`data-model.md`、`spec.md`、`specs/001-core-skeleton/contracts/injection-seams.md`、`src/KFL.Infrastructure/{KFL.Infrastructure.csproj,Services/BogusNameGenerator.cs,Services/SongStyleNameGenerator.cs}`、`tests/KFL.Tests/Infrastructure/NameGeneratorTests.cs` | 规格书 §2（改述 + 新增 §17 裁决回写）与 §4.2；其余活工件的「产品默认 = 内置宋风」口径同步；规格书旧措辞在代码/测试注释中的引用一并改述 |
+| T064 | `科举浮生录规格书.md`、`spec.md`、`data-model.md` | 规格书 §8.2 新增 §17 裁决回写（禁升期内计时照常 +1）；`spec.md` FR-019 的 ④ 与 Assumptions 两条；`data-model.md` §3.8。契约七 §4 条款 6/7 原文已与实现一致，**未改** |
+| T065 | `specs/001-core-skeleton/contracts/injection-seams.md`、`tests/KFL.Tests/Infrastructure/NameGeneratorTests.cs` | 契约二 §3「规则层依赖」行改为「由 `KFL.Rules.csproj` 的依赖边保证」（**选方案 ②**）；`NameGeneratorTests` 类注释同款。契约一 §2.1 的 14 个 token 清单与 `ArchitectureRules` **未动** |
+| T066 | `specs/002-monthly-settlement-economy/contracts/config-registry.md` | 新增项表「开局年龄口径」行的符号：`HeadAgeMean`（private）→ `AgeSpread` / `HeadAgeMin(origin)` / `HeadAgeMax(origin)` / `SpouseAgeMean` / `ChildAgeMin` / `ChildAgeMax` |
+| T067 | `quickstart.md` | §6 标题与第 1~4 项（改为「已同步」+ 当前测试名）；S6 的守卫口径一句 |
+
+**门禁实测（2026-10-11）**：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false` → **0 警告
+0 错误**；`dotnet test … -p:_MSTestEnableParentProcessQuery=false` → **421 通过 / 0 失败 /
+0 skipped**；`dotnet sln KejuFuShengLu.slnx list` → 恰好**六个**工程；`.sln` 全树扫描 → 无输出。
+`tests/KFL.Tests/KFL.Tests.csproj` 的 `_MSTestEnableParentProcessQuery` 仍为**注释态**。
 

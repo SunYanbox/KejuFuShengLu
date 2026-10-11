@@ -46,7 +46,7 @@ SC-009 要求「本特性涉及的每一项数值都能在 `KFL.Rules/Config/` �
 | 考课周期 **36** 月 | `GameConfig.Career.AppraisalPeriodMonths` | 同上；行为侧 `CareerAdvanceTests.第三十五个在职月不判定而第三十六个在职月判定并重置计时`（SC-005） |
 | 基础升级率 **25%**、每点政绩 **+0.3%**、封顶 **70%** | `GameConfig.Career.PromotionBaseChance` / `PromotionChancePerMerit` / `PromotionChanceCap` / `PromotionChance(merit)` | `SpecAnchorTests.官吏体系数值等于规格书` 与 `SpecAnchorTests.考课概率公式逐点等于规格书`（0 点 / 100 点 / 封顶分支）；行为侧 `CareerAdvanceTests.判定成功减一级失败不变而最高品时成功仍维持`（SC-005） |
 | 致仕年龄 **70**、半俸 **50%** | `GameConfig.Career.RetirementAge` / `RetirementSalaryRatio` | `SpecAnchorTests.官吏体系数值等于规格书`；行为侧 `RetirementTests` 四条 + 「70 岁无官职不致仕」（SC-007） |
-| 俸禄 18 级与月摊、士出身 **×1.05**、难度收益系数 | `GameConfig.Salary.*` / `GameConfig.DifficultyRate.RevenueFactor`（**已登记，不复制**） | `SpecAnchorTests.官吏体系数值等于规格书`（×1.05）；三态下复核锚点 **72 / 420 / 5100** 见 `SalaryModeTests.俸禄锚点在两态下复核`（SC-004、FR-024） |
+| 俸禄 18 级与月摊、士出身 **×1.05**、难度收益系数 | `GameConfig.Salary.*` / `GameConfig.DifficultyRate.RevenueFactor`（**已登记，不复制**） | `SpecAnchorTests.官吏体系数值等于规格书`（×1.05）；锚点 **72 / 420 / 5100** 在**在任与致仕两态**下逐级复核，见 `SalaryModeTests.俸禄锚点在两态下复核`——「三态」是契约七 §5 的状态口径，其中**待阙态不发俸禄**（无金额可锚定），故锚点只在有俸的两态成立（SC-004、FR-024） |
 
 ## 3. 数值唯一性条款
 

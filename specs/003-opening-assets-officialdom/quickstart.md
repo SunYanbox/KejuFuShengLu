@@ -109,7 +109,8 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
 - 70 岁但从未有官职者 MUST NOT 产生 `Retired`。
 - **同月边界**：待阙期满且满 70 岁 ⇒ 先授官、后致仕，当月按**新授官阶**的半俸计；
   考课成功同月满 70 岁 ⇒ 不晋升（致仕判定先于考课）。
-- **锚点三态复核**：L18 / L15 / L1 的月俸在**在任**与**致仕**两态下分别等于
+- **锚点在「在任」与「致仕」两态复核**（第三态「待阙」不发俸禄、无金额可锚定；「三态」是
+  `SalaryMode` 的状态口径）：L18 / L15 / L1 的月俸分别等于
   `72 / 420 / 5100 贯/年 ÷ 12 × 系数` 与上式的一半（SC-004 + FR-024）。
 
 ### S6 姓名来源（FR-009、FR-011）
@@ -121,7 +122,8 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false `
 
 - 两个实现（内置宋风字库 / Bogus `zh_CN` 适配器）都能出非空的中文名，且**同种子 → 同序列**；
 - MUST NOT 触碰全局 `Bogus.Randomizer.Seed`（用「两个实例交替取值互不干扰」的断言侧证）；
-- 规则层只依赖 `INameGenerator` 抽象（`src/KFL.Rules` 文本中 MUST NOT 出现 Bogus 类型）。
+- 规则层只依赖 `INameGenerator` 抽象（`src/KFL.Rules` 文本中 MUST NOT 出现 Bogus 类型；
+  该 MUST 由 `KFL.Rules.csproj` 的依赖边保证——该工程不引用 `Bogus` 包，G-05/G-07 无对应断言）。
 
 ### S7 架构与数值唯一性（SC-009、SC-010）
 
@@ -171,16 +173,19 @@ git diff --stat -- src/KFL.Presentation src/KFL.App      # 期望：无输出
 家主继任、买人口（逻辑轨 ⑦）。这些能力在本阶段**没有任何写入通道**（不可达）；
 页面上看不到它们是预期结果（FR-026 已裁决本特性只做规则层）。
 
-## 6. 落地时必须同步提交的工件（章程「需求真源」）
+## 6. 已同步提交的工件（章程「需求真源」）
 
-1. `科举浮生录规格书.md` 新增 §17 裁决回写：§3（前史纪年）、§4.1（功名记录增「甲第」）、
-   §7.5 与 §8.2（服刑期仕途计时暂停）、§8.2（考课计时口径）。
+1. `科举浮生录规格书.md` 的 §17 裁决回写**已齐备**：§3（前史纪年）、§4.1（功名记录增「甲第」）、
+   §7.5 与 §8.2（服刑期仕途计时暂停）、§8.2（考课计时口径）；另有 2026-10-11 追加的两条——
+   §8.2 的禁升计时口径澄清（计时照常 +1、只跳过掷骰与升迁）与 §2/§4.2 的姓名来源默认实现
+   （内置宋风为产品默认）。
 2. `specs/001-core-skeleton/spec.md`（FR-008 附近）与 `data-model.md`（`DegreeRecord` 小节）
-   各补一句：甲第字段由本特性向后兼容扩展（指向 FR-014）。
-3. `tests/KFL.Tests/Architecture/ConfigLiteralTests.cs` 的数值清单增补
+   **已各补一句**：甲第字段由本特性向后兼容扩展（指向 FR-014）。
+3. `tests/KFL.Tests/Architecture/ConfigLiteralTests.cs` 的数值清单**已增补**
    **0.25 / 0.003 / 60.7 / 62.3**（详见 [contracts/config-registry.md](./contracts/config-registry.md) §3 条款 3）。
-4. 001 的既有断言更新：`ValueObjectTests.GameDate拒绝非法年份`（→ 前史纪年）、
-   `DegreeRecord四个成员均为必需`（→ 五个成员、第 5 个可选）、一甲记录构造点补甲第、
+4. 001 的既有断言**已更新**（下列为**当前**测试名）：`GameDate拒绝非法年份` →
+   `GameDate拒绝非法月份` / `GameDate接受前史纪年`；`DegreeRecord四个成员均为必需` →
+   `DegreeRecord五个成员其中甲第可选`（五个成员、第 5 个可选）；一甲记录构造点补甲第；
    `StatusTimers` 第 4 字段与 `Person` 可写属性由八个变十个（`MonthsInOffice`、`EntryTrack`）。
 5. **历史记录类工件保留旧编号，MUST NOT 回改**（001/002 的 `tasks.md`、`implementation-notes.md`、
    既有 `checklists/`），见规格书 §16.2 的迁移口径。

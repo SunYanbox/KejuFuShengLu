@@ -128,8 +128,8 @@ public DegreeRecord(
 | `InitialMerchantCapitalGuan` | 商 300 / 其余 0（**入商本池，不入现金**） | §10.1、§5.2 |
 | `SpouseCount` | 恒 1 | §10.1（「夫妇」） |
 | `ChildCount` | 农 2 / 工 1 / 商 2 / 士 1 | §10.1、FR-003 |
-| `AgeSpread` / `HeadAgeMean`（内部） | ±5；农/工/商 28、**士 30** | §10.1 |
-| `HeadAgeMin` / `HeadAgeMax` | `HeadAgeMean ∓ AgeSpread`（农/工/商 23~33、士 25~35） | §10.1 |
+| `AgeSpread` / `HeadAgeMean`（**private**，仅内部换算，契约八不得引用它） | ±5；农/工/商 28、**士 30** | §10.1 |
+| `HeadAgeMin` / `HeadAgeMax`（公开） | `HeadAgeMean ∓ AgeSpread`（农/工/商 23~33、士 25~35） | §10.1 |
 | `SpouseAgeMean` | 25 | §10.1 |
 | `ChildAgeMin` / `ChildAgeMax` | 0 / 8 | §10.1 |
 | `ScholarHeadStudy` | 士 **60**（常量） | §10.1 |
@@ -273,12 +273,13 @@ public static CareerAdvanceResult Run(Family family, GameDate month, IRandomServ
 | ③-a | 待阙递减 → 递减到 0 的当月**授官**（读 `Person.EntryTrack` 定初始官阶；写 `Rank`、`MonthsInOffice = 0`、清计时、途径与状态位） | `AwaitingPost` ∧ 计口（未服刑） | 无 |
 | ③-b | `Merit += 1`（钳制 `<= MeritMaximum`） | `SalaryMode == Active` | 无 |
 | ③-c | **致仕**：置 `Retired` 位 | `SalaryMode == Active` ∧ `AgeAt(month) >= RetirementAge` ∧ 未致仕 | 无 |
-| ③-d | `MonthsInOffice += 1`；命中 `>= 36` ⇒ 考课判定；判定后**重置为 0** | `SalaryMode == Active` ∧ `AgeAt(month) < RetirementAge` ∧ 未禁升 | 命中时 **1 次** `NextDouble()` |
+| ③-d | `MonthsInOffice += 1`（**禁升期内照常 +1**）；命中 `>= 36` ⇒ 考课判定；判定后**重置为 0** | `SalaryMode == Active` ∧ `AgeAt(month) < RetirementAge` | 命中周期且**未禁升**时 **1 次** `NextDouble()`；**禁升**时 **0 次**（只**跳过**掷骰与升迁、不补判，计时照常重置） |
 
 **Q5 裁决**：`StatusFlag.ServingSentence` 为真者，③-a/③-b/③-d **一律暂停**——**不推进，也不重置**；
 ③-c 对服刑者无意义（必有官阶者才可能 `Active`，而服刑者已由计口排除在俸禄之外）。
-**两种「不判定」MUST 在代码与快照里区分**：**禁升** = *跳过*到期判定并**重置**计时（§4.4 第二行）；
-**服刑** = *暂停*（既不掷骰也不重置，刑满后从暂停处继续）。
+**两种「不判定」MUST 在代码与快照里区分**：**禁升** = *跳过*到期判定并**重置**计时
+（**在职计时照常 +1**，只有掷骰与升迁被作废；§4.4 第二行；规格书 §8.2 的 §17 裁决回写 2026-10-11）；
+**服刑** = *暂停*（既不推进也不重置，刑满后从暂停处继续）。
 **③-d 的年龄闸门与 ③-c 的关系**：③-d 自带 `AgeAt(month) < RetirementAge`，故「满 70 岁当月的成员
 不参与考课」在 ③-c（US4）落地**之前**也成立，US3 因而不依赖 US4 的 ③-c；③-c 落地后两道闸门互为冗余。
 **不变量**：① 每月每名成员至多一次授官、至多一次晋升、至多一次致仕；
@@ -332,8 +333,8 @@ public interface INameGenerator                       // Abstractions/
 
 | 实现 | 用途 | 确定性口径 |
 | --- | --- | --- |
-| `SongStyleNameGenerator(IRandomService)` | **产品默认**；内置宋风姓氏/名字库 | 全部随机经注入的 `IRandomService` |
-| `BogusNameGenerator(IRandomService)` | 规格书 §2 的「Bogus 为主」 | 以注入随机取整数种子 → `new Randomizer(seed)`（**局部**），MUST NOT 触碰全局 `Randomizer.Seed` |
+| `SongStyleNameGenerator(IRandomService)` | **产品默认**（规格书 §2 的 §17 裁决回写，2026-10-11）；内置宋风姓氏/名字库 | 全部随机经注入的 `IRandomService` |
+| `BogusNameGenerator(IRandomService)` | 规格书 §2 的**可选**适配实现（原「Bogus 为主」已按 §17 裁决改述） | 以注入随机取整数种子 → `new Randomizer(seed)`（**局部**），MUST NOT 触碰全局 `Randomizer.Seed` |
 
 `KFL.Infrastructure.csproj` 增 `PackageReference Bogus 35.6.1`。
 **明确不含**：Bogus 的分布取样（正态在 `AttributePolicy` 里自实现，R-08）、
@@ -406,7 +407,7 @@ public interface INameGenerator                       // Abstractions/
 | FR-021 俸禄三态 × 难度 × 士出身（与仕身份无关） | §3.11；`SalaryMode` |
 | FR-022 全部随机经可设种子来源 | `IRandomService` 唯一入口（含 Bogus 适配器的**局部**种子） |
 | FR-023 数值集中 `KFL.Rules/Config/` | §3.1~§3.4 + 契约八 |
-| FR-024 §16 必测项（含俸禄锚点三态复核） | `tests/KFL.Tests/Rules/{NewGameSetupTests,AppointmentTests,CareerAdvanceTests,RetirementTests,SalaryModeTests}` |
+| FR-024 §16 必测项（含俸禄锚点 **72 / 420 / 5100** 在在任与致仕**两态**下的复核） | `tests/KFL.Tests/Rules/{NewGameSetupTests,AppointmentTests,CareerAdvanceTests,RetirementTests,SalaryModeTests}` |
 | FR-025 非 UI 层无时钟/全局随机/文件/网络 | G-07（扫描范围已含本特性新增目录） |
 | FR-026 不做界面 | `KFL.Presentation`/`KFL.App` 零改动 |
 | FR-027 吏治取 §8.2 全量 | §3.3 + §3.8 覆盖待阙/授官/考课/政绩/致仕/禁升跳过 |
