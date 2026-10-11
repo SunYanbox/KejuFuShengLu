@@ -15,7 +15,8 @@ namespace KFL.Tests.Infrastructure;
 /// **不出现姓名库以外的规则数值**。
 /// </para>
 /// <para>
-/// 「规则层不引用 Bogus 类型」一条由架构守卫（G-07 的扫描 + 依赖方向 G-05）覆盖，本文件不重复断言。
+/// 「规则层不引用 Bogus 类型」一条由 <c>KFL.Rules.csproj</c> 的依赖边保证（该工程不引用 `Bogus`
+/// 包）；G-05 只校验 `ProjectReference`、G-07 的禁用 token 清单里没有 `Bogus`，故本文件不重复断言。
 /// </para>
 /// </remarks>
 public class NameGeneratorTests

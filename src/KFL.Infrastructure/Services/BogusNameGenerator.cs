@@ -6,7 +6,7 @@ using KFL.Infrastructure.Abstractions;
 namespace KFL.Infrastructure.Services;
 
 /// <summary>
-/// Bogus <c>zh_CN</c> 姓名适配器（规格书 §2 的「姓名生成（Bogus zh_CN）」；FR-009）。
+/// Bogus <c>zh_CN</c> 姓名适配器（规格书 §2 的「姓名生成」的可选适配实现；FR-009）。
 /// </summary>
 /// <remarks>
 /// <para>
