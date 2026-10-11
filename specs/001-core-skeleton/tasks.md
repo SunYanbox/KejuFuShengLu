@@ -347,9 +347,36 @@ Task: "T033 G-07 in tests/KFL.Tests/Architecture/EnvironmentDependencyTests.cs"
 - [X] T060 回写 `data-model.md` §2.2 的 §17 裁决段：删去与配偶差异无关的「阶段④/」半句 per 规格书 §16.2 迁移口径 (contradicts) —— **已完成**
 - [X] T061 回写 `spec.md`：Status 由 `Pending` 改为 Completed；Out of Scope 末条「两组抽象」补第三组 `INameGenerator` 的指向 per FR-013 (partial) —— **已完成**
 - [X] T062 复核历史记录类条目（M7 测试总数 165/170、M8 同文件两套数字、M9 `arch-guard:allow` 两处、M10 `GameStateFactory` 4 参、M11 `Year=0` 拒绝用例、L1 可写属性八个、L2 `GameState` 五字段、L5 checklist 的「无实现细节」勾选）：确认为**当时事实**，按规格书 §16.2 不回改，不产生文件改动 per 规格书 §16.2 (unrequested) —— **复核完毕，无需改动**
-- [ ] T063 修 `data-model.md` §1.5 与 `spec.md` FR-008：区分甲第的**构造参数** `imperialClass` 与**公开只读属性** `Class` per 003 `data-model.md` §1.5 (contradicts)
-- [ ] T064 修 `data-model.md` §4 的 FR-015/SC-002 行与契约一 `architecture-guard.md`：G-07 扫描范围补 `tests/KFL.Tests/{Core,Infrastructure,Fixtures,Rules}` per 契约一 G-07 + `ArchitectureRules.ScannedTestRoots` (partial)
-- [ ] T065 修 `quickstart.md` 的 SC-004 步骤：扫描范围表述与契约一 G-07 对齐（含 4 个测试目录） per SC-004 (contradicts)
-- [ ] T066 回写 `plan.md` 的依赖与规模段：四个 NuGet 包的引入时点（Bogus 已由 003 首次消费）、`KFL.Core` 类型数、`KFL.Infrastructure` 接缝与实现数、`KFL.Rules` 规模——改为「001 交付时」限定或按现状更新 per 002/003 的实际形状 (partial)
-- [ ] T067 修 `spec.md` Out of Scope：为已由 002/003 交付的条目（月度结算、资产与现金/储蓄/贷款池、账本、官职晋升、四项出身初始资产）补「已交付」指向 per spec Out of Scope + 002/003 实现 (partial)
+- [X] T063 修 `data-model.md` §1.5 与 `spec.md` FR-008：区分甲第的**构造参数** `imperialClass` 与**公开只读属性** `Class` per 003 `data-model.md` §1.5 (contradicts)
+  **完成（2026-10-11）**：`data-model.md` §1.5 补第 5 个成员行 `Class`（`ImperialClass?`），并把「向后兼容扩展」段改为写明**构造参数名 `imperialClass` / 公开只读属性名 `Class`**、`ImperialClass` 仅是枚举类型名、第 5 项完整不变式归 003（本表不复制副本）；`spec.md` FR-008 的向兼容扩展段同步该名分说明。实现出处 `src/KFL.Core/ValueObjects/DegreeRecord.cs`（参数 `imperialClass`、属性 `Class`）。**本任务完成。**
+- [X] T064 修 `data-model.md` §4 的 FR-015/SC-002 行与契约一 `architecture-guard.md`：G-07 扫描范围补 `tests/KFL.Tests/{Core,Infrastructure,Fixtures,Rules}` per 契约一 G-07 + `ArchitectureRules.ScannedTestRoots` (partial)
+  **完成（2026-10-11）**：契约一 §2 的 G-07 行**无需改动**——4 个测试目录（含 002 追加的 `Rules`）已由 003 T004 补齐，本次复核确认。仅改 `data-model.md` §4 的 FR-015/SC-002 行：由「扩至 `Core`、`Infrastructure`、`Fixtures`」改为**逐字对齐契约一 G-07 的四个目录**，补 `Rules` 与 002 `research.md` R-14 出处、目录前缀匹配口径与实现出处 `ArchitectureRules.ScannedTestRoots`（实测第 124~130 行恰为这四个根）。**本任务完成。**
+- [X] T065 修 `quickstart.md` 的 SC-004 步骤：扫描范围表述与契约一 G-07 对齐（含 4 个测试目录） per SC-004 (contradicts)
+  **完成（2026-10-11）**：`quickstart.md` §7 验收对照的 SC-004 行改为写明完整范围——非 UI 三产品工程加 `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`、`Rules` 四个测试目录，并补「按目录前缀匹配含子目录」「`Architecture/` 显式豁免」「范围与 14 个 token 逐字见契约一 §2 G-07 / §2.1，本节不另立口径」。**本任务完成。**
+- [X] T066 回写 `plan.md` 的依赖与规模段：四个 NuGet 包的引入时点（Bogus 已由 003 首次消费）、`KFL.Core` 类型数、`KFL.Infrastructure` 接缝与实现数、`KFL.Rules` 规模——改为「001 交付时」限定或按现状更新 per 002/003 的实际形状 (partial)
+  **完成（2026-10-11）**：`plan.md` 的 Primary Dependencies 改为「**001 交付时**只装测试栈」，并新增「依赖现状（2026-10-11）」段——五个基线包中只有 **Bogus 35.6.1** 已引入（`KFL.Infrastructure.csproj`，003 首次消费、只服务 `INameGenerator` 的适配实现），其余四个仍未引入并各自标注了预期阶段。Scale/Scope 拆成两段：原 17 类型 / 2 组接缝 + 3 实现 / `KFL.Rules` 空壳一律限定为「001 交付时」，另按实测补现状（`KFL.Core` 38 个 `.cs`、`KFL.Infrastructure` **3 组接缝 + 5 个实现**、`KFL.Rules` 29 个 `.cs`、UI 两工程仍为空壳），并写明上段数字 MUST NOT 被读作当前规模。**本任务完成。**
+- [X] T067 修 `spec.md` Out of Scope：为已由 002/003 交付的条目（月度结算、资产与现金/储蓄/贷款池、账本、官职晋升、四项出身初始资产）补「已交付」指向 per spec Out of Scope + 002/003 实现 (partial)
+  **完成（2026-10-11）**：`spec.md` Out of Scope 顶部补「交付状态（2026-10-11 同步）」口径段（条目正文作为当时事实保留，只在实际交付的条目上加指向）；逐条补指向——月度结算与数值计算 → **002**（FR-001~FR-031、契约的七步序列）、资产与现金/储蓄/贷款池 → **002**（`FamilyEconomy` 经 `GameState.Economy`）、账本 → **002**（`Ledger`/`LedgerEntry`/`LedgerCategory`，SC-005；统计呈现仍属界面轨 U3）、官职晋升 → **003**（FR-013~FR-021 与契约七）、四项出身初始资产 → **003**（`NewGameSetup`，FR-001~FR-008；交互流程仍属界面轨 U1）。**婚育/疾病/寿命、买人口、存档、界面等未交付条目未加标注**，仍按原文留在 Out of Scope。**本任务完成。**
+
+---
+
+## Phase 9: Convergence
+
+> 本节由 `$speckit-converge` 追加。既有任务（T001~T067，含 Phase 7 / Phase 8）一律**未改动、
+> 未重排、未重编号**；本节只追加**未被既有任务覆盖**的剩余工作。
+>
+> 复核基线（本次实测）：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false` **0 警告 0 错误**；
+> `dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`
+> **421 通过 / 0 失败 / 0 skipped**；`dotnet sln list` 恰好六个工程；递归无 `*.sln`；
+> `git status --short` 干净。
+> FR-001~FR-015 / SC-001~SC-006 与章程六条原则（含 G-01~G-08 守卫与合成违规自证）经复核
+> **均无代码级缺口**：`Person`/`Family`/`GameState`/值类型与三组接缝与当前活工件一致，
+> 非 UI 层零系统时钟、零全局随机、零文件系统、零网络。
+>
+> Phase 8 的 **T063 / T064 / T065 / T066 / T067 经复核仍未实现**（T064 的契约一 §2 G-07 行
+> 已由 003 T004 完成，仅剩 `data-model.md` §4 的 FR-015/SC-002 行缺 `tests/KFL.Tests/Rules`）。
+> 这些工作**已在册**，本节不重复追加，仍由 `$speckit-implement` 按原编号完成。
+
+- [X] T068 同步 `spec.md` FR-013 的括注：现文写「随机来源、游戏时间来源**两组抽象**」，与 `data-model.md` §3 接缝表、§4 的 FR-013 行（已含 003 追加的 `INameGenerator`）与契约二 §3 的**三组**口径不一致——改为三组，或明确该括注只陈述 FR-013 自身要求的来源、不作接缝总数陈述 per FR-013 + 契约二 §3 + data-model §4 (partial)
+  **完成（2026-10-11）**：`spec.md` FR-013 保留「两组抽象」但补「**接缝总数口径（2026-10-11 同步）**」——明确括注陈述的是 FR-013 **自身要求的**来源、**不是接缝总数**；001 交付后接缝总数为**三组**（第三组 `INameGenerator` 由 003 追加，指向契约二 §3 与 data-model §3/§4），并写明本项 MUST NOT 被读作「接缝总数 = 2」。选此口径而非直接改「三组」的理由：FR-013 的需求内容确为随机与游戏时间两组，改成三组会把 003 的追加读成 001 的原始需求；三组口径由 data-model §3/§4 与契约二 §4 承载，FR-013 只做澄清与指向。**本任务完成。**
 

@@ -71,6 +71,7 @@
 | `Placement` | `ImperialPlacement?` | 一甲名次，仅进士可有 | §6 |
 | `ChangedAt` | `GameDate` | 本次变化的年月（变迁历史的时间轴） | §4.1 |
 | `Cause` | `DegreeChangeCause` | 变化原因 | §4.1 |
+| `Class` | `ImperialClass?` | **003 新增**：甲第（一甲 / 二甲 / 三甲）；`null` = 该记录**未表达**甲第。**构造参数名是 `imperialClass`，读取口径是属性 `Class`**——二者是同一成员的两个名字，`ImperialClass` 只是枚举类型名 | 003 FR-014 |
 
 **不变量**：`Placement is not null` ⇒ `Level == DegreeLevel.JinShi`（§6：进甲者才是状元/
 榜眼/探花）。
@@ -81,10 +82,14 @@
 与一次降级都能被如实读出。举人被降为白身会追加一条 `Level = BaiShen` 的记录，这是
 **合法的历史条目**，与「尚无记录（出生即白身）」是两回事。
 
-**向后兼容扩展（2026-10-08，003）**：`DegreeRecord` 新增第 5 个**可选**成员
-`ImperialClass? imperialClass = null`（甲第：一甲 / 二甲 / 三甲），由
-`003-opening-assets-officialdom` 引入，见该特性 FR-014。既有**四参调用保持合法**；
-上表前四项的语义与不变量不变（一甲名次非空 ⇒ 甲第 = 一甲）。
+**向后兼容扩展（2026-10-08，003；构造参数/属性名口径 2026-10-11 澄清）**：`DegreeRecord`
+新增第 5 个**可选**成员 `ImperialClass? imperialClass = null`（甲第：一甲 / 二甲 / 三甲），
+由 `003-opening-assets-officialdom` 引入，见该特性 FR-014 与该特性 `data-model.md` §1.3。
+**名分说明**：`imperialClass` 是**构造参数名**，公开读取通道是**只读属性 `Class`**；
+`ImperialClass` 仅为 `KFL.Core/Enums/ImperialClass.cs` 的**枚举类型名**，
+MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表前四项的语义与不变量不变
+（一甲名次非空 ⇒ 甲第 = 一甲）。第 5 项的完整不变式（①~④）归 003 `data-model.md` §1.3，
+本表不复制副本。
 
 ### 1.6 `OfficialRank`（readonly record struct）
 
@@ -307,7 +312,7 @@ FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 to
 | FR-011 / SC-006 | `Family` 的索引与派生查询 + `HeadId` + 辈分规则 | 五类夹具：多代同堂、有配偶、有子女、娶入配偶、买来的旁系；双向一致与无环；**一夫一妻拒绝用例 + 丧偶再婚（`FormerSpouseIds` 承接前任、子女父母引用不断裂）**；家主为 `null` 或指向在册成员；血亲辈分不可变、外来者辈分落定规则；**开局成员辈分 = 0** |
 | FR-012 | `GameState` | 标识非空（`Guid.Empty` 被拒）、标识无公开 setter、起始年月；**改档名不变性属阶段④**（001 无落盘，无可验证对象） |
 | FR-013 / SC-004 | 三组接缝（`INameGenerator` 由 003 追加）+ 静态扫描 | 源码级守卫 |
-| FR-015 / SC-002 | `tests/KFL.Tests` 的领域与接缝目录 | `dotnet test`（领域/规则测试无环境依赖）；G-07 的扫描范围已按契约一扩至 `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`，`Architecture/` 显式豁免 |
+| FR-015 / SC-002 | `tests/KFL.Tests` 的领域与接缝目录 | `dotnet test`（领域/规则测试无环境依赖）；G-07 的扫描范围**逐字对齐契约一 G-07**：非 UI 三产品工程（`KFL.Core`/`KFL.Infrastructure`/`KFL.Rules`）**加** `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`、`Rules`（`Rules` 于 002 追加，见 002 `research.md` **R-14**），`Architecture/` 显式豁免；扫描按目录前缀匹配（含子目录），实现出处 `ArchitectureRules.ScannedTestRoots` |
 
 ---
 

@@ -122,7 +122,7 @@ dotnet run --project src\KFL.App
 | SC-001 | 第 1 节 `dotnet build` 输出 0 警告 0 错误；`dotnet sln list` 六个工程 |
 | SC-002 | 第 1 节 `dotnet test` 全绿；领域/规则测试不依赖界面、文件系统、网络 |
 | SC-003 | 第 2 节合成输入用例（反向依赖、平台泄漏各一，即契约一第 4 节用例①③）+ 第 3 节 G-02 手工演练 |
-| SC-004 | 守卫 G-07 静态扫描：非 UI 工程禁用 token 命中 0 次 |
+| SC-004 | 守卫 G-07 静态扫描命中 0 次：扫描范围 = 非 UI 三产品工程（`KFL.Core`/`KFL.Infrastructure`/`KFL.Rules`）**加** `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`、`Rules` 四个测试目录（按目录前缀匹配、含子目录；`tests/KFL.Tests/Architecture/` 显式豁免）。范围与 14 个禁用 token **逐字见契约一 §2 G-07 / §2.1**，本节不另立口径 |
 | SC-005 | 第 5 节字段读写夹具：规格书 §4.1 字段与九种状态 100% 有对应表示 |
 | SC-006 | 第 5 节多代同堂夹具：任一成员一次查询即可定位父母、配偶、子女 |
 
