@@ -119,13 +119,31 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 结构：仍是六个工程、无新接缝层、无跨层引用、无界面代码；契约九/十/十一只描述既有分层内的接口、
 字节形状与调用次序；新增依赖已在 Phase 0 用**实测**证据论证（R-24）。
 
-### 继承的三项用户裁决（2026-10-11，规格书 §14 已回写）
+### 继承的用户裁决（2026-10-11）
+
+**Q1~Q3**（`$speckit-specify` 阶段裁决，规格书 §14 已回写）：
 
 | 编号 | 议题 | 裁决 | 落点 |
 | --- | --- | --- | --- |
 | **Q1** | 备份落点与内容时点 | 落点 = 可配置根下 `backups/`，文件名 = 存档名 + **同扩展名**；时点 = 该回合自动保存**完成之后**复制刚写入的内容；覆盖式、每档一份 | FR-011；[契约十一 §2](./contracts/save-cadence.md)；[契约九 §7](./contracts/save-service.md) |
 | **Q2** | 账本的落盘组织 | **单文件、全量、不分块、不压缩**；统计一律由账本聚合、不另存汇总值 | FR-021；[契约十 §1](./contracts/save-format.md)；[data-model 不变量 8](./data-model.md) |
 | **Q3** | 存档名过滤字符集 | 按 Windows **实际**非法集 `\ / : * ? " < > \|`（9 个）过滤，`-` 与中文放行（§14 原文的 `-` 认定为 `*` 的笔误） | FR-007；[契约九 §4](./contracts/save-service.md)；R-13 |
+
+**Q4~Q8**（`$speckit-clarify` 复扫阶段裁决，本轮新增；已回写 [spec.md](./spec.md) 的 FR / Edge Cases / SC / Assumptions）：
+
+| 编号 | 议题 | 裁决 | 落点 |
+| --- | --- | --- | --- |
+| **Q4** | 「当前档」的来源（R-17 的 `Advance(GameState)` 与步骤 ③ 的 `slot` 不自洽） | 当前槽位（档名 + 格式）由**装配期注入**并由 `TurnRunner` 构造参数或存档服务持有；`Advance`/`SaveOnExit` 不逐次接收；MUST NOT 进 `GameState`、MUST NOT 落盘 | FR-010/FR-012；[契约九 §1 条款 7](./contracts/save-service.md)；[契约十一 §2 条款 6](./contracts/save-cadence.md) |
+| **Q5** | 改名 / 换格式后旧名或旧扩展名备份的处置 | **同步处置**：改名时备份一并改名；换格式时新当前档写成功后再移除旧格式备份；「`backups/` 下同一存档标识恒 1 份且与主档同名同扩展名」在操作完成时即成立 | FR-009/FR-011；SC-003；[契约九 §5~§7](./contracts/save-service.md)；[data-model §6.3](./data-model.md) |
+| **Q6** | 结算成功后写盘失败时的内存语义 | **保留**已推进的内存状态并把失败向上传播；MUST NOT 回滚（回滚需结算前快照 = FR-020 禁止的第二份真源）、MUST NOT 静默吞；「已推进未落盘」为允许的中间态，下次保存合并写入 | FR-010；Edge Cases；[契约十一 §2 条款 7](./contracts/save-cadence.md)；[data-model §6.4](./data-model.md) |
+| **Q7** | 同名判定的大小写口径 | **大小写不敏感**（与 Windows 文件系统语义一致，也沿用保留设备名 `CON`/`con` 的既有口径）；保存保留输入写法；不做 Unicode NFC 规范化 | FR-008；SC-005；[契约九 §4 条款 1.1](./contracts/save-service.md) |
+| **Q8** | 回合计数与「任意年月」的适用面 | 推演进程的 `CurrentDate` **恒自 1 年 1 月起算**（0/负数年份只在角色的**出生年月**等成员字段）；回合数恒为正、无需为负年份设计备份节奏；Edge Case 的「任意年月」收窄为成员年月字段。**不改任何数值** | FR-011；Edge Cases；[契约十一 §1 条款 1](./contracts/save-cadence.md)；R-16 |
+
+> Q4~Q8 属**声明与验证义务**类回写（零 `KFL.Core` 字段增删、零签名变更）；本轮已同步
+> `research.md`（R-16/R-17/R-18/R-19/R-25 + 追加节）、`data-model.md`（§6.1/§6.3/§6.4）、
+> `contracts/save-service.md`（§1/§4/§5/§6/§7）、`contracts/save-cadence.md`（§1/§2/§5），
+> 并 MUST 在 `tasks.md` 登记同步范围（AGENTS.md 的「铁律」；spec 的 `Assumptions` Q4~Q8 段
+> 已声明同一义务）。
 
 ## 回写义务清单（AGENTS.md「铁律」+ spec Assumptions 的落地）
 

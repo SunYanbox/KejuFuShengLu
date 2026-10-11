@@ -331,10 +331,11 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 
 | 操作 | 起始 | 结果 | 依据 |
 | --- | --- | --- | --- |
-| `Rename(slot, newName)` | 存在 `name.ext` | 校验新名 → 目标不冲突 → 文件移动；**字节逐字节不变** ⇒ `SaveId` 与游戏内容不变 | FR-009；SC-004；R-18/R-25 |
-| `Backup(slot)` | 存在 `name.ext` | 原子复制为 `backups/name.ext`（覆盖式，恒 1 份） | FR-011；Q1 裁决；R-19 |
-| 格式切换 | `name.dat` 存在、请求写 `name.json` | 先成功写出 `name.json`，**再**删除 UUID 相同的 `name.dat` | Assumptions；R-18 |
+| `Rename(slot, newName)` | 存在 `name.ext` | 校验新名 → 目标不冲突 → **主档**文件移动 → **备份**（若有）同时改名；**字节逐字节不变** ⇒ `SaveId` 与游戏内容不变 | FR-009；SC-004；R-18/R-25；**spec 裁决 Q5** |
+| `Backup(slot)` | 存在 `name.ext` | 原子复制为 `backups/name.ext`（覆盖式，恒 1 份，**改名/换格式后亦然**） | FR-011；Q1/Q5 裁决；R-19 |
+| 格式切换 | `name.dat` 存在、请求写 `name.json` | 先成功写出 `name.json`，**再**删除 UUID 相同的 `name.dat`，**并移除旧格式备份** | Assumptions；R-18；**spec 裁决 Q5** |
 | 同名覆盖（异格式、异 UUID） | `name.dat` 存在、`overwrite: true`、写 `name.json` | 写出 `name.json` 后移除同名 `name.dat`（「该名字归调用方」） | R-18 |
+| 同名判定（`Exists` / 覆盖冲突 / 改名目标） | 任意 | **大小写不敏感**（`SongJia` ≡ `songjia`）；保存时保留输入写法 | FR-008；**spec 裁决 Q7** |
 
 ### 6.4 自动保存与备份节奏（`TurnRunner.Advance`）
 
@@ -342,10 +343,10 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 | --- | --- | --- |
 | ① | 结算（`MonthlySettlementEngine.Settle`） | 抛出 ⇒ **不保存**（FR-010） |
 | ② | 未注入 `ISaveService` ⇒ 直接返回（自动保存关闭） | — |
-| ③ | `Save(state, slot, overwrite: true)` | 抛出 ⇒ **不备份**（FR-011 的「完成之后」） |
-| ④ | `CompletedTurnsAt` 命中 `ShouldBackup` ⇒ `Backup(slot)` | 抛出 ⇒ 传播（当前档已写好，不受影响） |
+| ③ | `Save(state, slot, overwrite: true)`（`slot` = 装配期注入的当前槽位，**spec 裁决 Q4**：MUST NOT 进入 `GameState`） | 抛出 ⇒ **保留已结算的内存状态**并向上传播、不备份（MUST NOT 回滚 / 静默吞；**spec 裁决 Q6**） |
+| ④ | `CompletedTurnsAt` 命中 `ShouldBackup` ⇒ `Backup(slot)`（回合数由 `CurrentDate` 相对纪元 `1 年 1 月` 派生，恒为正——**spec 裁决 Q8**） | 抛出 ⇒ 传播（当前档已写好，不受影响） |
 
-`SaveOnExit(GameState)` = **同一个** `Save` 入口（FR-012），MUST NOT 另写一套。
+`SaveOnExit(GameState)` = **同一个** `Save` 入口 + **同一个当前槽位**（FR-012），MUST NOT 另写一套。
 
 ### 6.5 本特性**不建立**的状态转移
 

@@ -42,6 +42,7 @@ public sealed record SaveOptions
 | 4 | 存档实现 MUST NOT 引入第二个内存真源：`SaveStateDto` 只在一次调用的栈内存活（[data-model §1](../data-model.md) 不变量 1） |
 | 5 | `FilePathOf` MUST 返回槽位在**当前根**下的路径；MUST NOT 允许槽位逃出根（路径分隔符在名称层即被拒，§4 条款 2） |
 | 6 | 每个公开方法 MUST 在**写任何字节之前**完成全部校验（与 002 的 `FamilyEconomy.Apply` 同一「失败原子性」口径） |
+| 7 | **当前档槽位**（`Current Slot`，档名 + 格式）是**会话**信息，由装配期注入并由上层持有（`SaveOptions.CurrentSlot` 或回合编排层的构造参数）；MUST NOT 成为 `GameState` 的字段、MUST NOT 随存档落盘（FR-010/FR-012；spec 裁决 **Q4**） |
 
 ## 2. 拒绝与失败矩阵
 
@@ -85,6 +86,7 @@ MUST NOT 修改原文件、MUST NOT 返回默认状态或部分状态、MUST NOT
 | 条款 | 要求 |
 | --- | --- |
 | 1 | 名称口径的**唯一真源**是 `SaveName`（R-13）：接受中文与 `-`；拒绝 `\ / : * ? " < > \|`（9 个，FR-007 的 Q3 裁决）、空/纯空白、长度 > 255、Windows 保留设备名（`CON`/`PRN`/`AUX`/`NUL`/`COM1~9`/`LPT1~9`，大小写不敏感且**带扩展名与否都算**）、首尾空白、以 `.` 结尾、ASCII 控制字符 `0x00~0x1F` |
+| 1.1 | **同名判定（含 `Exists`、覆盖冲突、改名目标）MUST 大小写不敏感**（spec 裁决 **Q7**）：`SongJia` 与 `songjia` 视为同名——Windows 文件系统本就不区分，若判重敏感就会出现「系统回答不存在、随后的保存静默覆盖另一写法」的空洞；保存时仍**原样保留**玩家输入的大小写写法；不做 Unicode NFC 规范化（Windows 也不按规范化比较） |
 | 2 | 一律**拒绝**、MUST NOT 静默规范化（FR-007/Edge Case 允许「拒绝或规范化」，取拒绝以避免「同名却指向不同文件」的歧义）；因此名称里不可能出现路径分隔符，槽位逃不出根 |
 | 3 | 存档根：未配置 ⇒ `AppContext.BaseDirectory` + `saves`（FR-006）；已配置 ⇒ `SaveOptions.RootDirectory` 原样使用 |
 | 4 | 备份落点 = **存档根**下的 `backups`（§7；§14 的 Q1 裁决） |
@@ -95,8 +97,8 @@ MUST NOT 修改原文件、MUST NOT 返回默认状态或部分状态、MUST NOT
 
 | 类型 | 允许的文件系统操作 | 数量级 |
 | --- | --- | --- |
-| `AtomicFileWriter` | 建/写临时文件、`Flush`、`Move` 替换、失败清理、删除旧格式文件 | ≤ 10 行 |
-| `SaveCatalog` | 枚举根目录与 `backups/`、存在性判定、读头记录、目录创建 | ≤ 10 行 |
+| `AtomicFileWriter` | 建/写临时文件、`Flush`、`Move` 替换、失败清理、删除旧格式文件与旧格式备份、备份改名 | ≤ 10 行 |
+| `SaveCatalog` | 枚举根目录与 `backups/`、存在性判定（**大小写不敏感**）、读头记录、目录创建 | ≤ 10 行 |
 | `SaveName` | 无（纯字符串校验） | 0 |
 | `tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs` | 建临时根、读字节、列文件、复制备份回主文件、清理 | ≤ 15 行 |
 
@@ -110,28 +112,32 @@ MUST NOT 修改原文件、MUST NOT 返回默认状态或部分状态、MUST NOT
 | 2 | 同名的异格式文件处置：`overwrite: true` ⇒ 写出新文件后移除同名异格式文件（「该名字归调用方」）；`overwrite: false` ⇒ §2 的冲突拒绝 |
 | 3 | `FindBySaveId(saveId)` MUST 只读**头记录**（R-05/R-18）：命中即返回该槽位，未命中返回 `null`；MUST NOT 读主体（性能与最小读取面） |
 | 4 | 同一根下同 `SaveId` 至多一个文件（Assumptions；001 R-03 的收口）：`Save` 前 MUST 探测，命中**另一个文件名**即 `SaveIdentityConflictException` |
-| 5 | **格式切换**：MUST 先成功写出新格式文件，**再**删除 UUID 相同的旧格式文件；新文件写出失败 ⇒ MUST NOT 删除旧文件（Assumptions） |
+| 5 | **格式切换**：MUST 先成功写出新格式文件，**再**删除 UUID 相同的旧格式文件；新文件写出失败 ⇒ MUST NOT 删除旧文件（Assumptions）。**同一时点 MUST 一并移除该存档的旧格式备份**（spec 裁决 **Q5**），且只在新的当前档写成功之后移除 |
 | 6 | 备份文件 MUST NOT 参与唯一性判定与 `Exists`（它是副本，不是候选档） |
+| 7 | 改名与格式切换 MUST NOT 让同一存档标识在 `backups/` 下留下**两个**候选（旧名副本 + 新名副本，或两种扩展名各一份）：见 §6 条款 5、§7 条款 7（spec 裁决 **Q5**） |
 
 ## 6. 改名不变性条款
 
 | 条款 | 要求 |
 | --- | --- |
-| 1 | `Rename` MUST 只做**文件移动**（`File.Move`）：字节逐字节不变 ⇒ `SaveId` 与全部游戏内容不变（FR-009；001 FR-012 的「改档名不变性」在本契约首次获得可验证对象） |
+| 1 | `Rename` 的**主档** MUST 只做**文件移动**（`File.Move`）：字节逐字节不变 ⇒ `SaveId` 与全部游戏内容不变（FR-009；001 FR-012 的「改档名不变性」在本契约首次获得可验证对象）；同存档的**备份**按条款 5 同步改名 |
 | 2 | 新名 MUST 先过 `SaveName`（§4 条款 1）；新名已存在 ⇒ 拒绝（§2 的冲突口径） |
 | 3 | `Rename` MUST NOT 触碰任何主体字节，因此 MUST NOT 改动 `Family.Name`（§12.4 与 §14 是两个独立概念；SC-004） |
 | 4 | 返回值 = 新槽位；旧槽位文件 MUST 已不存在 |
+| 5 | `Rename` MUST **同时**把该存档在 `backups/` 下的备份（若有）**改名**为同名的同扩展名（spec 裁决 **Q5**）——使「主档名 = 备份名」在改名后仍成立；备份改名失败 MUST NOT 损坏主档，且 MUST 以 `SaveAccessException` 家族的可识别方式暴露，MUST NOT 静默吞 |
+| 6 | 备份改名 MUST NOT 触碰其字节（与条款 3 同口径）：改名后备份仍可被同一套 `Load` 读回 |
 
 ## 7. 备份条款
 
 | 条款 | 要求 |
 | --- | --- |
 | 1 | `Backup(slot)` = 把当前档的字节复制为 `<根>/backups/<存档名>.<与当前档相同的扩展名>`（§14 的 Q1 裁决；FR-011） |
-| 2 | **覆盖式**：每个存档恒 1 份（`backups/` 下该名字至多一个文件），MUST NOT 按时间戳追加 |
+| 2 | **覆盖式**：每个存档恒 1 份（`backups/` 下该名字至多一个文件），MUST NOT 按时间戳追加；**改名与格式切换之后该不变式 MUST 仍成立**（spec 裁决 **Q5**、SC-003） |
 | 3 | 经 `AtomicFileWriter`（§3 条款 5）；`backups/` 不存在即创建 |
 | 4 | 备份是**可读回**的完整存档（同格式 ⇒ 同一套 `Load` 路径）；「回退」= 把备份复制回主文件 |
 | 5 | 备份失败 MUST NOT 影响已写好的当前档；MUST NOT 静默吞（Edge Case 的「降级 MUST 以可识别的方式暴露」） |
 | 6 | 备份的**时点**由 [契约十一](./save-cadence.md) 决定，本契约只提供原语 |
+| 7 | `backups/` 下同一存档标识 MUST 恒至多 1 份，且其文件名 MUST 与当前档**同名同扩展名**：改名走 §6 条款 5、格式切换走 §5 条款 5；发现同标识的**其他**备份文件（如上一版本遗留的旧名副本）时 MUST 在本次备份/切换中清理（spec 裁决 **Q5**） |
 
 ## 8. 本契约明确不包含
 
