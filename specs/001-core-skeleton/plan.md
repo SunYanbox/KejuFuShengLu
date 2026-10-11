@@ -25,11 +25,19 @@ warnings-as-errors；`KFL.Core` 承载成员/家族/存档状态与值类型；`
 已装 SDK 10.0.401 且 `Microsoft.WindowsDesktop.App 10.0.12` 可用；同一配置在未来装了
 其他 `10.0.x` 的机器或 CI 上照常工作（章程原则 I 已 PATCH 至 v1.1.1）。
 
-**Primary Dependencies**: 本阶段**只**引入测试栈 `xunit` 2.9.x +
+**Primary Dependencies**: **001 交付时**只引入测试栈 `xunit` 2.9.x +
 `xunit.runner.visualstudio` 3.1.x + `Microsoft.NET.Test.Sdk` 17.14.x。
 章程依赖基线中的 CommunityToolkit.Mvvm、MessagePack-CSharp、Bogus、Serilog、
-LiveChartsCore **本阶段一个都不装**——001 没有消费者，章程「复杂度 MUST 被论证」同样
+LiveChartsCore 在 001 内**一个都不装**——001 没有消费者，章程「复杂度 MUST 被论证」同样
 适用于依赖（各自阶段带需求引入）。
+
+**依赖现状（2026-10-11 同步）**：上述五个包中**只有 Bogus 35.6.1 已被引入**，位置
+`src/KFL.Infrastructure/KFL.Infrastructure.csproj`，由 `003-opening-assets-officialdom`
+**首次消费**——它只服务 `INameGenerator` 的适配实现 `BogusNameGenerator`
+（见 003 FR-009 与契约二 §3；规则层只见抽象，其源码文本 MUST NOT 出现 Bogus 类型）；
+其余四个包截至本日**仍未引入**，等各自阶段带真实需求进来（CommunityToolkit.Mvvm →
+界面轨 U1/U4、MessagePack-CSharp → 阶段④/逻辑轨 ④、Serilog → 日志、LiveChartsCore →
+界面轨 U3）。
 
 **Storage**: N/A。存档（MessagePack/JSON/备份）属阶段④；001 只定义字段，不落盘。
 
@@ -52,9 +60,19 @@ LiveChartsCore **本阶段一个都不装**——001 没有消费者，章程「
 - 非 UI 层零系统时钟、零全局随机、零文件系统、零网络（静态断言）。
 - 测试工程只额外读取本仓库工程文件与源码（FR-015 的收敛，见 research R-13）。
 
-**Scale/Scope**: 6 个工程；`KFL.Core` **17 个领域类型**（3 实体 + 6 值类型/记录 + 8 枚举）
-**+ 1 个值域常量类**（`Config/AttributeLimits.cs`，非领域类型，故不计入 17）；
-`KFL.Infrastructure` 2 组接缝 + 3 个实现；架构守卫 8 条断言；0 行数值逻辑；0 个界面功能。
+**Scale/Scope**（分两段：**001 交付时**的形状 / **2026-10-11 同步**的现状）：
+
+- **001 交付时**：6 个工程；`KFL.Core` **17 个领域类型**（3 实体 + 6 值类型/记录 + 8 枚举）
+  **+ 1 个值域常量类**（`Config/AttributeLimits.cs`，非领域类型，故不计入 17）；
+  `KFL.Infrastructure` 2 组接缝 + 3 个实现；`KFL.Rules` 只有 `Config/GameConfig.cs` 空壳；
+  架构守卫 8 条断言；0 行数值逻辑；0 个界面功能。
+- **现状（2026-10-11 同步，含 002/003 追加）**：`KFL.Core` **38 个 `.cs`**
+  （002 追加 `FamilyEconomy`/`Ledger`/`Treasury`/`Loan`/`Holdings`/`FamineState` 等，
+  003 追加 `ImperialClass`/`AppointmentTrack`/`SalaryMode`/`Money`/`GrainPriceIndex` 等）；
+  `KFL.Infrastructure` **3 组接缝 + 5 个实现**（第三组接缝 `INameGenerator` 由 003 追加，
+  见契约二 §3）；`KFL.Rules` **29 个 `.cs`**（002 的 `Settlement/`、`Economy/` 与
+  003 的 `Start/`、`Career/`）；两个 UI 工程仍为空壳（界面轨 U1 未开工）。
+  上一段的数字**只陈述 001 交付时的形状**，MUST NOT 被读作当前规模。
 
 ## Constitution Check
 
