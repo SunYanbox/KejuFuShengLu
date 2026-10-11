@@ -622,12 +622,45 @@ Task: "T034 CountedMembers in src/KFL.Rules/Settlement/CountedMembers.cs"
 - [X] T072 回写 `data-model.md`：§4.2 补 `SettlementResult.Career`；§4.3 更正 `LivingCostCalculator`/`IncomeCalculator`/`PaymentPrimitive.Pay` 三处签名与「七步」口径；§3.5/§6.1 的步号顺移 per 003 T030/T033 + 实现签名 (partial) —— **已完成**
 - [X] T073 回写 `research.md` R-07（补考课掷骰）、R-11（步号 ③→④）、R-12（步号 ④→⑤），`quickstart.md` S1（六步→七步），`plan.md` E-14（步号） per 003 契约七 §2 + `MonthlySettlementEngine.cs` (partial) —— **已完成**
 - [X] T074 复核历史记录类条目（L14 门禁「三条/四条」混用、L15 `checklists` 的「下一轮」表述）：按规格书 §16.2 不回改，不产生文件改动 per 规格书 §16.2 (unrequested) —— **复核完毕，无需改动**
-- [ ] T075 修 `spec.md` §FR-003（同见契约三 §5、R-17）：生活费公式把「农出身独立乘区」与「一般乘区」移入 Σ 内（按成员/年龄档取值），或注明「按成员取值」 per 规格书 §5.1 + `LivingCostCalculator.Compute` (contradicts)
-- [ ] T076 修 `spec.md:359` 的悬空引用 `LivingCostTable.FarmerMultiplier` → `FarmerMultiplierOf`（或分列 `FarmerMultiplierAdult`/`FarmerMultiplierMinor`） per 契约三 §5 + `LivingCostTable` (missing)
-- [ ] T077 修 `plan.md` 的依赖归属段：把 Bogus 移出「本阶段仍然没有消费者」清单（003 已在消费），并复核五个 NuGet 包的归属标注 per 规格书 §2 + `INameGenerator` (contradicts)
-- [ ] T078 修 `plan.md:185-187` 的自相矛盾（「`KFL.Infrastructure` 零改动」紧接 `GameStateFactory.cs` 标注有改动）→ 改为「仅 `GameStateFactory` 一处调用点适配」 per T020/T018 (contradicts)
-- [ ] T079 修 `spec.md` US1 AS2 的 Given：单人自耕封顶 20 亩，「40 亩」用例实为两名成年成员；改 Given 或改括号值 per `IncomeCalculator` + `IncomeTests` (contradicts)
-- [ ] T080 修 `research.md` R-16 的测试文件清单：补 `SettlementEngineTests` per `quickstart.md` S1 + `data-model.md` §4.3 (partial)
-- [ ] T081 修 `quickstart.md:173` 的阶段编号误映射：「随机事件（逻辑轨 ③、⑦）」→「逻辑轨 ⑦」 per `spec.md` FR + `research.md` R-17（§16.2 迁移误映射） (contradicts)
-- [ ] T082 修 `spec.md:383-387` 与 `data-model.md:386-390`（§6.4）：把「官职（授官/考课/致仕）与 §10.1 开局资产发放本阶段不实现、无写入通道、不可达」改为「**已由 003（逻辑轨 ③）交付**」，保留 002 当时口径 per 003 实现 + 契约三 §9 (partial)
+- [X] T075 修 `spec.md` §FR-003（同见契约三 §5、R-17）：生活费公式把「农出身独立乘区」与「一般乘区」移入 Σ 内（按成员/年龄档取值），或注明「按成员取值」 per 规格书 §5.1 + `LivingCostCalculator.Compute` (contradicts)
+- [X] T076 修 `spec.md:359` 的悬空引用 `LivingCostTable.FarmerMultiplier` → `FarmerMultiplierOf`（或分列 `FarmerMultiplierAdult`/`FarmerMultiplierMinor`） per 契约三 §5 + `LivingCostTable` (missing)
+- [X] T077 修 `plan.md` 的依赖归属段：把 Bogus 移出「本阶段仍然没有消费者」清单（003 已在消费），并复核五个 NuGet 包的归属标注 per 规格书 §2 + `INameGenerator` (contradicts)
+- [X] T078 修 `plan.md:185-187` 的自相矛盾（「`KFL.Infrastructure` 零改动」紧接 `GameStateFactory.cs` 标注有改动）→ 改为「仅 `GameStateFactory` 一处调用点适配」 per T020/T018 (contradicts)
+- [X] T079 修 `spec.md` US1 AS2 的 Given：单人自耕封顶 20 亩，「40 亩」用例实为两名成年成员；改 Given 或改括号值 per `IncomeCalculator` + `IncomeTests` (contradicts)
+- [X] T080 修 `research.md` R-16 的测试文件清单：补 `SettlementEngineTests` per `quickstart.md` S1 + `data-model.md` §4.3 (partial)
+- [X] T081 修 `quickstart.md:173` 的阶段编号误映射：「随机事件（逻辑轨 ③、⑦）」→「逻辑轨 ⑦」 per `spec.md` FR + `research.md` R-17（§16.2 迁移误映射） (contradicts)
+- [X] T082 修 `spec.md:383-387` 与 `data-model.md:386-390`（§6.4）：把「官职（授官/考课/致仕）与 §10.1 开局资产发放本阶段不实现、无写入通道、不可达」改为「**已由 003（逻辑轨 ③）交付**」，保留 002 当时口径 per 003 实现 + 契约三 §9 (partial)
+
+---
+
+## Phase 10: Convergence（2026-10-11，`$speckit-converge` 复核）
+
+> 本节由 `$speckit-converge` 追加。既有任务（T001~T082）一律**未改动、未重排、未重编号**。
+> Phase 9 的 T075~T082 经逐条复核**全部仍然成立且仍未完成**（其在办状态已由本节复核确认，
+> 内容与优先级不变），属**已登记的在办工作**，故本节不重复登记，只追加本轮**新发现**的缺口。
+> 复核基线（2026-10-11 实测）：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false` **0 警告 0 错误**；
+> `dotnet test … -p:_MSTestEnableParentProcessQuery=false` **421 通过 / 0 失败 / 0 跳过**；
+> `dotnet sln list` **恰六工程**；递归 `*.sln`（排除 `.git`）**无输出**。
+
+- [X] T083 补建 `specs/002-monthly-settlement-economy/implementation-notes.md`（或按 §16.2 的工件口径改 `spec.md:7` 的链接目标）per `spec.md:7` 的 Status 悬空引用 (missing) —— 002 的 Status 把「实现说明与门禁实测」指向该文件，但 002 目录下**不存在**（001 与 003 均保留同名工件），链接为悬空引用；内容按 tasks.md 已登记的实测回填（T006/T064 的四条门禁输出、T062 的 FR/SC 覆盖结论、T063 的边界复核）
+- [X] T084 修 `data-model.md` §6.3 的步号残留：「`FamineState.ElapsedMonths` … **调用点在④的足额判定之前**」→「第⑤步」 per 契约三 §1/§8 + data-model §3.5/§6.1 (partial) —— T072 只顺移了 §3.5/§6.1，§6.3 这一处仍停在六步编号（与同一文件的 §3.5、§6.1 及契约三自相矛盾）
+- [X] T085 修 `quickstart.md` §5（172~175 行）：「官职与婚育…本阶段没有任何写入通道（不可达）」中**官职（待阙/授官/考课/致仕）已由 003 在第③步交付**，按 T082 的同一口径改为指向契约七并保留 002 当时口径 per 003 实现 + 契约三 §9 (contradicts)
+- [X] T086 收口 `spec.md` 的 Status：现为「Completed（T001~T065 全部完成）」，而 Phase 9 的 T075~T082 仍未完成（T066 设 Completed 与同批新增的收敛项自相矛盾）；在 T075~T082 完成后把 Status 改为与事实一致的表述 per tasks.md Phase 9 + T066 (contradicts)
+
+> **本轮回写范围登记（2026-10-11，T075~T086 收口时补记）**：本轮为**纯文档轮**——
+> `src/`、`tests/` 一行未改，测试数 **421 → 421**，四条门禁不变（0 警告 0 错误 / 0 失败 0 跳过 /
+> 恰六工程 / 递归无 `*.sln`），故**不含任何类型或契约的形状变更**，无需触碰上游 `spec.md` 或契约。
+> 同步过的文件与位置（逐项理由见 [implementation-notes.md](./implementation-notes.md) §5）：
+> `spec.md`（Status、FR-003、US1 AS2、Key Entities 的生活费乘区、`Out of Scope` 的官职与
+> §10.1 开局资产两条）、`contracts/monthly-settlement.md`（§5 生活费公式）、
+> `research.md`（R-16 测试文件清单、R-17 生活费公式）、`plan.md`（Primary Dependencies、
+> 计划结构树的 `KFL.Infrastructure` 两行、E-10 裁决行的 Σ 口径）、`data-model.md`（§6.1 与
+> §6.3 的步号、§6.4 的已交付项）、`quickstart.md`（§3 的 S1 断言、§5）、并补建
+> `implementation-notes.md`。
+> **超出任务原文的两处同额类修正**已在此登记：
+> ① T084 只点了 `data-model.md` §6.3，实施时发现同文件 §6.1 有同一处 ④ 的步号残留，一并修正
+> （否则 §3.5 与 §6.1 仍自相矛盾）；
+> ② T075 只点了 `spec.md`/契约三 §5/R-17，实施时发现 `quickstart.md` 的 S1 断言行与 `plan.md`
+> 的 E-10 裁决行也把两个成员乘区写成家族级因子，按同一口径一并修正（三处公式现互为一致）。
+> 既有条目 T001~T082 的文字**未被回改**，只追加本节的勾选与登记。
 
