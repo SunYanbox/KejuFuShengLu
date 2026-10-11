@@ -4,7 +4,7 @@ using KFL.Infrastructure.Abstractions;
 namespace KFL.Infrastructure.Services;
 
 /// <summary>
-/// 内置宋风姓名生成器（规格书 §2 的「内置宋风姓氏 / 名字字库兜底」，**产品默认路径**；FR-009）。
+/// 内置宋风姓名生成器（规格书 §2 的**产品默认实现**，§17 裁决回写 2026-10-11；FR-009）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -19,7 +19,7 @@ namespace KFL.Infrastructure.Services;
 /// </remarks>
 public sealed class SongStyleNameGenerator : INameGenerator
 {
-    /// <summary>宋风姓氏字库（规格书 §12.4 的兜底实现；只作<b>随机取一</b>的来源）。</summary>
+    /// <summary>宋风姓氏字库（规格书 §2 产品默认实现的姓氏来源、§12.4 的「随机姓氏」；只作<b>随机取一</b>的来源）。</summary>
     public static readonly IReadOnlyList<string> Surnames =
     [
         "赵", "钱", "孙", "李", "周", "吴", "郑", "王", "冯", "陈",
