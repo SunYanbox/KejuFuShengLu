@@ -87,7 +87,7 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 | --- | --- |
 | 开局 §10.1 四出身资产（初始现金 / 初始田 / 农村宅 / 城市宅 / 商本） | 该契约 **§1 开局**：`GameConfig.NewGame.InitialCashGuan` / `InitialFarmlandMu` / `InitialRuralHouses` / `InitialUrbanHouses` / `InitialMerchantCapitalGuan` |
 | 开局成员口径（配偶人数、孩子人数按出身） | 该契约 **§1 开局**：`GameConfig.NewGame.SpouseCount` / `ChildCount` |
-| 开局年龄口径（家主、士出身家主、配偶、孩子） | 该契约 **§1 开局**：`GameConfig.NewGame.HeadAge` / `SpouseAge` / `ChildAge`（区间常量在 `OriginStartTable.HeadAgeMean` 一族 / `SpouseAgeMean` / `ChildAgeMin` / `ChildAgeMax`） |
+| 开局年龄口径（家主、士出身家主、配偶、孩子） | 该契约 **§1 开局**：`GameConfig.NewGame.HeadAge` / `SpouseAge` / `ChildAge`（区间常量在 `OriginStartTable.AgeSpread` / `HeadAgeMin(origin)` / `HeadAgeMax(origin)` / `SpouseAgeMean` / `ChildAgeMin` / `ChildAgeMax`） |
 | 天赋与寿数分布（天赋、无父母参照的学业/体质、天命寿数按性别） | 该契约 **§1 开局**：`GameConfig.Attributes.TalentMean` / `TalentSigma` / `StudyMean` / `StudySigma` / `HealthMean` / `HealthSigma` / `LifespanMean(gender)` / `LifespanSigma(gender)` 与取样 `NextTalent` / `NextStudy` / `NextHealth` / `NextLifespan` |
 | 官吏体系：待阙期区间 | 该契约 **§2 官吏体系**：`GameConfig.Career.AwaitingPostMinMonths` / `AwaitingPostMaxMonths` |
 | 官吏体系：初始官阶按甲第/特奏名映射 | 该契约 **§2 官吏体系**：`GameConfig.Career.InitialRankOf` |

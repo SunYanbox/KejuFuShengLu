@@ -63,9 +63,9 @@ public interface INameGenerator
 | 条款 | 要求 |
 | --- | --- |
 | 位置 | 接口位于 `KFL.Infrastructure/Abstractions/INameGenerator.cs`；两个实现位于 `KFL.Infrastructure/Services/`（与 §4 条款 3 同口径，不得落在 `KFL.Core`） |
-| 规则层依赖 | `KFL.Rules` MUST 只依赖本抽象；`KFL.Rules` 的源码文本 MUST NOT 出现 Bogus 类型（含 `Bogus` 命名空间与类型名，由架构守卫覆盖） |
-| 产品默认实现 | `SongStyleNameGenerator(IRandomService)`：**产品默认路径**，内置宋风姓氏/名字库（规格书 §2 的兜底实现），不依赖外部包 |
-| Bogus 适配实现 | `BogusNameGenerator(IRandomService)`：Bogus `zh_CN` 适配器；以注入随机取一个整数种子 → `new Randomizer(seed)`（**局部**实例），只在该局部实例上取名。**MUST NOT** 赋值全局 `Bogus.Randomizer.Seed`（全局可变状态 = 隐式全局随机源，章程原则 IV） |
+| 规则层依赖 | `KFL.Rules` MUST 只依赖本抽象；`KFL.Rules` 的源码文本 MUST NOT 出现 Bogus 类型（含 `Bogus` 命名空间与类型名）。**该 MUST 由 `KFL.Rules.csproj` 的依赖边保证**——该工程 MUST NOT 引用 `Bogus` 包；G-05 只校验 `ProjectReference`、不读 `PackageReference`（G-07 的 14 个禁用 token 里没有 `Bogus`，契约一 §2.1 的清单亦 MUST NOT 增删改），故此处**没有**源码文本层面的静态断言 |
+| 产品默认实现 | `SongStyleNameGenerator(IRandomService)`：**产品默认路径**，内置宋风姓氏/名字库（规格书 §2 的产品默认实现；§17 裁决回写 2026-10-11），不依赖外部包 |
+| Bogus 适配实现 | `BogusNameGenerator(IRandomService)`：Bogus `zh_CN` 适配器（规格书 §2 的**可选**实现）；以注入随机取一个整数种子 → `new Randomizer(seed)`（**局部**实例），只在该局部实例上取名。**MUST NOT** 赋值全局 `Bogus.Randomizer.Seed`（全局可变状态 = 隐式全局随机源，章程原则 IV） |
 | 随机来源 | 两个实现的全部随机 MUST 经注入的 `IRandomService`（见 §1 消费者列）；姓名来源自身 MUST NOT 引入第二个随机源，以保证同种子 → 同姓名可复现 |
 
 ## 4. 三组接缝共同的禁令

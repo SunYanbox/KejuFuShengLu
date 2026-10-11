@@ -38,14 +38,15 @@
 
 ---
 
-## R-02 甲第字段的形状：`DegreeRecord` 的可选第 5 参与三条相容性不变量
+## R-02 甲第字段的形状：`DegreeRecord` 的可选第 5 参与四条相容性不变量
 
 **问题**：FR-014 要求 `一甲 → L11 / 二甲 → L13 / 三甲 → L15`，而 001 的 `DegreeRecord`
-只有「功名 + 一甲名次」，二甲与三甲**不可区分**。同时 `ValueObjectTests.DegreeRecord四个成员均为必需`
-断言该记录**恰好 4 个构造参数且无可选参数**。
+只有「功名 + 一甲名次」，二甲与三甲**不可区分**。同时 001 的
+`ValueObjectTests.DegreeRecord四个成员均为必需` 曾断言该记录**恰好 4 个构造参数且无可选参数**
+（该测试已由 T014 改名为 `ValueObjectTests.DegreeRecord五个成员其中甲第可选`）。
 
 **结论**：新增**可选第 5 参** `ImperialClass? imperialClass = null` 与只读属性 `Class`，
-并施加三条构造期不变量：
+并施加四条构造期不变量：
 
 | 序号 | 不变量 | 违背示例 |
 | --- | --- | --- |
@@ -69,7 +70,8 @@
 **两个不同的维度**，混进同一枚举会让 §6 的「进甲率」与 §8.2 的「授官映射」共用一个类型，
 任意一处扩展都会污染另一处。
 
-**受控的工件修订**：`ValueObjectTests.DegreeRecord四个成员均为必需` 改为「五个成员、第 5 个可选」，
+**受控的工件修订**（已由 T014 落地）：001 的 `ValueObjectTests.DegreeRecord四个成员均为必需`
+改名为 `DegreeRecord五个成员其中甲第可选` 并改述为「五个成员、第 5 个可选」，
 并新增四条不变量的正例/反例断言；001 既有的一甲构造点（`PersonTests`、`FamilyTests`）
 补传 `ImperialClass.FirstClass`。这属于**版本内可见的工件修订**，在 `tasks.md` 中单列任务，
 不做静默兼容。
@@ -229,8 +231,9 @@ public interface INameGenerator
 ```
 
 - **`SongStyleNameGenerator(IRandomService)`**：内置宋风姓氏/名字库，**产品默认路径**，
-  确定性由注入的 `IRandomService` 保证（规格书 §2 的「内置宋风姓氏/名字字库兜底」）。
-- **`BogusNameGenerator(IRandomService)`**：Bogus `zh_CN` 适配器（规格书 §2 的「Bogus 为主」）。
+  确定性由注入的 `IRandomService` 保证（规格书 §2 的 §17 裁决回写，2026-10-11）。
+- **`BogusNameGenerator(IRandomService)`**：Bogus `zh_CN` 适配器（**可选**实现；规格书 §2 原
+  「Bogus 为主」的措辞已按同一条裁决改述为「可选适配实现」）。
   确定性口径：以注入随机取一个整数种子 → `new Randomizer(seed)`（Bogus 的
   `Randomizer(int)` **完全忽略**全局静态 `Randomizer.Seed`）→ 只在该局部 `Randomizer` 上取名。
   **MUST NOT** 赋值 `Bogus.Randomizer.Seed`（全局可变状态 = 隐式全局随机源，章程原则 IV）。
@@ -247,9 +250,11 @@ public interface INameGenerator
 
 **已登记的取舍**：Bogus 的 `Randomizer` 内部使用 `System.Random`，其生成算法**不保证跨 .NET
 版本稳定**——与 001 `SeededRandomService` 的已知取舍同款（单次运行内确定性成立）。
-所以**产品默认走内置生成器**，Bogus 适配器作为规格书 §2「为主」的实现并在测试中同样断言确定性；
-若实现期发现 `DataSet.Randomizer` 的赋值通路不可用，**回退方案**是只交付内置生成器
-（FR-009 的 MUST 已满足）并在 `tasks.md` 追记「Bogus 适配器延后」——**MUST NOT** 改为设全局种子。
+所以**产品默认走内置生成器**；该取舍已经规格书 §17 裁决回写（2026-10-11，规格书 §2/§4.2
+改为「内置宋风为产品默认、Bogus 为可选适配实现」），偏离真源的状态已消除。
+Bogus 适配器**已交付**（`BogusNameGenerator`，其 `DataSet.Randomizer` 赋值通路经
+`new Name(zh_CN) { Random = randomizer }` 实测可用），`NameGeneratorTests` 对两个实现
+同样断言确定性；原「只交付内置生成器」的回退方案**未触发**——**MUST NOT** 改为设全局种子。
 
 ---
 
@@ -413,9 +418,11 @@ MUST NOT 成为第二真源（同 002 `SettlementResult` 的既有口径：不�
 SC-009 的扫描范围内，故其中的数值一律经配置成员取得，只有锚点允许字面量并加行级豁免）。
 新增夹具放进既有的 `Rules/RulesTestHarness.cs`：
 
-- `Official(level, monthsInOffice, merit, …)`：在任官员；
-- `Awaiting(person, remainingMonths)`：待阙者（位 + 计时成对设置）；
-- `PromotionBannedOfficial(remaining)`：禁升期官员（**只消费**，不清算计时）；
+- `Official(index, level, monthsInOffice = 0, merit = 0, gender = Gender.Male, age = 40)`：在任官员；
+- `Awaiting(person, remainingMonths, track = null)`：待阙者（位 + 计时 + 入仕途径成对设置，
+  途径缺省时按 `AppointmentEntry.TrackOf` 从功名记录派生）；
+- `PromotionBannedOfficial(index, remainingMonths, level, monthsInOffice = 0, merit = 0)`：
+  禁升期官员（**只消费**，不清算计时）；`ServingSentence(person, remainingMonths)`：服刑者；
 - `FixedNameGenerator`：返回固定姓名的 `INameGenerator` 替身（与 `FixedRandomService` 同款）。
 
 开局测试 MUST 使用 `SeededRandomService(固定种子)`（不是 `FixedRandomService`），
@@ -429,13 +436,16 @@ SC-009 的扫描范围内，故其中的数值一律经配置成员取得，只�
 ## R-18 文档迁移的剩余项（章程「需求真源」）
 
 **结论**：001/002 的活工件已在 2026-10-08 按规格书 §16.2 迁移完毕
-（见本特性 `checklists/requirements.md` 的追记），本特性**只剩三项**：
+（见本特性 `checklists/requirements.md` 的追记），本特性的三项文档回写**均已完成**
+（2026-10-11 逐项复核）：
 
-1. `科举浮生录规格书.md` 新增 §17 裁决回写：§3（前史纪年，Q4）、§4.1（功名记录增「甲第」）、
-   §7.5 与 §8.2（服刑期仕途计时暂停，Q5）、§8.2（考课计时口径：授官当月记 1、第 36 个在职月判定）。
-2. 001 的 `spec.md`（FR-008 附近）与 `data-model.md`（`DegreeRecord` 小节）各补一句：
+1. `科举浮生录规格书.md` 的 §17 裁决回写**已齐备**：§3（前史纪年，Q4）、§4.1（功名记录增「甲第」）、
+   §7.5 与 §8.2（服刑期仕途计时暂停，Q5）、§8.2（考课计时口径：授官当月记 1、第 36 个在职月判定）；
+   另有 2026-10-11 追加的两条回写——§8.2 的禁升计时口径澄清（计时照常 +1、只跳过掷骰与升迁）
+   与 §2/§4.2 的姓名来源口径（内置宋风为产品默认）。
+2. 001 的 `spec.md`（FR-008 附近）与 `data-model.md`（`DegreeRecord` 小节）**已各补一句**：
    甲第字段由 `003-opening-assets-officialdom` 向后兼容扩展（指向本特性 FR-014）。
-3. `KFL.Core` 内的三处注释改标（`AttributeLimits` 的「政绩上限属阶段⑧」、
+3. `KFL.Core` 内的三处注释**已改标**（`AttributeLimits` 的「政绩上限属阶段⑧」、
    `Person.Lifespan`/`Merit` 的「上界属阶段⑧」→ **逻辑轨 ③/⑦**）——它们是被本特性直接触碰的
    产品文件，顺手改标避免误导（纯注释，不触发任何断言）。
 
@@ -475,7 +485,7 @@ spec 的 Assumptions 已把主要口径裁决完，以下是实现时必须**逐
 
 | 事项 | 为何不阻塞 | 归属 |
 | --- | --- | --- |
-| Bogus 适配器的 `DataSet.Randomizer` 赋值通路未能离线核实 | 产品默认走内置生成器；FR-009 的 MUST 已由内置实现满足。回退方案见 R-09 | 实现期自证 |
+| ~~Bogus 适配器的 `DataSet.Randomizer` 赋值通路~~（离线期未能核实） | **已关闭**：`BogusNameGenerator` 已交付（`new Name(zh_CN) { Random = randomizer }` 实测可用），`NameGeneratorTests` 对两个实现全绿；回退方案未触发 | 已落地（003） |
 | `GameDate` 允许负年份后，卡片/筛选器如何显示前史年月 | 显示属界面轨 U2；规则层只回答「何时」 | 界面轨 U2 |
 | 科举如何产出「甲第」与特奏名 | FR-012 明令本特性 MUST NOT 自行判定科举细节；本特性只提供入口与校验 | 逻辑轨 ⑤ |
 | 禁升计时的建立与逐月递减 | FR-018 明令本特性只**消费** `PromotionBanned` 状态位与计时值 | 逻辑轨 ⑥ |

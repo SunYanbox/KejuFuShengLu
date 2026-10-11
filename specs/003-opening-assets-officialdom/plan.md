@@ -27,8 +27,8 @@
   `Career/`（三态判定、及第入仕入口、月度推进），并把 `IncomeCalculator` 的俸禄
   从「有官阶就发全俸」细化为**在任/待阙/致仕三态**；`MonthlySettlementEngine` 在
   **收入之前**插入官吏推进步（FR-019）。
-- `KFL.Infrastructure` 交付 `INameGenerator` 与**两个确定性实现**（内置宋风字库为主路径、
-  Bogus `zh_CN` 适配器），首次消费章程依赖基线里的 Bogus。
+- `KFL.Infrastructure` 交付 `INameGenerator` 与**两个确定性实现**（内置宋风字库为**产品默认**、
+  Bogus `zh_CN` 适配器为**可选**实现，规格书 §2 的 §17 裁决回写），首次消费章程依赖基线里的 Bogus。
 
 本特性**不做**任何界面（FR-026 已裁决：界面属**界面轨 U1~U5**）、不做科举周期（逻辑轨 ⑤）、
 不做惩罚矩阵/服刑与禁升计时的建立与递减（逻辑轨 ⑥）、不做婚育/疾病/寿命/继任（逻辑轨 ⑦）、
@@ -40,7 +40,7 @@
 非 UI 三层 `net10.0`、UI 两层 `net10.0-windows`；**不新增工程**，仍六工程。
 
 **Primary Dependencies**: **新增 1 个 NuGet 依赖：Bogus `35.6.1`**（仅 `KFL.Infrastructure`，
-对应规格书 §2 的「姓名生成（Bogus zh_CN，内置宋风姓氏/名字字库兜底）」与章程依赖基线内的既有包；
+对应规格书 §2 的「姓名生成（内置宋风姓氏/名字字库为产品默认，Bogus zh_CN 适配器为可选实现）」与章程依赖基线内的既有包；
 本机 NuGet 缓存中已存在 `bogus/35.6.1`，含 `net6.0` 资产 → 兼容 `net10.0`，离线可还原）。
 **MUST NOT 接第三个随机源**：Bogus 的 `Randomizer` 只允许以局部种子构造
 （`new Randomizer(int)`），MUST NOT 设置全局静态 `Randomizer.Seed`（R-09）。
@@ -73,11 +73,13 @@
 - `.slnx` 内 MUST 仍恰好六个 `<Project>`（G-02）；`tests/KFL.Tests/KFL.Tests.csproj` 的
   `_MSTestEnableParentProcessQuery` MUST 保持**注释态**提交。
 
-**Scale/Scope**（结构预估，落地以本计划的结构树为准）：
-`KFL.Core` 改 4 个文件、增 3 个枚举；`KFL.Rules` 增 6 个类型（3 配置 + 3 生涯/开局），
-改 4 个（`GameConfig`、`IncomeCalculator`、`SettlementResult`、`MonthlySettlementEngine`）；
-`KFL.Infrastructure` 增 3 个类型 + 1 处 csproj；测试增 6 个文件、改 8 个文件；
-规格书与 001 工件的裁决回写 3 处；0 个界面功能、0 行持久化代码。
+**Scale/Scope**（按 2026-10-11 的实际落地现状回写；结构树见下）：
+`KFL.Core` 改 **5** 个文件（`GameDate`、`StatusTimers`、`DegreeRecord`、`Person` 与纯注释改标的
+`Config/AttributeLimits.cs`）、增 3 个枚举；`KFL.Rules` 增 **8** 个类型/文件（3 个配置 +
+`Start/NewGameSetup.cs` + `Career/` 的 4 个），改 4 个（`GameConfig`、`IncomeCalculator`、
+`SettlementResult`、`MonthlySettlementEngine`）；`KFL.Infrastructure` 增 3 个类型 + 1 处 csproj；
+测试增 **7** 个文件（含 `Rules/SpecAnchorTests.cs`）、改 8 个文件；
+规格书与 001/002 工件的裁决回写 3 处（另有 2026-10-11 的收敛回写）；0 个界面功能、0 行持久化代码。
 
 ## Constitution Check
 
@@ -88,7 +90,7 @@
 | **I. .NET 10 单一运行时基线** | 不新增工程、不改任何 `TargetFramework`；`global.json` 不动；新增依赖 Bogus `35.6.1` 含 `net6.0` 资产（兼容 `net10.0`）、仍在维护，且是章程依赖基线的既有项 | ✅ |
 | **II. 分层解耦与单向依赖** | 开局与仕途的**状态**（`MonthsInOffice`、待阙计时、甲第、`SalaryMode`）归 `KFL.Core`；**编排与数值**（开局表、分布、政策、及第入仕、月度推进、三态俸禄）归 `KFL.Rules`；姓名来源的**实现**归 `KFL.Infrastructure`（§2 的接口清单所在层）；`Core` 不引用 `Rules`（G-05 不变）；全部新增逻辑为纯函数或只依赖注入的 `IRandomService`；`Person`/`Family` 仍只承载数据与自身不变量，跨实体推进只在 `OfficialCareerAdvance` | ✅ |
 | **III. WPF + MVVM 表现层契约** | 无 ViewModel、无 View、无 code-behind 改动；`KFL.Presentation` 与 `KFL.App` 一行不动（界面属界面轨 U1/U2/U3）；FR-026 已把界面逐项排除 | ✅（N/A 已说明） |
-| **IV. 单测优先与结果确定性** | 四出身的开局逐项断言、待阙/授官/考课/政绩/致仕各条规则独立断言、§16 必测「俸禄表 18 级锚点 72/420/5100」在三态与半俸下复核；随机消费次序写进契约六/七并逐条断言；测试与实现同批提交 | ✅ |
+| **IV. 单测优先与结果确定性** | 四出身的开局逐项断言、待阙/授官/考课/政绩/致仕各条规则独立断言、§16 必测「俸禄表 18 级锚点 72/420/5100」在**在任与致仕（半俸）两态**下复核（待阙态不发俸禄、无锚点）；随机消费次序写进契约六/七并逐条断言；测试与实现同批提交 | ✅ |
 | **V. 约定式提交与中文提交信息** | 规格书与 001 工件的裁决回写单独成 `docs` 提交；`feat(core)`（`GameDate`/`StatusTimers`/`DegreeRecord`/`Person` 与三个枚举）、`feat(rules)`（配置、开局、仕途、三态俸禄）、`feat(infrastructure)`（姓名来源）、`test(...)` 各起一次；不混装 | ✅（流程约束） |
 | **VI. 调试通道不复制规则** | 本特性不建控制台（界面轨 U4）；政绩上限、考课概率与封顶、半俸比例等全部只声明在 `KFL.Rules/Config/`，将来的控制台复用同一入口 | ✅ |
 | **技术栈与工程约束** | `.slnx` 唯一、六工程不变；无游戏引擎；金额 `decimal` 以文为单位；新增数值全部集中 `KFL.Rules/Config/`（SC-009 由契约八 §4 的扫描测试验证）；无日志/存档代码 | ✅ |
@@ -145,7 +147,7 @@ src/
 │   ├── ValueObjects/
 │   │   ├── GameDate.cs                 # 【改】年份下界放宽（前史纪年；月份仍 1~12）——Q4
 │   │   ├── StatusTimers.cs             # 【改】新增第 4 个计时：待阙剩余月数
-│   │   ├── DegreeRecord.cs             # 【改】新增可选第 5 参「甲第」+ 三条相容性不变量（FR-014）
+│   │   ├── DegreeRecord.cs             # 【改】新增可选第 5 参「甲第」+ 四条相容性不变量（FR-014）
 │   │   └── ...
 │   ├── Enums/
 │   │   ├── ImperialClass.cs            # 【新】一甲 / 二甲 / 三甲（授官映射的唯一判据）
@@ -161,8 +163,8 @@ src/
 │   │   ├── INameGenerator.cs           # 【新】姓名来源接缝（名；姓氏由家族/玩家给定）
 │   │   └── ...
 │   ├── Services/
-│   │   ├── SongStyleNameGenerator.cs   # 【新】内置宋风姓氏/名字库，确定性（规格书 §2 的兜底，产品默认）
-│   │   ├── BogusNameGenerator.cs       # 【新】Bogus zh_CN 适配器，局部种子（规格书 §2 的主路径）
+│   │   ├── SongStyleNameGenerator.cs   # 【新】内置宋风姓氏/名字库，确定性（规格书 §2 的产品默认实现）
+│   │   ├── BogusNameGenerator.cs       # 【新】Bogus zh_CN 适配器，局部种子（规格书 §2 的可选实现）
 │   │   └── ...
 │   └── KFL.Infrastructure.csproj       # 【改】PackageReference Bogus 35.6.1
 ├── KFL.Rules/                          # net10.0
@@ -177,7 +179,8 @@ src/
 │   ├── Career/
 │   │   ├── SalaryModePolicy.cs         # 【新】三态判定的纯函数（None/AwaitingPost/Active/Retired）
 │   │   ├── AppointmentEntry.cs         # 【新】「及第入仕」入口 + 初始官阶映射 + 幂等/互斥拒绝
-│   │   └── OfficialCareerAdvance.cs    # 【新】月度推进（待阙→政绩→致仕→在职计时与考课）+ 事件快照
+│   │   ├── OfficialCareerAdvance.cs    # 【新】月度推进（待阙→政绩→致仕→在职计时与考课）+ 事件快照
+│   │   └── CareerAdvanceResult.cs      # 【新】一次推进的增量快照（含 CareerAppointment / CareerPromotion）
 │   ├── Settlement/
 │   │   ├── MonthlySettlementEngine.cs  # 【改】在「收入」之前插入官吏推进步（FR-019）
 │   │   ├── IncomeCalculator.cs         # 【改】俸禄按三态计算（在任全俸 / 待阙 0 / 致仕半俸）
@@ -204,6 +207,7 @@ tests/
         ├── CareerAdvanceTests.cs       # 【新】US3：政绩 +1/上限、36 月考课、概率、禁升跳过
         ├── RetirementTests.cs          # 【新】US4：70 岁致仕、半俸、政绩/计时停摆、幂等
         ├── SalaryModeTests.cs          # 【新】三态俸禄与锚点 72/420/5100 在半俸下的复核
+        ├── SpecAnchorTests.cs          # 【新】SC-002/003/004/005/007 的数值字面量锚点（契约八 §3 条款 2 的行级豁免）
         ├── IncomeTests.cs              # 【改】既有俸禄断言改为三态口径
         └── DeterminismTests.cs         # 【改】开局与仕途推进序列的同种子逐字段复现
 
@@ -242,9 +246,11 @@ specs/001-core-skeleton/
    除非允许**前史纪年**。这是 001 的 `GameDate` 不变量与 003 的数值要求之间的真实冲突，
    已按用户裁决放宽年份下界并回写规格书 §3。
 2. **在任官员服刑时的仕途计时**（Q5）：§7.5 的「服刑不产生任何收益」与「禁考不禁在职」
-   给出了两个相反的可类推模式，已按用户裁决取「全部暂停」并回写 §7.5/§8.2。
+   给出了两个相反的可类推模式，已按用户裁决取「全部暂停」——**待阙计时、在职计时与政绩一律
+   暂停**（不推进、不重置，刑满后从暂停处继续；俸禄本就为 0）并回写 §7.5/§8.2。
 3. **甲第字段会撞上 001 的既有断言**：`ValueObjectTests.DegreeRecord四个成员均为必需` 断言
-   构造函数**恰好 4 个参数且无可选参数**。加入向后兼容的第 5 参必然要改这条断言——
+   构造函数**恰好 4 个参数且无可选参数**（该测试已由 T014 改名为
+   `DegreeRecord五个成员其中甲第可选`）。加入向后兼容的第 5 参必然要改这条断言——
    本计划把它登记为**受控的工件修订**（R-02），而不是绕过它（例如用旁挂表或可空包装类型）。
 
 另有 **Q5 派生的三条口径**与其余由 §17①/② 推导的子口径（考课计时先 +1 再比阈值、
@@ -253,6 +259,9 @@ specs/001-core-skeleton/
 
 ## 下一步
 
-`$speckit-tasks` 依据本计划与 [data-model.md](./data-model.md)、[contracts/](./contracts/) 生成
-依赖有序的 `tasks.md`；随后 `$speckit-implement` 执行。落地时 MUST 一并提交本计划列出的
-**规格书与 001 工件的裁决回写**（章程「需求真源」与「规格书变更 MUST 与受影响工件同步提交」）。
+**已完成**：`$speckit-tasks` 已依据本计划与 [data-model.md](./data-model.md)、[contracts/](./contracts/)
+生成依赖有序的 `tasks.md`；`$speckit-implement` 已执行 T001~T051，并由 `$speckit-converge`
+追加 T052~T076 的收敛项（2026-10-10/11 全部落地）。落地时按章程「需求真源」一并提交了本计划
+列出的**规格书与 001 工件的裁决回写**（§3 / §4.1 / §7.5 / §8.2，后又追加 §2 与 §8.2 的两条
+2026-10-11 回写）。门禁实测（构建 0 警告 0 错误、测试全绿 0 skipped、恰好六个工程、无 `.sln`）
+与逐条交付证据见 [implementation-notes.md](./implementation-notes.md) 与 `tasks.md`。
