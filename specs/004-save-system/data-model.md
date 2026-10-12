@@ -221,7 +221,9 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 九位并存 ⇒ JSON 写法为**枚举名的数组**（`["AwaitingPost","Retired"]`，可读且可手改），
 二进制写法为**位掩码整数**（`int`，`Person.Status` 的原值）。`None`（= 0）在 JSON 中写作**空数组**
 `[]`（MUST NOT 写作 `["None"]`，避免与「无名成员」混淆）；读取时数组为空 ⇒ `StatusFlag.None`。
-未登记的位（`1 << 9` 及以上）⇒ `InvalidStructure`。
+未登记的位（`1 << 9` 及以上）⇒ `InvalidStructure`：二进制形态写的是整数，未登记位读得出来，
+但在第 ⑦ 步还原时被位集判据拒绝。JSON 形态写的是**名字**，不认得的名字根本读不出来 ⇒
+第 ⑤ 步 ⇒ `Malformed`（两种形态的落点见契约十 §6 条款 6）。
 
 ### 3.10 值类型与枚举的线上表示（总表）
 
@@ -231,7 +233,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | `GameDate` | 两个 `int`（`year`, `month`） | 年份 `int` 全域（含 `0` 与负数），月份 1~12（R-11） |
 | `PersonId` | `Guid` | `Guid.Empty` 被拒 |
 | `OfficialRank` | `int`（1~18），`null` = 无官职 | `Person.Rank is null` 表达无官（001 FR-009） |
-| 全部 `enum` | 二进制 = 原值整数；JSON = **枚举名** | R-08；非法名/越界整数 ⇒ 明确失败 |
+| 全部 `enum` | 二进制 = 原值整数；JSON = **枚举名** | R-08；非法名 ⇒ 第 ⑤ 步 `Malformed`；越界整数 ⇒ 第 ⑦ 步 `InvalidStructure`（契约十 §6、§3.9） |
 | `TalentSet` / `StatusTimers` / `DegreeRecord` | 数组（二进制）/ 对象（JSON） | 成员次序 = R-05 的连续 `[Key]` 次序 |
 | `SalaryMode` | **不入档** | 派生量（`Core.Enums.SalaryMode` 的文档即写明），MUST NOT 落字段 |
 

@@ -142,8 +142,7 @@ public sealed class SaveService : ISaveService
         _writer.Write(SaveCatalog.Combine(RootDirectory, name + extension), fileBytes);
 
         // ⑦ 写完**之后**才清同名异构档与该存档的旧格式备份（契约九 §5、§7 第 7 条）。
-        RemoveStaleSiblings(name, extension, state.Id);
-    }
+        RemoveStaleSiblings(name, extension, state.Id);    }
 
     /// <inheritdoc />
     public GameState Load(SaveSlot slot)
@@ -236,6 +235,12 @@ public sealed class SaveService : ISaveService
 
         // 覆盖式、文件名 = 存档名 + 与当前档相同扩展名、每档只留一份、绝不追加时间戳（契约九 §7）。
         _writer.Copy(sourcePath, SaveCatalog.Combine(backupsDirectory, name + extension));
+
+        // 清掉 backups/ 下指向**同一标识**的其它备份（契约九 §7 第 7 条）：这条不变式对
+        // 「本次保存 / 本次备份 / 本次格式切换」一律成立，故与 Save 复用同一个清理点。
+        // 主档读不出头（截断/损坏）时不猜标识，只做与标识无关的那半（清理留待下次成功写入）。
+        var saveId = TryReadHeader(sourcePath, out var header, out _) ? header.SaveId : (Guid?)null;
+        RemoveStaleBackups(name, extension, saveId);
     }
 
     private ISaveFormat FormatOf(SaveFormat format) => format switch
@@ -314,7 +319,13 @@ public sealed class SaveService : ISaveService
 
     private void RemoveStaleSiblings(string name, string extension, Guid saveId)
     {
-        // ① 主目录下的同名异构档（格式切换后留下的旧格式主档）。
+        RemoveStalePrimary(name, extension);
+        RemoveStaleBackups(name, extension, saveId);
+    }
+
+    private void RemoveStalePrimary(string name, string extension)
+    {
+        // 主目录下的同名异构档（格式切换后留下的旧格式主档）。
         foreach (var file in SaveCatalog.ListFiles(RootDirectory))
         {
             if (!TryDescribe(file, out var stem, out var format) || !SaveName.IsSameName(stem, name))
@@ -327,8 +338,14 @@ public sealed class SaveService : ISaveService
                 _writer.Delete(file);
             }
         }
+    }
 
-        // ② 备份目录下的同名异构档，以及指向同一标识的其它备份（契约九 §7 第 7 条）。
+    /// <summary>清 backups/ 下的同名异构档与指向同一标识的其它备份（契约九 §7 第 7 条）。</summary>
+    /// <param name="name">当前档名。</param>
+    /// <param name="extension">当前档扩展名。</param>
+    /// <param name="saveId">当前档标识；<c>null</c> 即读不出头，此时跳过「同标识」那半。</param>
+    private void RemoveStaleBackups(string name, string extension, Guid? saveId)
+    {
         var backupsDirectory = SaveCatalog.BackupsDirectoryOf(RootDirectory);
         foreach (var file in SaveCatalog.ListFiles(backupsDirectory))
         {
@@ -348,7 +365,9 @@ public sealed class SaveService : ISaveService
                 continue;   // 当前格备份：保留，备份口径是「每档一份，覆盖式」
             }
 
-            if (TryReadHeader(file, out var header, out _) && header.SaveId == saveId)
+            if (saveId is { } id
+                && TryReadHeader(file, out var header, out _)
+                && header.SaveId == id)
             {
                 _writer.Delete(file);   // 同标识的其它备份
             }

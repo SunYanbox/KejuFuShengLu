@@ -90,27 +90,29 @@ public sealed class JsonSaveFormat : ISaveFormat
     {
         var (header, payloadOffset) = ReadHeaderCore(fileBytes);
 
-        // 契约十 §6 第 ④ 步：版本闸门 MUST 早于任何主体解析（FR-015）。三类版本异常都在此拦住。
-        EnsureVersion(header.FormatVersion);
-
         if (payloadOffset < 0)
         {
             throw InvalidStructure("文件缺 State 成员（契约十 §6 第 ⑥ 步）。");
         }
 
+        // 契约十 §6 第 ③ 步：剩余字节 < 头声明的 PayloadLength ⇒ 截断。
+        // 这一判定 MUST 是无条件的，且 MUST 先于第 ④ 步的版本闸门与第 ⑤ 步的主体解析——
+        // 挂在下游异常过滤器上会让非截断的语法错误先落成 Malformed（与 §6 的次序相冲突）。
         var remaining = fileBytes.Length - payloadOffset;
+        if (remaining < header.PayloadLength)
+        {
+            throw new SaveFileException(
+                SaveFileErrorKind.Truncated,
+                $"文件被截断：头声明主体 {header.PayloadLength} 字节，实际仅剩 {remaining} 字节（契约十 §6 第 ③ 步）。");
+        }
+
+        // 契约十 §6 第 ④ 步：版本闸门 MUST 早于任何主体解析（FR-015）。三类版本异常都在此拦住。
+        EnsureVersion(header.FormatVersion);
 
         JsonDocument document;
         try
         {
             document = JsonDocument.Parse(fileBytes.ToArray());
-        }
-        catch (JsonException ex) when (remaining < header.PayloadLength)
-        {
-            throw new SaveFileException(
-                SaveFileErrorKind.Truncated,
-                $"文件被截断：头声明主体 {header.PayloadLength} 字节，实际仅剩 {remaining} 字节（契约十 §6 第 ③ 步）。",
-                ex);
         }
         catch (JsonException ex)
         {

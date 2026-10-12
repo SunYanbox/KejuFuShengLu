@@ -41,6 +41,37 @@ public sealed class AtomicWriteTests
         Assert.Single(sandbox.RootFiles());
     }
 
+    /// <summary>
+    /// SC-006 / 契约九 §3 条款 3：注入一次「覆盖写入中途失败」后，目标路径上留下的 MUST 是
+    /// **旧的完整档**——判据不是「字节没变」而是「**仍能被真实读档路径读回**」（T058(a)）。
+    /// </summary>
+    /// <remarks>
+    /// 若把原子写退化成「先截断目标再写」（或直接在目标上写），注入失败后这里读档必炸。
+    /// </remarks>
+    [Fact]
+    public void 覆盖写入中途失败后旧档仍能完整读回()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var writer = new AtomicFileWriter();
+        var service = sandbox.CreateService(writer);
+        var slot = new SaveSlot("丙档");
+        var oldState = SaveFixtures.PlainState();
+        service.Save(oldState, slot, overwrite: false);
+        var before = SaveTestSandbox.ReadBytes(service.FilePathOf(slot));
+
+        writer.OnChunkWritten = _ => throw new IOException("注入：覆盖写入途中失败");
+
+        // 换成一份**内容与标识都不同**的完整状态，确保读回来的不是新写的半成品。
+        Assert.Throws<IOException>(() => service.Save(SaveFixtures.RichState(), slot, overwrite: true));
+
+        Assert.Equal(before, SaveTestSandbox.ReadBytes(service.FilePathOf(slot)));
+        Assert.Single(sandbox.RootFiles());
+        Assert.DoesNotContain(
+            sandbox.RootFiles(),
+            path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase));
+        SaveStateComparer.AssertEquivalent(oldState, service.Load(slot));
+    }
+
     /// <summary>FR-013：首次写入中途失败 ⇒ 既没有半成品，也没有残留临时文件。</summary>
     [Fact]
     public void 首次写入中途失败时不留残档与临时文件()

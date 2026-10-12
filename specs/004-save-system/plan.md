@@ -192,6 +192,8 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 | 9 | `specs/002-monthly-settlement-economy/contracts/ledger.md` §6（L73–74）与 §7（L78–79） | **只补注**：把「阶段④ 落盘时实测后再决定（001 R-16 已登记该未决事项）」标注为**已由 004 按 Q2 裁决结清**；§7 的「存档序列化格式（阶段④）」改为**已由 004 交付**并指向 [契约十](./contracts/save-format.md)。**不改**判定句本身（它记录的是当时的取舍） | spec Assumptions 4/5；AGENTS.md 的「活工件只在含义已改变处补注」 |
 | 10 | `specs/002-monthly-settlement-economy/data-model.md`（L7）、`plan.md`（L43–44）、`research.md`（L283–285） | 「存档落盘属阶段④，**此时增删字段无迁移成本**」属**当时事实**：按 §16.2 的迁移口径**保留原文、MUST NOT 回改**；只在「含义已改变」处补注一句「004 之后，落盘形态已固定为 [契约十](./contracts/save-format.md) 的版本 1，跨版本变更须走 §14 的版本闸门（拒绝而非迁移）」 | spec Assumptions 5 |
 | 11 | `specs/004-save-system/tasks.md` | 登记上述回写范围（同步了哪些文件、同步到哪里），供后续审计核对 | spec Assumptions 6；AGENTS.md 的「铁律」 |
+| 12 | `src/KFL.Core/Entities/FamineState.cs` | **签名放宽登记**（结构树 L238 引用的「第 12 行」即此处）：`Stage` / `ElapsedMonths` 由 `private set` 放宽为 `internal set`，供 `FamilyEconomy.RestoreFamine` 精确复原任意「阶段 + 计时」组合；授权在 plan.md 的「核心层改动」，此处登记其落点 | T045；AGENTS.md 铁律第 1 条（变更授权的同一提交落地） |
+| 13 | 本清单（`plan.md`）：**FR-022 的「临时目录」落点**与**两处测试文件落点** | **(a) FR-022 的「临时目录」实际落点**：测试沙箱根 = **系统临时目录优先**（`<temp>/kfl-save-tests`），受限宿主下建目录被拒时**回落**到测试程序集旁（`bin/<tfm>/save-tests/`）；两条候选都不落在仓库工作区内（后者已被 `.gitignore` 忽略），SC-009 实测工作区存档相关变更数 = 0。**(b) 文件落点**：`SaveFixtures.cs`（T020）实际在 `tests/KFL.Tests/Infrastructure/`（**不在** `Fixtures/`，见上文「结构树补注（T048）」）、`SaveTestSandbox.cs`（T021）同样在 `tests/KFL.Tests/Infrastructure/` 且是测试侧**唯一**的临时目录/文件操作辅助（豁免行 ≤15，契约九 §4.1） | T051；T065；FR-022；SC-009；[契约九 §4.1](./contracts/save-service.md) |
 
 > **不改的**：`tasks.md`（001~003 的既有条目）、`implementation-notes.md`、既有 `checklists/` 属
 > **历史记录类工件**，MUST NOT 回改（规格书 §16.2；AGENTS.md）。
