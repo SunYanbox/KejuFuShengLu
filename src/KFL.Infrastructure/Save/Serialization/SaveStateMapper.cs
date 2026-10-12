@@ -83,8 +83,11 @@ public static class SaveStateMapper
         {
             throw;
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or NullReferenceException)
         {
+            // NullReferenceException 也收在这里：契约十 §5 条款 3 禁止把缺失成员静默默认化，
+            // 万一某条残留路径把 null 带进来，它 MUST 以 InvalidStructure 浮出，MUST NOT 让
+            // 调用方看到一个未分类的空引用崩溃。
             throw new SaveFileException(
                 SaveFileErrorKind.InvalidStructure,
                 $"字段无法还原：{ex.Message}（契约十 §6 第 ⑦ 步）。",
@@ -99,7 +102,7 @@ public static class SaveStateMapper
 
         var familyDto = Required(dto.Family, nameof(dto.Family));
         var family = new Family(familyDto.Name) { HasShiStatus = familyDto.HasShiStatus };
-        var memberDtos = familyDto.Members ?? [];
+        var memberDtos = Required(familyDto.Members, "family.members");
         var persons = new List<Person>(memberDtos.Count);
 
         // ① 家族骨架：按存盘次序注册全部成员（含归档者）；父母必先于子女，
@@ -167,7 +170,7 @@ public static class SaveStateMapper
         // ⑤ 功名履历：逐条追加以复用「非降序」校验（顺序与盘上一致）。
         for (var i = 0; i < persons.Count; i++)
         {
-            foreach (var record in memberDtos[i].DegreeHistory ?? [])
+            foreach (var record in Required(memberDtos[i].DegreeHistory, "degreeHistory"))
             {
                 persons[i].AppendDegree(new DegreeRecord(
                     record.Level,
@@ -189,7 +192,7 @@ public static class SaveStateMapper
 
         for (var i = 0; i < persons.Count; i++)
         {
-            foreach (var formerSpouseId in memberDtos[i].FormerSpouseIds ?? [])
+            foreach (var formerSpouseId in Required(memberDtos[i].FormerSpouseIds, "formerSpouseIds"))
             {
                 persons[i].AddFormerSpouse(new PersonId(formerSpouseId));
             }
@@ -198,8 +201,8 @@ public static class SaveStateMapper
         // ⑦ 家主与两处外来者簿记：簿记要求全部成员已注册。
         family.SetHead(familyDto.HeadId is { } headId ? new PersonId(headId) : null);
         family.RestoreOutsiderBookkeeping(new OutsiderBookkeeping(
-            [.. (familyDto.SettledOutsiders ?? []).Select(id => new PersonId(id))],
-            [.. (familyDto.MarriageAlignedOutsiders ?? []).Select(id => new PersonId(id))]));
+            [.. Required(familyDto.SettledOutsiders, "settledOutsiders").Select(id => new PersonId(id))],
+            [.. Required(familyDto.MarriageAlignedOutsiders, "marriageAlignedOutsiders").Select(id => new PersonId(id))]));
 
         // ⑧⑨ 经济聚合与存档级字段。
         var economyDto = Required(dto.Economy, nameof(dto.Economy));
@@ -276,7 +279,7 @@ public static class SaveStateMapper
         };
 
         var ledger = new Ledger();
-        foreach (var entry in dto.Ledger ?? [])
+        foreach (var entry in Required(dto.Ledger, "ledger"))
         {
             ledger.Append(new LedgerEntry(
                 new GameDate(entry.Year, entry.Month),
@@ -405,13 +408,13 @@ public static class SaveStateMapper
         EnsureDefined(dto.PendingDifficulty, "pendingDifficulty");
         EnsureDefined(dto.Origin, "origin");
 
-        foreach (var member in Required(dto.Family, nameof(dto.Family)).Members ?? [])
+        foreach (var member in Required(Required(dto.Family, nameof(dto.Family)).Members, "family.members"))
         {
             EnsureDefined(member.Gender, "gender");
             EnsureDefined(member.Occupation, "occupation");
             EnsureDefined(member.EntryTrack, "entryTrack");
 
-            foreach (var degree in member.DegreeHistory ?? [])
+            foreach (var degree in Required(member.DegreeHistory, "degreeHistory"))
             {
                 EnsureDefined(degree.Level, "level");
                 EnsureDefined(degree.Placement, "placement");
@@ -424,7 +427,7 @@ public static class SaveStateMapper
         EnsureDefined(economy.LivingStandard, "livingStandard");
         EnsureDefined(economy.PendingLivingStandard, "pendingLivingStandard");
 
-        foreach (var entry in economy.Ledger ?? [])
+        foreach (var entry in Required(economy.Ledger, "ledger"))
         {
             EnsureDefined(entry.Category, "category");
         }

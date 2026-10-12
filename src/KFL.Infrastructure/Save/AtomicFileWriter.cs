@@ -49,6 +49,10 @@ public sealed class AtomicFileWriter
     /// <param name="targetPath">目标文件的绝对或相对路径。</param>
     /// <param name="payload">要写入的完整字节。</param>
     /// <exception cref="ArgumentException"><paramref name="targetPath"/> 为空。</exception>
+    /// <exception cref="SaveAccessException">
+    /// 建临时文件、写入、刷盘或改名任一步失败（无权限、路径非法、卷不可用等）；临时文件已尽力清理，
+    /// 目标文件未被触碰（契约九 §2、§3、§4 条款 5）。
+    /// </exception>
     public void Write(string targetPath, ReadOnlySpan<byte> payload)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
@@ -65,6 +69,11 @@ public sealed class AtomicFileWriter
 
             File.Move(tempPath, targetPath, overwrite: true); // arch-guard:allow 契约九 §3 第 3 步：同卷原子改名替换，目标此刻要么旧档要么新档
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            TryDelete(tempPath);
+            throw new SaveAccessException($"存档写入失败：{targetPath}", ex);
+        }
         catch (Exception)
         {
             TryDelete(tempPath);
@@ -75,11 +84,21 @@ public sealed class AtomicFileWriter
     /// <summary>把源文件原子复制到目标路径（备份用；覆盖式）。</summary>
     /// <param name="sourcePath">源文件路径。</param>
     /// <param name="targetPath">目标文件路径。</param>
+    /// <exception cref="SaveAccessException">源文件读不出，或写入失败（见 <see cref="Write"/>）。</exception>
     public void Copy(string sourcePath, string targetPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
 
-        var bytes = File.ReadAllBytes(sourcePath); // arch-guard:allow 契约九 §7：备份 = 把当前档完整拷一份过去；源文件由调用方保证存在
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(sourcePath); // arch-guard:allow 契约九 §7：备份 = 把当前档完整拷一份过去；源文件由调用方保证存在
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new SaveAccessException($"存档不可读：{sourcePath}", ex);
+        }
+
         Write(targetPath, bytes);
     }
 

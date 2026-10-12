@@ -213,6 +213,8 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `AddFoundingMember(Person)` | `Person` | 开局成员：辈分 MUST 为 0、父母引用 MUST 为 `null` | §4.4 |
 | `AddChild(Person)` | `Person` | 血亲成员：父母至少一方为本家族成员，辈分 MUST = 该父母辈分 + 1 | §4.4 |
 | `AddOutsider(Person)` | `Person` | 外来者：父母引用 MUST 为 `null`，辈分由 `Family` 指定 | §4.4；§9.5 |
+| `CaptureOutsiderBookkeeping()` | `internal OutsiderBookkeeping` | **004 新增**（内部面）：返回两处外来者簿记（`_settledOutsiders` / `_marriageAlignedOutsiders`）的瞬时快照，供存档落盘；返回顺序**按标识排序**（非哈希遍历顺序），以保证「同一状态两次落盘字节一致」 | 004 `research.md` R-03；004 FR-003/FR-017 |
+| `RestoreOutsiderBookkeeping(OutsiderBookkeeping)` | `internal void` | **004 新增**（内部面）：把快照落回两处簿记（存档复原路径）；只在全部成员已注册后调用，簿记标识 MUST 指向本家族成员，否则抛 `ArgumentException`；只落值、**不**校验「簿记与辈分是否自洽」（该一致性归存档层 `SaveStateValidator`） | 004 `research.md` R-03；004 FR-003/FR-017 |
 | `SetOutsiderGeneration(PersonId, int)` | `void` | 外来者辈分的**落定**入口；拒绝血亲成员、拒绝**已有子女**者、拒绝**已落定**者（每名外来者至多落定一次） | §4.4 |
 | `Marry(PersonId, PersonId)` | `void` | 一夫一妻（不变量 2）；外来者一方在其**首次**家族内成婚时对齐配偶辈分（这是落定之外的额外那一次），非首次 MUST NOT 再变动 | §9.1；§4.4 |
 | `EndMarriage(PersonId)` | `void` | 丧偶/离异两步走的第一步：置空 `SpouseId` 并追加进 `FormerSpouseIds` | §9.1 |
@@ -276,6 +278,22 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 
 **明确不含**：`GameState` **自身**不直接暴露资产池、商本、现金/储蓄/贷款、账本与统计容器
 ——这些一律只在 `Economy`（`FamilyEconomy`）聚合之下（002 已交付；spec Out of Scope 的对应条目随之失效）。
+
+### 2.4 `OutsiderBookkeeping`（家族簿记快照，**004 新增、`internal`**）
+
+| 成员 | 类型 | 说明 | 来源 |
+| --- | --- | --- | --- |
+| `Settled` | `IReadOnlyCollection<PersonId>` | 辈分**已落定**的外来者——一经落定 MUST NOT 重复落定（`Family.SetOutsiderGeneration` 的判据） | §4.4；004 R-03 |
+| `MarriageAligned` | `IReadOnlyCollection<PersonId>` | **首次家族内成婚的对齐已用掉**的外来者——此后其辈分只还能落定一次（`Family.Marry` 的判据） | §9.1；§4.4；004 R-03 |
+
+**形状**：`internal sealed record`，位于 `KFL.Core/Entities/OutsiderBookkeeping.cs`；两个集合是
+`Family` 私有簿记的**只读快照**，进出经 §2.2 变更入口表的
+`CaptureOutsiderBookkeeping()` / `RestoreOutsiderBookkeeping(...)`。
+**不承载校验**：本记录只承载数据——复原路径直接落值，一致性由存档层 `SaveStateValidator` 负责。
+**可见性**：仅 `KFL.Infrastructure`（`InternalsVisibleTo`，见
+[契约二 §4](./contracts/injection-seams.md)）；**公开面不含**本类型。
+**存在理由**：两处簿记决定**后续**推演（外来者的辈分还能不能再变），却没有任何公开读取通道
+——不落盘即静默失真，违反 004 FR-003/FR-017（004 `research.md` R-03）。
 
 ---
 

@@ -15,7 +15,8 @@ namespace KFL.Infrastructure.Save;
 /// </para>
 /// <para>
 /// 目录不存在时**列目录返回空**（不抛）——「还没存过档」是正常状态，不是错误；
-/// 只有**建**目录失败才以 <see cref="SaveAccessException"/> 浮出（契约九 §4 第 5 条）。
+/// 但**建**目录失败、以及目录存在却读不进去，都以 <see cref="SaveAccessException"/> 浮出
+/// （契约九 §4 第 5 条：MUST NOT 静默吞、MUST NOT 把「读不到」答成「不存在」）。
 /// </para>
 /// <para>
 /// 无状态，故为**静态类**：它不携带任何按实例变化的东西（对比
@@ -57,6 +58,7 @@ public static class SaveCatalog
     /// <summary>列出目录下的文件路径；目录不存在 ⇒ 空序列。</summary>
     /// <param name="directory">目录路径。</param>
     /// <returns>文件路径序列（无序）。</returns>
+    /// <exception cref="SaveAccessException">目录存在但读不进去（无权限、路径形态不受支持等）。</exception>
     public static IReadOnlyList<string> ListFiles(string directory)
     {
         if (string.IsNullOrWhiteSpace(directory))
@@ -64,19 +66,60 @@ public static class SaveCatalog
             return [];
         }
 
-        if (!Directory.Exists(directory)) // arch-guard:allow 契约九 §4.1：目录不存在时列目录返回空而非抛
+        try
         {
-            return [];
+            return [.. Directory.EnumerateFiles(directory)]; // arch-guard:allow 契约九 §4.1：枚举目录项供同名/同标识判定
         }
-
-        return [.. Directory.EnumerateFiles(directory)]; // arch-guard:allow 契约九 §4.1：枚举目录项供同名/同标识判定
+        catch (DirectoryNotFoundException)
+        {
+            return [];   // 「还没存过档」是正常状态，不是错误
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // 目录存在但读不出来 MUST NOT 被误答成「不存在」或「空」：那会让 Exists/FindBySaveId
+            // 给出错误答案（契约九 §4 条款 5：访问失败以 SaveAccessException 浮出）。
+            throw new SaveAccessException($"存档目录不可读：{directory}", ex);
+        }
     }
 
     /// <summary>读文件全部字节。</summary>
     /// <param name="path">文件路径。</param>
     /// <returns>文件字节。</returns>
-    public static byte[] ReadAllBytes(string path) =>
-        File.ReadAllBytes(path); // arch-guard:allow 契约九 §4.1：读档时一次性读入，单文件全量
+    public static byte[] ReadAllBytes(string path) => ReadBytes(path, int.MaxValue);
+
+    /// <summary>读文件**至多** <paramref name="maxBytes"/> 个字节（只读头探针用）。</summary>
+    /// <remarks>
+    /// 存在的理由：<c>FindBySaveId</c> 只该读头记录，但 <c>ISaveFormat.ReadHeader</c> 的入参是
+    /// 一段字节——给它整个文件（1200 回合的账本可能有几 MB）会把「最小读取面」变成「每次探针
+    /// 读全档」。封顶前缀让这条接缝在不动接口的前提下满足契约九 §5 条款 3。
+    /// </remarks>
+    /// <param name="path">文件路径。</param>
+    /// <param name="maxBytes">读取上界（必须为正）。</param>
+    /// <returns>实际读到的字节（文件更短时就是它的全部字节）。</returns>
+    public static byte[] ReadBytes(string path, int maxBytes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBytes);
+
+        // FileShare.ReadWrite：探针不该因为另一个进程正开着这个档而失败（写档走临时文件 + 原子改名，
+        // 目标文件本身不会处于半写状态）。
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // arch-guard:allow 契约九 §4.1：封顶前缀读，供只读头探针
+        var length = (int)Math.Min(stream.Length, maxBytes);
+        var buffer = new byte[length];
+        var read = 0;
+        while (read < length)
+        {
+            var count = stream.Read(buffer, read, length - read);
+            if (count <= 0)
+            {
+                break;   // 文件在读取途中被截短：返回实际读到的前缀
+            }
+
+            read += count;
+        }
+
+        return read == length ? buffer : buffer[..read];
+    }
 
     /// <summary>文件是否存在（存在性与类型无关；不区分大小写由文件系统决定）。</summary>
     /// <param name="path">文件路径。</param>

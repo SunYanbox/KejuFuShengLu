@@ -34,7 +34,7 @@ public sealed class AtomicWriteTests
             }
         };
 
-        Assert.Throws<IOException>(
+        Assert.Throws<SaveAccessException>(
             () => writer.Write(target, new byte[(AtomicFileWriter.ChunkSize * 3) + 1]));
 
         Assert.Equal(OldPayload, SaveTestSandbox.ReadBytes(target));
@@ -62,7 +62,7 @@ public sealed class AtomicWriteTests
         writer.OnChunkWritten = _ => throw new IOException("注入：覆盖写入途中失败");
 
         // 换成一份**内容与标识都不同**的完整状态，确保读回来的不是新写的半成品。
-        Assert.Throws<IOException>(() => service.Save(SaveFixtures.RichState(), slot, overwrite: true));
+        Assert.Throws<SaveAccessException>(() => service.Save(SaveFixtures.RichState(), slot, overwrite: true));
 
         Assert.Equal(before, SaveTestSandbox.ReadBytes(service.FilePathOf(slot)));
         Assert.Single(sandbox.RootFiles());
@@ -83,7 +83,7 @@ public sealed class AtomicWriteTests
         writer.OnChunkWritten = _ => throw new IOException("注入：第一个分片就失败");
         var target = sandbox.PathOf("乙档", SaveFormat.Binary);
 
-        Assert.Throws<IOException>(() => writer.Write(target, new byte[16]));
+        Assert.Throws<SaveAccessException>(() => writer.Write(target, new byte[16]));
 
         Assert.Empty(sandbox.RootFiles());
     }
@@ -102,7 +102,7 @@ public sealed class AtomicWriteTests
 
         writer.OnChunkWritten = _ => throw new IOException("注入：备份写到一半失败");
 
-        Assert.Throws<IOException>(() => service.Backup(slot));
+        Assert.Throws<SaveAccessException>(() => service.Backup(slot));
 
         Assert.Equal(before, SaveTestSandbox.ReadBytes(service.FilePathOf(slot)));
         Assert.Empty(sandbox.BackupFiles());

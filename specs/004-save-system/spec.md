@@ -377,10 +377,31 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
     年月字段**（读回 MUST NOT 假定它们 ≥ `1 年 1 月`）。**本裁决不新增、不改动任何数值**，
     也不改动规格书 §14 的既有条目（它只界定 §3「自 1 年 1 月起」的适用面）。
   - **回写义务（章程「跨特性形状变更的回写义务」/ AGENTS.md 铁律）**：Q4~Q8 属**声明与验证
-    义务**类的回写（未增删 `KFL.Core` 字段），MUST 在同一提交内同步到**活工件**：
+    义务**类的回写（这五条裁决本身未增删 `KFL.Core` 成员；本特性整体对 `KFL.Core` 的 6 处
+    `internal` 放宽/新增见下一条同层条目），MUST 在同一提交内同步到**活工件**：
     `plan.md`、`research.md`（R-16/R-17/R-18/R-19/R-25）、`data-model.md`（§6.3、§6.4）、
     `contracts/save-service.md`（§4~§7）、`contracts/save-cadence.md`（§1~§3），
     并在 `tasks.md` 登记同步范围；本 `spec.md` 已是裁决后的确定表述。
+- **本特性对上游 `KFL.Core` 的形状变更（6 处，全部是 `internal` 面）**：授权落点在本特性
+  [plan.md](./plan.md) 的「核心层改动」一节，登记在同文件「回写义务清单」第 12 行。
+  1. `src/KFL.Core/Entities/FamineState.cs`：`Stage` 与 `ElapsedMonths` 由 `{ get; private set; }`
+     放宽为 `{ get; internal set; }`——**公开面仍只读**，仅 `KFL.Infrastructure` 可见。
+  2. `src/KFL.Core/Entities/Family.cs`：新增 `internal OutsiderBookkeeping CaptureOutsiderBookkeeping()`。
+  3. `src/KFL.Core/Entities/Family.cs`：新增 `internal void RestoreOutsiderBookkeeping(OutsiderBookkeeping bookkeeping)`。
+  4. 新增 `src/KFL.Core/Entities/OutsiderBookkeeping.cs`：`internal sealed record
+     OutsiderBookkeeping(IReadOnlyCollection<PersonId> Settled, IReadOnlyCollection<PersonId> MarriageAligned)`。
+  5. 新增 `src/KFL.Core/AssemblyInfo.cs`：`[assembly: InternalsVisibleTo("KFL.Infrastructure")]`
+     ——本特性给 `KFL.Core` 开的**唯一**程序集级面；MUST NOT 扩大接收方（尤其 `tests/KFL.Tests`）。
+  6. `src/KFL.Core/Entities/FamilyEconomy.cs`（002 的类型）：新增
+     `internal void RestoreFamine(FamineStage stage, int elapsedMonths)`——在 004 的 `plan.md`
+     「核心层改动」与 `research.md` R-03 中已声明，上游 002 活工件的落点登记见
+     002 `data-model.md` §3.6（方法行）与 §3.5（`FamineState` 的不变量强制点 ②）。
+  **与 FR-020 的边界**：FR-020 禁止的是新增**公开**写入通道与「第二份内存真源」；上述 6 处
+  全部是 `internal`，`KFL.Core` 的**公开 API 面**、领域字段与 001/002 的不变量语义均未改变。
+  **回写落点（与实现同一提交）**：001 `data-model.md` §2.2/§2.4、
+  001 `contracts/injection-seams.md` §4、002 `data-model.md` §3.5/§3.6；`tasks.md` 登记同步范围。
+- **除上述 6 处外，本特性对 `KFL.Core` 零形状变更**：不增删领域字段、不改**公开**签名、
+  不插入任何上游步骤序列（落盘在结算**之外**的一层，R-17）。
 - **未裁决但按规格书 §17②「对玩家最直观」取默认的子口径**（逐条可单独否决，不牵连其余）：
   - **写入的原子性**（FR-013）：取「先写临时文件、成功后原子替换目标」为默认含义——
     §14 只要求「覆盖写入」，未规定中断语义；「要么旧、要么新」是对玩家损失最小的解释。
@@ -428,8 +449,10 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
   「同状态 → 同结果」MUST 成立（FR-017、SC-002）。
 - **工程名、层名与「`ISaveService` 归 `KFL.Infrastructure`」来自规格书 §2 与章程的强制约束**，
   是本项目的需求与验收判据，不属于本特性的实现选择。
-- **落地时 MUST 一并提交的回写项**（章程「跨特性形状变更的回写义务」；本特性**未**对上游
-  类型做形状变更，故属**声明与验证义务**的回写，而非字段级回写）：
+- **落地时 MUST 一并提交的回写项**（章程「跨特性形状变更的回写义务」）：本特性**有**对上游
+  `KFL.Core` 的形状变更——6 处，**全部是 `internal` 面**（上文「本特性对上游 `KFL.Core` 的
+  形状变更」条目），公开 API 面零变更；故下列回写项既有**声明与验证义务**类，也有**字段 /
+  签名级**的落点登记：
   1. 规格书 §14——**已完成（2026-10-11）**：在该节末尾追加「§17 裁决回写」段，记入 Q1
      （备份的落点与内容）、Q2（账本单文件全量、不分块不压缩）、Q3（过滤字符集取 Windows
      实际非法集、`-` 放行）三条裁决；原始条目文本按 §16.2 的历史事实口径**保留不改写**。
@@ -447,6 +470,12 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
      不得改写历史判断句。
   6. 本特性交付时 MUST 在 `tasks.md` 登记上述回写范围（同步了哪些文件、同步到哪里），
      供后续审计核对（AGENTS.md 的「铁律」）。
+  7. **`KFL.Core` 的 6 处 `internal` 放宽 / 新增**（上文「本特性对上游 `KFL.Core` 的形状变更」
+     条目的逐条清单）→ 回写落点：001 `data-model.md` §2.2（`Family` 变更入口表两行）与 §2.4
+     （`OutsiderBookkeeping` 新小节）、001 `contracts/injection-seams.md` §4（新增程序集级接缝
+     第 4 条）、002 `data-model.md` §3.5（`FamineState` 成员访问器、不变量强制点 ②、写入通道）
+     与 §3.6（`RestoreFamine` 方法行）。授权落点见本特性 `plan.md`「核心层改动」，登记见
+     `plan.md`「回写义务清单」第 12 行与 `tasks.md` 的 Phase 7 回写范围登记。
 - **测试工程与平台**：测试全部在 `net10.0` 的 `tests/KFL.Tests` 内，MUST NOT 依赖
   `KFL.App`（其 TFM 为 `net10.0-windows`，物理上不可引用）——因此存档实现 MUST 留在
   **非 UI 层**才能被门禁覆盖（FR-001、FR-019）。

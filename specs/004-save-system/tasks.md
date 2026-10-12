@@ -512,3 +512,25 @@ MEDIUM = 契约细则或次要验收锚点的行为/断言缺口；LOW = 边界�
 - T063：`LongPathsEnabled = 1`，但 testhost 不受长路径政策保护；255 字符档名在原子写路径上**撞 `MAX_PATH`**
   （主档全路径 372 字符 ⇒ 原子改名处抛 `IOException`）⇒ 255 只是**校验层**上界，「写得下多少」由**根路径**长度决定；
   收口办法 = 临时名长度恒定（+54 字符，与档名长度无关），边界用例按 `259 - 根长 - 扩展名` 的动态预算取名。
+
+---
+
+## 审核轮回写范围登记（实现期追加；AGENTS.md 铁律第 3 条）
+
+> 本节登记 **PR #10 首轮审核（对象 head `df92ce0`）** 之后的回写范围，同样**只登记**「同步了哪些文件、同步到哪里」；
+> **MUST NOT** 回改本文件 Phase 1~6 与 Phase 7 的既有条目、`implementation-notes.md` 与既有 `checklists/`。
+
+**审核项「一」——跨特性形状变更的同步（6 处 `internal` 面，一份清单）**：
+
+| 目标工件（活工件） | 同步到哪里 |
+| --- | --- |
+| `specs/001-core-skeleton/data-model.md` | §2.2 `Family` 变更入口表新增 `CaptureOutsiderBookkeeping()` / `RestoreOutsiderBookkeeping(...)` 两行（:216-217）；新增 §2.4 `OutsiderBookkeeping` 小节（:282-291） |
+| `specs/001-core-skeleton/contracts/injection-seams.md` | §4 新增第 4 条「程序集级接缝（004 追加）」（:78-89）：仅 `KFL.Infrastructure`、MUST NOT 扩大（尤其 `tests/KFL.Tests`）、MUST NOT 因此新增公开写入通道 |
+| `specs/002-monthly-settlement-economy/data-model.md` | §3.5 `FamineState.Stage` / `ElapsedMonths` 标 `{ get; internal set; }` 与不变量「强制点」两条（:196-204）、「写入通道（004 补充）」（:214-217）；§3.6 新增 `RestoreFamine(FamineStage, int)` 行（:244） |
+| `specs/004-save-system/spec.md` | 新增顶层条目「本特性对上游 `KFL.Core` 的形状变更（6 处，全部是 `internal` 面）」（:385-401）与「除上述 6 处外零形状变更」（:402-403）；Q4~Q8 段括注改为「这五条裁决本身未增删 `KFL.Core` 成员」（:379-383）；Assumptions 前言改事实口径并追加第 7 项回写落点（:451-455、:472-477） |
+| `specs/004-save-system/plan.md` | 「无跨特性形状变更」→「（公开面）」+ 新增「回写补注（T065，收敛轮）」块列 6 处（:120、:129-138）；Q4~Q8 小结句与「先说结论」精确化（:180-183、:190-199）；回写义务清单第 12 行扩为 `KFL.Core` 的 `internal` 面 6 处（:214） |
+| `specs/004-save-system/research.md` | 开篇「前置事实」改为「公开面零形状变更 + `internal` 面 6 处」（:9-16）；Q4~Q8 表下补注同步（:588-590） |
+
+**审核项「2.x」——本轮修复的实现与验证落点（无工件口径变更）**：`src/KFL.Infrastructure/Save/Serialization/{MessagePackSaveFormat.cs,JsonSaveFormat.cs,SaveStateMapper.cs}`、`src/KFL.Infrastructure/Save/{AtomicFileWriter.cs,SaveCatalog.cs,SaveService.cs}`、`tests/KFL.Tests/Infrastructure/{SaveFailureTests.cs,SaveStateValidatorTests.cs（新增）,SaveFormatContractTests.cs,AtomicWriteTests.cs,SaveServiceTests.cs,SaveStateComparer.cs,SaveTestSandbox.cs}`；`contracts/save-format.md` §2（JSON 头次序与重复成员）与 `save-service.md` §4.1（豁免行预算复核）**文本未改**——本轮只是把实现拉回契约既有要求。
+
+**有意不回改**（历史记录类工件）：本文件 Phase 1~6 / Phase 7 既有条目、`specs/002-monthly-settlement-economy/implementation-notes.md`、各 `checklists/`、`specs/004-save-system/contracts/save-cadence.md:10`（未插入任何上游步骤）、`specs/001-core-skeleton/spec.md:7`（前瞻性授权句），以及描述**被否决替代方案**的「跨特性形状变更」字样（`research.md:375/386/404`、`plan.md:337/349`、002 `data-model.md` §3.6 不变量段）。

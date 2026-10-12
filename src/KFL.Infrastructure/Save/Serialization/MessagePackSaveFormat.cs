@@ -133,7 +133,7 @@ public sealed class MessagePackSaveFormat : ISaveFormat
                 new ReadOnlyMemory<byte>(payloadBytes, 0, header.PayloadLength),
                 SaveFileFormat.BinaryOptions);
         }
-        catch (MessagePackSerializationException ex)
+        catch (Exception ex) when (ex is MessagePackSerializationException or EndOfStreamException)
         {
             throw Malformed($"主体解析失败（契约十 §6 第 ⑤ 步）：{ex.Message}", ex);
         }
@@ -173,8 +173,11 @@ public sealed class MessagePackSaveFormat : ISaveFormat
 
             return (new SaveFileHeader(formatVersion, payloadLength, saveId), checked((int)reader.Consumed));
         }
-        catch (MessagePackSerializationException ex)
+        catch (Exception ex) when (ex is MessagePackSerializationException or EndOfStreamException)
         {
+            // 空文件、或在**头记录内部**被截断：MessagePackReader 抛裸 EndOfStreamException
+            // （"Attempted to read past the end of the stream"），也必须归入第 ② 步的 Malformed，
+            // 否则 Load 会漏出未分类异常（契约十 §6 第 ② 步、§2/§6 条款 4）。
             throw Malformed($"头记录读不出（契约十 §6 第 ② 步）：{ex.Message}", ex);
         }
     }
@@ -184,7 +187,9 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     /// </summary>
     /// <remarks>
     /// 只核对「成员数」这一件事：值本身的合法性由第 ⑤ 步（反序列化）与第 ⑦ 步（复原/mapper）
-    /// 负责。核对次序与 <c>[Key(n)]</c> 的编号一一对应（T055 的反射断言把这条对应钉死）。
+    /// 负责。核对次序与 <c>[Key(n)]</c> 的编号一一对应，本类型的成员数常量与各 DTO 的键数
+    /// 由 <c>SaveFormatContractTests</c> 的反射断言逐表钉死（T053/T055）；改 DTO 的 <c>[Key]</c>
+    /// 而不改这里的常量会让那条断言失败，而不是让 walker 静默走错位置。
     /// </remarks>
     /// <param name="payloadBytes">主体字节。</param>
     private static void EnsurePayloadShape(ReadOnlySpan<byte> payloadBytes)

@@ -323,6 +323,58 @@ public sealed class SaveFormatContractTests
         }
     }
 
+    // ─────────────────── T053/T055 的钉死面：walker 的成员数常量 ───────────────────
+
+    /// <summary>
+    /// 契约十 §4 + §5 条款 4：<c>MessagePackSaveFormat</c> walker 的成员数常量 MUST 与各 DTO 的
+    /// <c>[Key]</c> 数量逐一相等，头记录恒为 3 个成员。
+    /// </summary>
+    /// <remarks>
+    /// walker 是**手写**的位置式遍历：给某个 DTO 增删一个 <c>[Key]</c> 而忘了改常量时，
+    /// 构建与 T055 都照旧全绿，walker 却会静默走错位置（审核 2.10）。本用例把这张对应表钉死，
+    /// 使它不再只靠注释声称。
+    /// </remarks>
+    [Fact]
+    public void 二进制walker的成员数常量与DTO键数逐一相等()
+    {
+        var constants = typeof(MessagePackSaveFormat)
+            .GetFields(BindingFlags.NonPublic | BindingFlags.Static)
+            .Where(field => field.IsLiteral && field.FieldType == typeof(int))
+            .ToDictionary(
+                field => field.Name,
+                field => (int)field.GetRawConstantValue()!,
+                StringComparer.Ordinal);
+
+        (string Constant, Type Dto)[] mapping =
+        [
+            ("SaveStateMemberCount", typeof(SaveStateDto)),
+            ("FamilyMemberCount", typeof(FamilyDto)),
+            ("PersonMemberCount", typeof(PersonDto)),
+            ("TalentMemberCount", typeof(TalentDto)),
+            ("StatusTimersMemberCount", typeof(StatusTimersDto)),
+            ("DegreeRecordMemberCount", typeof(DegreeRecordDto)),
+            ("FamilyEconomyMemberCount", typeof(FamilyEconomyDto)),
+            ("TreasuryMemberCount", typeof(TreasuryDto)),
+            ("LoanMemberCount", typeof(LoanDto)),
+            ("HoldingsMemberCount", typeof(HoldingsDto)),
+            ("LedgerEntryMemberCount", typeof(LedgerEntryDto)),
+            ("FamineMemberCount", typeof(FamineDto)),
+        ];
+
+        foreach (var (constant, dto) in mapping)
+        {
+            Assert.True(constants.ContainsKey(constant), $"MessagePackSaveFormat 缺成员数常量 {constant}。");
+
+            var keyCount = dto.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Count(property => property.GetCustomAttribute<KeyAttribute>() is not null);
+
+            Assert.Equal(keyCount, constants[constant]);
+        }
+
+        // 头记录 = 版本 + 主体长度 + 标识（契约十 §2）。
+        Assert.Equal(3, constants["HeaderMemberCount"]);
+    }
+
     /// <summary>契约十 §4 的二进制键表：<c>[Key(0..N-1)]</c> 依次对应的 JSON 成员名。</summary>
     private static readonly (Type Type, string[] NamesByKey)[] BinaryKeyTables =
     [

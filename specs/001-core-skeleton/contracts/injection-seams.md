@@ -75,6 +75,18 @@ public interface INameGenerator
 2. 接缝 MUST 通过构造函数注入；MUST NOT 以静态单例、`ServiceLocator` 或属性注入隐藏依赖。
 3. 接缝的实现 MUST 位于 `KFL.Infrastructure`（§1~§3 的接口清单所在层），
    MUST NOT 位于 `KFL.Core`（Core 是最底层，不得持有环境边界）。
+4. **程序集级接缝（004 追加）**：`KFL.Core/AssemblyInfo.cs` 的
+   `[assembly: InternalsVisibleTo("KFL.Infrastructure")]`——它不是注入接缝（不注入任何对象、
+   不由构造函数传入），而是把 Core 的既有 `internal` 通道开给**唯一**接收方。
+   **目的**：存档复原必须**精确落值**，须经 `Person.SetGeneration` / `SetSpouse` /
+   `AddFormerSpouse`（001 起即为 `internal`，为 `Family` 而设）与 004 新增的
+   `Family.CaptureOutsiderBookkeeping` / `RestoreOutsiderBookkeeping`（簿记进出，见
+   [001 `data-model.md` §2.2/§2.4](../data-model.md)）、`FamilyEconomy.RestoreFamine`。
+   **范围**：接收方**仅** `KFL.Infrastructure`（且声明 `MUST NOT` 同时放行任何其它程序集）。
+   **禁令**：MUST NOT 扩大接收方（特别是 `tests/KFL.Tests`——测试经公开 API 与 `ISaveService`
+   往返观察这些面，既不直连 Core 的 `internal`、也不用反射）；MUST NOT 因本接缝新增任何
+   **公开**写入通道（`FamineState.Stage` / `ElapsedMonths` 的公开面仍是只读，见
+   [002 `data-model.md` §3.5](../002-monthly-settlement-economy/data-model.md)）。
 
 ## 5. 本契约明确不包含
 
