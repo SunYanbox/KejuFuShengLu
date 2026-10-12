@@ -188,6 +188,11 @@ public sealed class SaveFormatContractTests
 
         Assert.Single(sandbox.RootFiles());
         Assert.Empty(sandbox.BackupFiles());
+
+        // 契约九 §5 条款 3「按标识定位只读头」：档远大于调用方给的头探测前缀（4 KiB）时，
+        // 前缀读 MUST 仍能读出完整的头——否则 2.8 的最小读取面会把大档定位成「找不到」。
+        Assert.True(SaveTestSandbox.ReadBytes(service.FilePathOf(slot)).Length > 4096, "测试前提失败：这档没超过头探测前缀。");
+        Assert.Equal(slot, service.FindBySaveId(state.Id));
     }
 
     // ───────────────────────────── T053：嵌套位置式数组的长度 ─────────────────────────────
