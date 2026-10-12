@@ -7,7 +7,8 @@ namespace KFL.Tests.Architecture;
 /// </summary>
 /// <remarks>
 /// 扫描范围 = 非 UI 产品工程（<c>KFL.Core</c>/<c>KFL.Infrastructure</c>/<c>KFL.Rules</c>）**加上**
-/// <c>tests/KFL.Tests/Core</c>、<c>Infrastructure</c>、<c>Fixtures</c>；<c>tests/KFL.Tests/Architecture/</c>
+/// <c>tests/KFL.Tests/Core</c>、<c>Infrastructure</c>、<c>Fixtures</c>、<c>Rules</c>（后者由 002
+/// research R-14 追加）；<c>tests/KFL.Tests/Architecture/</c>
 /// **显式豁免**（其职责就是读仓库文件，R-13 的收敛在此物化）。
 /// 本测试同时是 US3 AS2 的**唯一验证物**（跨故事依赖 US3 → T033）。
 /// </remarks>

@@ -29,10 +29,11 @@ namespace KFL.Infrastructure.Abstractions;
 /// </remarks>
 public interface ISaveService
 {
-    /// <summary>当前存档根目录（绝对路径）。</summary>
+    /// <summary>当前存档根目录。</summary>
     /// <remarks>
-    /// 未配置时是 <c>AppContext.BaseDirectory</c> 下的 <c>saves</c>（FR-006）；
-    /// 已配置时是 <c>SaveOptions.RootDirectory</c> 原样（契约九 §4 第 3 条）。
+    /// 未配置时是 <c>AppContext.BaseDirectory</c> 下的 <c>saves</c>（FR-006，绝对路径）；
+    /// 已配置时是 <c>SaveOptions.RootDirectory</c> **原样**（契约九 §4 第 3 条）——
+    /// 相对值原样保留，不做绝对化。
     /// </remarks>
     string RootDirectory { get; }
 
@@ -54,13 +55,13 @@ public interface ISaveService
     /// <returns>携带该标识的槽位，或 <c>null</c>。</returns>
     SaveSlot? FindBySaveId(Guid saveId);
 
-    /// <summary>该槽位在当前根目录下的绝对路径。</summary>
+    /// <summary>该槽位在当前根目录下的路径。</summary>
     /// <remarks>
     /// 档名在名称层就已拒绝路径分隔符，故返回值不会逃出 <see cref="RootDirectory"/>
-    /// （契约九 §5 第 5 条）。
+    /// （契约九 §5 第 5 条）。<see cref="RootDirectory"/> 是绝对路径时，返回值即绝对路径。
     /// </remarks>
     /// <param name="slot">档名 + 格式。</param>
-    /// <returns>绝对路径（文件不必存在）。</returns>
+    /// <returns>该槽位的路径（文件不必存在）。</returns>
     string FilePathOf(SaveSlot slot);
 
     /// <summary>把状态落盘到该槽位。</summary>
