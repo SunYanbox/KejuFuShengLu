@@ -15,4 +15,15 @@
     <PackageReference Include="Bogus" Version="35.6.1" />
   </ItemGroup>
 
+  <!--
+    004-save-system（契约十 §7）：二进制存档的编解码。
+    这是本特性新增的**唯一**第三方依赖；MUST NOT 再加 MessagePackAnalyzer、
+    MessagePack.ReactiveProperty 或任何第三方文件系统/JSON 抽象。版本由 R-24 实测选定：
+    net10.0 + TreatWarningsAsErrors 下 0 警告 0 错误，且 [Key] 连续 ⇒ 数组格式、
+    decimal 标度位级保真、MessagePackSecurity.UntrustedData 可用。
+  -->
+  <ItemGroup>
+    <PackageReference Include="MessagePack" Version="2.5.305" />
+  </ItemGroup>
+
 </Project>

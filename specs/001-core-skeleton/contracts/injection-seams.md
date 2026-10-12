@@ -46,6 +46,7 @@ public interface IGameClock
 
 **为什么不交付系统时钟抽象**：001 内不存在墙钟时间的消费者（存档时间戳属阶段④）。
 按章程「复杂度 MUST 被论证」，墙钟接缝等其首次出现时再引入。
+**已由 004 复核为「无该需求」**——004 明确不落盘任何写入时间戳（[004 `contracts/save-service.md` §1 条款 3](../004-save-system/contracts/save-service.md)），故墙钟接缝至今仍未引入，本结论维持。
 
 ## 3. `INameGenerator`（`KFL.Infrastructure`，003 追加）
 
@@ -80,3 +81,7 @@ public interface INameGenerator
 `ISaveService`、`IAchievementStore`、`IEventBus`——规格书 §2 虽把它们列在
 `KFL.Infrastructure`，但 001 无消费者（阶段④/逻辑轨 ⑧）。等各自阶段带着真实需求回来定义，
 而不是现在猜签名。
+
+**`ISaveService` 已由 004 定义**（2026-10-11）——签名与失败矩阵见
+[004 `contracts/save-service.md`](../004-save-system/contracts/save-service.md)；
+`IAchievementStore` 与 `IEventBus` 仍未定义（逻辑轨 ⑧ 等后续阶段）。

@@ -19,8 +19,13 @@
 技术路线（沿用 001/002/003 的分层口径）：**状态与不变量归 `KFL.Core`，落盘实现与格式归
 `KFL.Infrastructure`，节奏决策与「结算 → 保存 → 备份」的编排归 `KFL.Rules`**。
 
-- `KFL.Core`：**不新增任何领域字段**（本特性零形状变更），只加两处最小 `internal` 复原面
-  （`Family` 的外来者簿记、`FamilyEconomy` 的饥馑复原）与 `InternalsVisibleTo("KFL.Infrastructure")`。
+- `KFL.Core`：**不新增任何领域字段**（本特性零字段增删），只加最小 `internal` 复原面
+  （`Family` 的外来者簿记进出两法、`FamilyEconomy.RestoreFamine`）与 `InternalsVisibleTo("KFL.Infrastructure")`。
+  > **回写补注（T048）**：原文此处写「两处最小 `internal` 复原面」并声称「零形状变更」，实现期
+  > 出现**一处**例外——`FamineState.Stage`/`ElapsedMonths` 的访问器由 `private set` 放宽为
+  > `internal set`。理由与边界见 `tasks.md` 「回写义务登记」第 12 行：`TransitionTo` 把计时钉死为
+  > 1、`Tick` 只能逐月步进，二者都无法表达存档里任意的「(阶段, 已历时月数)」组合。公开面**未变**
+  > （对外仍是只读），不新增不变量。
 - `KFL.Infrastructure`：`ISaveService` 首次落地（001 契约二 §5 的「等各自阶段带着真实需求回来定义」
   即此处），新增 `Save/` 目录承载命名校验、原子写、目录索引、两套编解码、瞬态 DTO 与逐字段映射器。
 - `KFL.Rules`：新增 `SaveCadencePolicy`（`3` 与纪元 `(1,1)` 的单点）与 `TurnRunner`（每回合
@@ -88,16 +93,38 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
   `_MSTestEnableParentProcessQuery` MUST 保持**注释态**提交。
 
 **Scale/Scope**（预估，实测后按实现现状回写）：
-`KFL.Core` 改 **2** 个文件（`Family`、`FamilyEconomy`）、增 **2** 个（`AssemblyInfo.cs`、
+
+> **回写补注（T048，实测值）**：以下计数按**实现现状**修正，原预估数字保留在括注里。
+> `KFL.Core` 改 **3** 个文件（`Family`、`FamilyEconomy`、`FamineState`〔原预估 2 个，漏了
+> `FamineState` 的访问器放宽〕）、增 **2** 个（`AssemblyInfo.cs`、`Entities/OutsiderBookkeeping.cs`），
+> **0** 个领域字段增删；`KFL.Infrastructure` 增 **18** 个文件（`Abstractions/` 3 个：
+> `ISaveService`、`SaveFormat`、`SaveSlot`；`Save/` 8 个：`SaveOptions`、`SaveFileException`、
+> `SaveFileHeader`、`SaveFileFormat`、`SaveName`、`AtomicFileWriter`、`SaveCatalog`、`SaveService`；
+> `Save/Serialization/` 7 个：`ISaveFormat`、`MessagePackSaveFormat`、`JsonSaveFormat`、
+> `SaveStateDto`、`SaveStateValueDtos`、`SaveStateMapper`、`SaveStateValidator`）并改 csproj **1** 处
+> （原预估约 17 个）；`KFL.Rules` 增 **3** 个（`Config/SaveCadencePolicy.cs`、`Save/TurnRunner.cs`、
+> `Save/TurnOutcome.cs`）、改 **1** 个（`Config/GameConfig.cs` 的转发组）；测试增 **9** 个文件
+> （`Infrastructure/` 7 个：`SaveFixtures`、`SaveTestSandbox`、`SaveStateComparer`、`SaveServiceTests`、
+> `SaveFormatContractTests`、`SaveFailureTests`、`AtomicWriteTests`；`Rules/` 2 个：`RecordingSaveService`、
+> `SaveCadenceTests`）、改 **0** 个既有夹具（原预估「增 6 个、改 2 个」；实测把新夹具独立成
+> `SaveFixtures`，`FamilyFixtures`/`EconomyFixtures` 一行未动）；`.gitignore` 改 1 处；
+> **0** 个界面功能、**0** 行界面代码。测试总数 421 → **489**（新增 68 条，0 skipped）。
+
+原预估（保留为当时事实）：`KFL.Core` 改 **2** 个文件（`Family`、`FamilyEconomy`）、增 **2** 个（`AssemblyInfo.cs`、
 `Entities/OutsiderBookkeeping.cs`），**0** 个领域字段增删；`KFL.Infrastructure` 增 **约 17** 个文件
 （`ISaveService` 与存储侧值类型 5 个、`Save/` 12 个含 4 个 DTO 文件）并改 csproj **1** 处；
 `KFL.Rules` 增 **3** 个（`Config/SaveCadencePolicy.cs`、`Save/TurnRunner.cs`、`Save/TurnOutcome.cs`）、
 改 **1** 个（`Config/GameConfig.cs` 的转发组）；测试增 **6** 个文件、改 **2** 个（存档夹具）；
 `.gitignore` 改 1 处；**0** 个界面功能、**0** 行界面代码。
 
-> **无跨特性形状变更**：本特性**不**增删 `KFL.Core` 领域字段、**不**改任何已有签名、**不**改任何
-> 上游步骤序列（见「回写义务清单」的说明）。故 AGENTS.md「铁律」要登记的是**声明与验证义务**的
+> **无跨特性形状变更**：本特性**不**增删 `KFL.Core` 领域字段、**不**改任何上游步骤序列
+> （见「回写义务清单」的说明）。故 AGENTS.md「铁律」要登记的是**声明与验证义务**的
 > 回写，而非字段级回写。
+>
+> **回写补注（T048）**：上句原文为「**不**改任何已有签名」。实现期有一处例外——
+> `KFL.Core/Entities/FamineState.cs` 的 `Stage`/`ElapsedMonths` 由 `private set` 放宽为
+> `internal set`（对外只读性不变，不新增不变量）。该处已在 `tasks.md`「回写义务登记」
+> 第 12 行登记，并已在本节「技术路线」的 `KFL.Core` 一条下补注。
 
 ## Constitution Check
 
@@ -208,6 +235,7 @@ src/
 │   ├── Entities/
 │   │   ├── Family.cs                    # 【改】新增 internal 簿记捕获/复原（R-03）
 │   │   ├── FamilyEconomy.cs             # 【改】新增 internal RestoreFamine（R-03）
+│   │   ├── FamineState.cs               # 【改】Stage/ElapsedMonths 由 private set 放宽为 internal set（T045 登记第 12 行）
 │   │   └── OutsiderBookkeeping.cs       # 【新】internal sealed record（两个 PersonId 集合）
 │   └── ...                              # 其余一行不动（零领域字段变更）
 ├── KFL.Infrastructure/                  # net10.0
@@ -216,7 +244,7 @@ src/
 │   │   ├── SaveSlot.cs                  # 【新】readonly record struct（Name + Format，默认 Binary）
 │   │   └── SaveFormat.cs                # 【新】enum { Binary = 0, Json = 1 }
 │   ├── Save/
-│   │   ├── SaveOptions.cs               # 【新】RootDirectory（null ⇒ 默认 saves/）+ DefaultFormat
+│   │   ├── SaveOptions.cs               # 【新】RootDirectory（null ⇒ 默认 saves/）+ DefaultFormat（命名空间按契约九 §1 的代码围栏写作 KFL.Infrastructure.Abstractions）
 │   │   ├── SaveFileException.cs         # 【新】Kind 五值 + 三个专用冲突/访问异常（R-07）
 │   │   ├── SaveFileHeader.cs            # 【新】readonly record struct（版本 / 长度 / 标识）
 │   │   ├── SaveFileFormat.cs            # 【新】Version = 1、扩展名、备份目录名、编解码选项单点
@@ -225,7 +253,7 @@ src/
 │   │   ├── SaveCatalog.cs               # 【新】目录枚举 / 存在性 / 只读头的 SaveId 探针（R-18）
 │   │   ├── SaveService.cs               # 【新】ISaveService 的实现（装配以上四者与两个格式）
 │   │   └── Serialization/
-│   │       ├── ISaveFormat.cs           # 【新】Write(header, dto) / Read(bytes)
+│   │       ├── ISaveFormat.cs           # 【新】Write(Guid saveId, SaveStateDto) / ReadHeader(bytes) / Read(bytes)
 │   │       ├── MessagePackSaveFormat.cs # 【新】R-05/R-09（手写头 + 数组格式主体）
 │   │       ├── JsonSaveFormat.cs        # 【新】R-05/R-08（手写头 + 缩进 JSON 主体）
 │   │       ├── SaveStateDto.cs          # 【新】主体根 DTO + 家族/人物/经济子 DTO（契约十 §4）
@@ -247,17 +275,26 @@ src/
 tests/
 └── KFL.Tests/                           # net10.0
     ├── Architecture/                    # 不改（G-07 扫描范围与豁免清单均不变）
-    ├── Fixtures/
-    │   └── SaveFixtures.cs              # 【新】全字段类别的存档夹具（在册/已亡/外嫁/待阙/致仕/患病/饥馑/贷款…）
+    ├── Fixtures/                        # 不改（FamilyFixtures / EconomyFixtures 一行未动）
     ├── Infrastructure/
+    │   ├── SaveFixtures.cs              # 【新】全字段类别的存档夹具（在册/已亡/外嫁/待阙/致仕/患病/饥馑/贷款…）
+    │   ├── SaveStateComparer.cs         # 【新】逐字段等价断言（≥14 类；含 decimal 逐位）
     │   ├── SaveTestSandbox.cs           # 【新】唯一的临时目录/文件操作辅助类（豁免行收敛于此；R-21）
-    │   ├── SaveServiceTests.cs          # 【新】US1/US3：两格式往返、命名、覆盖、UUID 唯一性、格式切换、改名
+    │   ├── SaveServiceTests.cs          # 【新】US1/US2/US3：两格式往返、命名、覆盖、UUID 唯一性、格式切换、改名、真文件节奏
     │   ├── SaveFailureTests.cs          # 【新】US3 AS7 / SC-007：五类失败各自可识别
     │   ├── AtomicWriteTests.cs          # 【新】SC-006：写入中途失败注入 + 备份中断
     │   └── SaveFormatContractTests.cs   # 【新】契约十：头三成员、键表、枚举写法、信息集等价、1200 回合
     └── Rules/
+        ├── RecordingSaveService.cs      # 【新】内存替身（不碰文件系统），供节奏测试记录调用
         └── SaveCadenceTests.cs          # 【新】US2：12 回合节奏、开关、退出保存复用入口、回合数递增
 ```
+
+> **结构树补注（T048，按实现现状修正）**：原树把 `SaveFixtures.cs` 列在 `Fixtures/` 下，
+> 实测落在 `Infrastructure/`（与 `SaveTestSandbox`、`SaveStateComparer` 同处，便于共用沙箱）；
+> 另补上原树漏列的 `SaveStateComparer.cs`、`Rules/RecordingSaveService.cs` 与
+> `Core/Entities/FamineState.cs`（【改】）；`ISaveFormat` 的方法签名按实现修正为
+> `Write(Guid saveId, SaveStateDto payload)`——`PayloadLength` 恰是主体字节数，故**不能**由调用方
+> 预先拼头（否则会引入「声明长度 ≠ 实际字节」，而截断判定正建立在二者的差异上）。
 
 **Structure Decision**: 工程划分与依赖方向**不动**（规格书 §2 六个工程）。新增代码按**关注点**落在
 既有目录语义内：`Core/Entities`（两处最小复原面与其簿记类型）、`Infrastructure/Abstractions`

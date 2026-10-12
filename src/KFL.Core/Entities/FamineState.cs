@@ -40,10 +40,17 @@ public sealed class FamineState
     }
 
     /// <summary>当前阶段。</summary>
-    public FamineStage Stage { get; private set; }
+    /// <remarks>
+    /// 写入通道对**产品代码**只有 <see cref="TransitionTo"/> 与 <see cref="Clear"/>；
+    /// 004-save-system 的落盘复原经 <c>FamilyEconomy.RestoreFamine</c> 直接落值（R-03）——
+    /// 复原要表达任意「阶段 + 已持续月数」组合，<see cref="TransitionTo"/> 会把计时钉成 1。
+    /// 「<c>None</c> ⇔ 计时 0」的一致性在复原后由存档层的 <c>SaveStateValidator</c> 校验。
+    /// </remarks>
+    public FamineStage Stage { get; internal set; }
 
     /// <summary>**本阶段**已持续月数（转入当月记 1；<see cref="FamineStage.None"/> 时为 0）。</summary>
-    public int ElapsedMonths { get; private set; }
+    /// <remarks>写入通道同 <see cref="Stage"/>：产品代码经转移方法，落盘复原经 <c>FamilyEconomy.RestoreFamine</c>。</remarks>
+    public int ElapsedMonths { get; internal set; }
 
     /// <summary>
     /// 转入指定阶段并把计时置 1（§5.4；data-model §3.5）。

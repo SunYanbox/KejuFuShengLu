@@ -72,8 +72,14 @@ readonly record struct LedgerEntry(GameDate Date, PersonId? PersonId, LedgerCate
 
 聚合是线性扫描。条目数按月线性增长（每月约 10~40 条；001 R-16 估计 100 年数万条）。
 本阶段**不建索引、不分块**——阶段④ 落盘时实测后再决定（001 R-16 已登记该未决事项）。
+**补注（004 之后，判定句未改）**：该未决事项已由 004 结清——实测结论为**单文件全量、
+不分块、不压缩**（见 [004 `contracts/save-format.md` §1/§5](../004-save-system/contracts/save-format.md)）；
+002 的「本阶段不建索引、不分块」口径不变。
 
 ## 7. 本契约明确不包含
 
 CSV 导出、图表、统计页的筛选器（界面轨 U3）、存档序列化格式（阶段④）、买人口的支出类别
 （逻辑轨 ⑦ 新增类别时须同时补 `LedgerCategoryMetadata` 的两种查询口径）。
+**补注（004 之后）**：「存档序列化格式（阶段④）」已由 004 交付——盘上形态固定为
+[004 `contracts/save-format.md`](../004-save-system/contracts/save-format.md) 的版本 1；
+本条的其余不包含项不变。

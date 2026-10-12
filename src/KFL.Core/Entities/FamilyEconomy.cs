@@ -115,6 +115,28 @@ public sealed class FamilyEconomy
     public FamineState Famine { get; } = new();
 
     /// <summary>
+    /// 复原饥馑状态（004-save-system 的存档路径；R-03）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// **直接落** <see cref="FamineState.Stage"/> 与 <see cref="FamineState.ElapsedMonths"/>：
+    /// <see cref="FamineState.TransitionTo"/> 会把计时钉成 1，无法表达任意「阶段 + 已持续月数」；
+    /// <see cref="FamineState.Tick"/> 只能逐月逼近。二者组合**MUST NOT** 用于复原。
+    /// </para>
+    /// <para>
+    /// 本方法只落值、不判定：「阶段为零 ⇔ 计时为零」的一致性由存档层的
+    /// <c>SaveStateValidator</c> 第 7 条负责（data-model §3.11 第 ⑩ 步）。
+    /// </para>
+    /// </remarks>
+    /// <param name="stage">阶段。</param>
+    /// <param name="elapsedMonths">本阶段已持续月数。</param>
+    internal void RestoreFamine(FamineStage stage, int elapsedMonths)
+    {
+        Famine.Stage = stage;
+        Famine.ElapsedMonths = elapsedMonths;
+    }
+
+    /// <summary>
     /// 资金池 = 现金 + 储蓄 + 商本（R-05；SC-005 的右侧口径）。
     /// **贷款是负债，不在池内**。
     /// </summary>

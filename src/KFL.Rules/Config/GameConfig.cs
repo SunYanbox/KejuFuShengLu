@@ -440,4 +440,17 @@ public static class GameConfig
         public static int NextAwaitingPostMonths(IRandomService random) =>
             OfficialCareerPolicy.NextAwaitingPostMonths(random);
     }
+
+    /// <summary>存档节奏（§14；004）：纪元与自动备份间隔（只转发）。</summary>
+    public static class Save
+    {
+        /// <summary>模拟纪元年——模拟总是从这一年的第一个月开始（§3）。</summary>
+        public static int EpochYear => SaveCadencePolicy.EpochYear;
+
+        /// <summary>模拟纪元月。</summary>
+        public static int EpochMonth => SaveCadencePolicy.EpochMonth;
+
+        /// <summary>自动备份间隔（回合数；§14「每 3 回合」）。</summary>
+        public static int BackupIntervalTurns => SaveCadencePolicy.BackupIntervalTurns;
+    }
 }

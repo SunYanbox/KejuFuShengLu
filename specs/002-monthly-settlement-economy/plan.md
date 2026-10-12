@@ -42,6 +42,9 @@ Serilog → 日志、LiveChartsCore → 界面轨 U3。
 
 **Storage**: N/A。存档落盘（MessagePack/JSON/备份）属阶段④；本阶段只定义字段与聚合方式。
 流水账按 001 R-16 登记为「追加式、条目数随月份线性增长」，落盘体量与分块仍在阶段④ 实测后决定。
+**补注（004 之后，原文保留为当时事实）**：004 已结清为**单文件全量、不分块、不压缩**
+（[004 `contracts/save-format.md` §1/§5](../004-save-system/contracts/save-format.md)）；
+盘上形态固定为契约十的版本 1，跨版本变更须走 §14 的版本闸门（拒绝而非迁移）。
 
 **Testing**: xUnit v2 + VSTest，`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false
 -p:_MSTestEnableParentProcessQuery=false`（受限宿主的两个已知坑见 `AGENTS.md`）。
