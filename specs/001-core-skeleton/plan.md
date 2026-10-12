@@ -37,7 +37,9 @@ LiveChartsCore 在 001 内**一个都不装**——001 没有消费者，章程�
 （见 003 FR-009 与契约二 §3；规则层只见抽象，其源码文本 MUST NOT 出现 Bogus 类型）；
 其余四个包截至本日**仍未引入**，等各自阶段带真实需求进来（CommunityToolkit.Mvvm →
 界面轨 U1/U4、MessagePack-CSharp → 阶段④/逻辑轨 ④、Serilog → 日志、LiveChartsCore →
-界面轨 U3）。
+界面轨 U3）。**已由 004 引入（2026-10-11）**：MessagePack 2.5.305 随 004 加入
+`KFL.Infrastructure`（见 [004 `contracts/save-format.md` §7](../004-save-system/contracts/save-format.md)）；
+其余三个包仍未引入。**系统时钟抽象已由 004 结清为「不需要」**——004 不落盘任何写入时间戳。
 
 **Storage**: N/A。存档（MessagePack/JSON/备份）属阶段④；001 只定义字段，不落盘。
 

@@ -3,6 +3,9 @@ bin/
 obj/
 TestResults/
 
+# 存档根目录（默认位于 AppContext.BaseDirectory 的 saves/，另含 backups/ 子目录）
+saves/
+
 # Agent 本地目录：仅 .agents/skills 随仓库共享，其余为本机配置/凭据
 .agents/*
 !.agents/skills/

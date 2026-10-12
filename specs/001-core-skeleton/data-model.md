@@ -258,7 +258,7 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 
 | 字段 | 类型 | 说明 | 来源 |
 | --- | --- | --- | --- |
-| `Id` | `Guid` | 创建存档时初始化，**改档名不影响**（该子句属阶段④ 验证——001 无落盘，只校验非空与无公开 setter，见 FR-012）；由注入的 `IRandomService` 生成（16 字节 → Guid 的转换落在 `KFL.Infrastructure/Services/GameStateFactory.cs`——`KFL.Core` 看不到接缝，见 R-03） | §14；FR-012；R-03 |
+| `Id` | `Guid` | 创建存档时初始化，**改档名不影响**（该子句属阶段④ 验证——001 无落盘，只校验非空与无公开 setter，见 FR-012；**已交付并验证（004）**，见 [004 `contracts/save-service.md` §6](../004-save-system/contracts/save-service.md) 与 004 SC-004）；由注入的 `IRandomService` 生成（16 字节 → Guid 的转换落在 `KFL.Infrastructure/Services/GameStateFactory.cs`——`KFL.Core` 看不到接缝，见 R-03） | §14；FR-012；R-03 |
 | `CurrentDate` | `GameDate` | 起始 = 1 年 1 月 | §3 |
 | `Difficulty` | `Difficulty` | 同一存档内可随时切换（切换逻辑属逻辑轨 ⑨） | §11 |
 | `Origin` | `Origin` | 创建存档时选择 | §10.1 |
@@ -310,7 +310,7 @@ FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 to
 | FR-009 | `OfficialRank?` | `null` 与 L1~L18 两端、L0/L19 拒绝 |
 | FR-010 | `StatusFlag` + `StatusTimers` | 九位可任意并存 + 计时一致性 |
 | FR-011 / SC-006 | `Family` 的索引与派生查询 + `HeadId` + 辈分规则 | 五类夹具：多代同堂、有配偶、有子女、娶入配偶、买来的旁系；双向一致与无环；**一夫一妻拒绝用例 + 丧偶再婚（`FormerSpouseIds` 承接前任、子女父母引用不断裂）**；家主为 `null` 或指向在册成员；血亲辈分不可变、外来者辈分落定规则；**开局成员辈分 = 0** |
-| FR-012 | `GameState` | 标识非空（`Guid.Empty` 被拒）、标识无公开 setter、起始年月；**改档名不变性属阶段④**（001 无落盘，无可验证对象） |
+| FR-012 | `GameState` | 标识非空（`Guid.Empty` 被拒）、标识无公开 setter、起始年月；**改档名不变性属阶段④**（001 无落盘，无可验证对象）——**已交付并验证（004）**，见 [004 `contracts/save-service.md` §6](../004-save-system/contracts/save-service.md) 与 004 SC-004 |
 | FR-013 / SC-004 | 三组接缝（`INameGenerator` 由 003 追加）+ 静态扫描 | 源码级守卫 |
 | FR-015 / SC-002 | `tests/KFL.Tests` 的领域与接缝目录 | `dotnet test`（领域/规则测试无环境依赖）；G-07 的扫描范围**逐字对齐契约一 G-07**：非 UI 三产品工程（`KFL.Core`/`KFL.Infrastructure`/`KFL.Rules`）**加** `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`、`Rules`（`Rules` 于 002 追加，见 002 `research.md` **R-14**），`Architecture/` 显式豁免；扫描按目录前缀匹配（含子目录），实现出处 `ArchitectureRules.ScannedTestRoots` |
 

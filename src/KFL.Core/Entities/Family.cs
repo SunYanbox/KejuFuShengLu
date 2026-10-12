@@ -314,6 +314,52 @@ public sealed class Family
         HeadId = headId;
     }
 
+    /// <summary>
+    /// 捕获两处外来者簿记（004-save-system 的存档路径；R-03）。
+    /// </summary>
+    /// <remarks>
+    /// 两处簿记决定**后续**推演（外来者的辈分还能不能再落定 / 还能不能在成婚时对齐），
+    /// 但它们没有公开读取通道，故不落盘即静默失真（data-model §3.11 第 ⑦ 步）。
+    /// 返回顺序**按标识排序**而非哈希遍历顺序，以保证「同一状态两次落盘字节一致」
+    /// （契约十 §5 的信息集等价、T047 场景 8）。
+    /// </remarks>
+    /// <returns>簿记快照。</returns>
+    internal OutsiderBookkeeping CaptureOutsiderBookkeeping() => new(
+        [.. _settledOutsiders.OrderBy(id => id.Value)],
+        [.. _marriageAlignedOutsiders.OrderBy(id => id.Value)]);
+
+    /// <summary>
+    /// 复原两处外来者簿记（004-save-system 的存档路径；R-03）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 只在**全部成员已注册**之后调用（data-model §3.11 第 ⑦ 步）——簿记里的标识 MUST
+    /// 指向本家族成员，本方法顺手校验这一点。
+    /// </para>
+    /// <para>
+    /// 本方法只落值，不校验「簿记与辈分是否自洽」；该一致性由存档层的
+    /// <c>SaveStateValidator</c> 负责（第 ⑩ 步）。
+    /// </para>
+    /// </remarks>
+    /// <param name="bookkeeping">要复原的簿记快照。</param>
+    /// <exception cref="ArgumentException">簿记引用了非本家族成员。</exception>
+    internal void RestoreOutsiderBookkeeping(OutsiderBookkeeping bookkeeping)
+    {
+        ArgumentNullException.ThrowIfNull(bookkeeping);
+
+        foreach (var id in bookkeeping.Settled)
+        {
+            EnsureMember(id, nameof(bookkeeping));
+            _settledOutsiders.Add(id);
+        }
+
+        foreach (var id in bookkeeping.MarriageAligned)
+        {
+            EnsureMember(id, nameof(bookkeeping));
+            _marriageAlignedOutsiders.Add(id);
+        }
+    }
+
     private static bool IsRegistered(Person person) =>
         (person.Status & (StatusFlag.Deceased | StatusFlag.MarriedOut)) == StatusFlag.None;
 
