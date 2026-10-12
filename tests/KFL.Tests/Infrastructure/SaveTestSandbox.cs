@@ -23,15 +23,21 @@ public sealed class SaveTestSandbox : IDisposable
 
     /// <summary>建一个空的临时存档根（目录本身**不预建**：让被测代码自己决定何时建）。</summary>
     /// <remarks>
-    /// 根落在**测试程序集目录**下（<c>bin/…</c>，已被 <c>.gitignore</c> 忽略）而不是**系统临时目录**：
-    /// 受限宿主只允许子进程写工作区，系统临时目录里的建目录会被拒为
-    /// <c>UnauthorizedAccessException</c>；程序集旁始终可写，且在两种环境下都成立。
+    /// <para>
+    /// 根的父目录按**优先次序**选：① 系统临时目录（<c>GetTempPath</c>）——FR-022 与
+    /// SC-009 的正解（测试落在临时目录、MUST NOT 污染仓库工作区）；② 测试程序集旁（<c>bin/…</c>，
+    /// 已被 <c>.gitignore</c> 忽略）——受限宿主只允许子进程写工作区，系统临时目录里的建目录会拿到
+    /// <c>UnauthorizedAccessException</c>（`AGENTS.md`「坑」一节）。
+    /// </para>
+    /// <para>
+    /// 回落位置同样不污染工作区、也不干扰架构守卫：守卫在**进入** <c>bin/obj</c> 之前就剪枝
+    /// （<c>RepositoryLocator</c>），<see cref="Dispose"/> 再尽力回收空的父目录（T051）。
+    /// </para>
     /// </remarks>
     public SaveTestSandbox()
     {
-        ParentDirectory = SaveCatalog.Combine(AppContext.BaseDirectory, "save-tests");
+        ParentDirectory = EnsureParentDirectory();
         Root = SaveCatalog.Combine(ParentDirectory, Guid.NewGuid().ToString("N")); // arch-guard:allow 测试沙箱：临时根 + 随机后缀（唯一允许出现随机源的地方就是这里）
-        Directory.CreateDirectory(ParentDirectory); // arch-guard:allow 测试沙箱：只预建父目录，根本身仍留给被测代码自己建
     }
 
     /// <summary>存档根。</summary>
@@ -112,7 +118,7 @@ public sealed class SaveTestSandbox : IDisposable
         File.Copy(backup, primary, overwrite: true); // arch-guard:allow 测试沙箱：模拟「把备份复制回主文件」这一回退动作
     }
 
-    /// <summary>删除沙箱根（递归）。</summary>
+    /// <summary>删除沙箱根（递归），并尽力回收空的父目录。</summary>
     public void Dispose()
     {
         if (_disposed)
@@ -129,6 +135,62 @@ public sealed class SaveTestSandbox : IDisposable
         else if (File.Exists(Root)) // arch-guard:allow 测试沙箱：BlockRootWithFile 造出来的挡路文件
         {
             File.Delete(Root); // arch-guard:allow 测试沙箱：删掉挡路文件
+        }
+
+        ReleaseParentDirectory();
+    }
+
+    /// <summary>父目录候选，按优先次序（见构造函数 remarks）。</summary>
+    private static IEnumerable<string> ParentDirectoryCandidates
+    {
+        get
+        {
+            yield return SaveCatalog.Combine(Path.GetTempPath(), "kfl-save-tests"); // arch-guard:allow 测试沙箱：首选系统临时目录（FR-022 / SC-009）
+            yield return SaveCatalog.Combine(AppContext.BaseDirectory, "save-tests");
+        }
+    }
+
+    /// <summary>选定并**预建**父目录（根本身仍留给被测代码自己建）；候选全部失败即抛。</summary>
+    /// <returns>父目录绝对路径。</returns>
+    private static string EnsureParentDirectory()
+    {
+        Exception? lastFailure = null;
+
+        foreach (var candidate in ParentDirectoryCandidates)
+        {
+            try
+            {
+                Directory.CreateDirectory(candidate); // arch-guard:allow 测试沙箱：预建临时根的父目录（候选与次序见构造函数的 remarks）
+                return candidate;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            {
+                lastFailure = ex;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"测试沙箱：系统临时目录与测试程序集旁都建不出临时根父目录（最后失败：{lastFailure?.Message}）。",
+            lastFailure);
+    }
+
+    /// <summary>
+    /// 尽力删掉**空**的父目录（否则测试跑完会在 <c>bin/</c> 下留一个空目录）。
+    /// 并发的用例还留着根时它非空、删不掉，那就留着——下一次建根时会连同父目录一起重建。
+    /// </summary>
+    private void ReleaseParentDirectory()
+    {
+        try
+        {
+            Directory.Delete(ParentDirectory); // arch-guard:allow 测试沙箱：只删**空**父目录，非空/不存在都会抛 IOException
+        }
+        catch (IOException)
+        {
+            // 并发用例还留着根（非空）或目录已不在：留着即可。
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // 父目录被别的进程占住：留着即可（空目录不是残留产物）。
         }
     }
 

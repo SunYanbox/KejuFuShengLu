@@ -33,6 +33,9 @@ public sealed class AtomicFileWriter
     /// </remarks>
     public const int ChunkSize = 4096;
 
+    /// <summary>临时文件名里保留的档名前缀长度（T063：让临时路径长度与档名长度脱钩）。</summary>
+    private const int TempNamePrefixLength = 16;
+
     /// <summary>
     /// **测试专用**的写入钩子：每写完一块调用一次，参数是**已写入的累计字节数**。
     /// </summary>
@@ -161,7 +164,12 @@ public sealed class AtomicFileWriter
             directory = ".";
         }
 
+        // T063：临时路径 MUST NOT 随档名一起变长——255 字符的档名再套一层全名会顶穿 MAX_PATH。
+        // 故只保留档名前 TempNamePrefixLength 个字符（含扩展名，纯为辨认失败现场），
+        // 临时路径的长度上界因此与档名长度无关。
+        var prefix = fileName.Length > TempNamePrefixLength ? fileName[..TempNamePrefixLength] : fileName;
+
         // 随机后缀避免并发写同名临时文件；前缀的点号让它不撞已知档名。
-        return Path.Combine(directory, $".{fileName}.{Guid.NewGuid():N}.tmp"); // arch-guard:allow 契约九 §3 第 1 条：临时文件路径（无 I/O）
+        return Path.Combine(directory, $".{prefix}.{Guid.NewGuid():N}.tmp"); // arch-guard:allow 契约九 §3 第 1 条：临时文件路径（无 I/O）
     }
 }

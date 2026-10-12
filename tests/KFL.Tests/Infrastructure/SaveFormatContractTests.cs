@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using KFL.Core.Enums;
 using KFL.Infrastructure.Abstractions;
 using KFL.Infrastructure.Save;
@@ -154,7 +156,7 @@ public sealed class SaveFormatContractTests
         SaveStateComparer.AssertEquivalent(fromBinary, fromJson);
     }
 
-    /// <summary>FR-021 / SC-006：1200 回合的账本单文件全量落盘，损失数为 0。</summary>
+    /// <summary>FR-021 / SC-010：1200 回合的账本单文件全量落盘，逐条一致、损失数为 0。</summary>
     [Theory]
     [InlineData(SaveFormat.Binary)]
     [InlineData(SaveFormat.Json)]
@@ -164,14 +166,191 @@ public sealed class SaveFormatContractTests
         using var sandbox = new SaveTestSandbox();
         var service = sandbox.CreateService();
         var slot = new SaveSlot("长局", format);
+        var state = LongLedgerState(Entries);
 
-        service.Save(LongLedgerState(Entries), slot, overwrite: false);
+        service.Save(state, slot, overwrite: false);
         var loaded = service.Load(slot);
 
+        // T054 / SC-010：不只数条目数——**逐条**比对日期、类别、归属与金额（含标度）。
+        // 顺序被反转、条目被替换、金额掉标度，都会在这里亮。
         Assert.Equal(Entries, loaded.Economy.Ledger.Entries.Count);
+
+        for (var index = 0; index < Entries; index++)
+        {
+            var expected = state.Economy.Ledger.Entries[index];
+            var actual = loaded.Economy.Ledger.Entries[index];
+
+            Assert.Equal(expected.Date, actual.Date);
+            Assert.Equal(expected.Category, actual.Category);
+            Assert.Equal(expected.PersonId, actual.PersonId);
+            SaveStateComparer.AssertBits(expected.Amount.Wen, actual.Amount.Wen);
+        }
+
         Assert.Single(sandbox.RootFiles());
         Assert.Empty(sandbox.BackupFiles());
     }
+
+    // ───────────────────────────── T053：嵌套位置式数组的长度 ─────────────────────────────
+
+    /// <summary>
+    /// T053 / 契约十 §4 / §5 条款 3：**嵌套**的位置式数组短了 MUST 被检出为结构不符。
+    /// </summary>
+    /// <remarks>
+    /// MessagePack-CSharp 2.5.305 对「短于 <c>maxKey</c> 的数组」**不抛异常**，只把缺失成员静默
+    /// 留成默认值（实测：4 成员的 <c>TalentDto</c> 砍成 <c>fixarray(3)</c> 后得到 <c>Craft = 0</c>）。
+    /// 这条用例把「静默默认化」钉死在失败侧：缺成员 ⇒ <c>InvalidStructure</c>，绝不悄悄变 0。
+    /// </remarks>
+    [Fact]
+    public void 二进制嵌套数组短了被检出为结构不符()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("短档", SaveFormat.Binary);
+        var state = SaveFixtures.RichState();
+
+        // 先把合法档写下去（顺带建出存档根），再用「砍短的嵌套数组」覆盖同一路径。
+        service.Save(state, slot, overwrite: false);
+
+        var shortened = ShortenFirstTalentArray(MessagePackSerializer.Serialize(
+            SaveStateMapper.ToDto(state),
+            SaveFileFormat.BinaryOptions));
+
+        SaveTestSandbox.WriteBytes(sandbox.PathOf(slot.Name, slot.Format), ComposeFile(state.Id, shortened));
+
+        var error = Assert.Throws<SaveFileException>(() => service.Load(slot));
+        Assert.Equal(SaveFileErrorKind.InvalidStructure, error.Kind);
+    }
+
+    /// <summary>把主体里第一个 <c>TalentDto</c> 位置式数组砍掉最后一个成员。</summary>
+    /// <param name="payload">合法主体字节。</param>
+    /// <returns>砍短后的主体字节。</returns>
+    private static byte[] ShortenFirstTalentArray(byte[] payload)
+    {
+        var reader = new MessagePackReader(payload);
+        reader.ReadArrayHeader();                       // SaveStateDto
+        SkipValues(ref reader, 6);                      // 0..5 标量
+        reader.ReadArrayHeader();                       // FamilyDto
+        SkipValues(ref reader, 3);                      // 0..2 标量
+        Assert.True(reader.ReadArrayHeader() > 0);      // Members
+
+        reader.ReadArrayHeader();                       // PersonDto
+        SkipValues(ref reader, 6);                      // 0..5 标量
+
+        var talentsStart = checked((int)reader.Consumed);
+        Assert.Equal(4, reader.ReadArrayHeader());      // TalentDto：4 个成员
+        Assert.Equal(0x94, payload[talentsStart]);      // fixarray(4)：头恰 1 字节
+
+        SkipValues(ref reader, 3);
+        var afterThree = checked((int)reader.Consumed);
+        reader.Skip();
+        var afterFour = checked((int)reader.Consumed);
+
+        var shortened = new List<byte>(payload.Length - 1);
+        shortened.AddRange(payload[..talentsStart]);
+        shortened.Add(0x93);                            // fixarray(3)
+        shortened.AddRange(payload[(talentsStart + 1)..afterThree]);
+        shortened.AddRange(payload[afterFour..]);
+        return [.. shortened];
+    }
+
+    /// <summary>按契约十 §2 拼一个二进制文件（头 = fixarray(3) + 版本 + 主体长度 + 标识）。</summary>
+    /// <param name="saveId">存档标识。</param>
+    /// <param name="payload">主体字节。</param>
+    /// <returns>文件字节。</returns>
+    private static byte[] ComposeFile(Guid saveId, byte[] payload)
+    {
+        var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+        var writer = new MessagePackWriter(buffer);
+        writer.WriteArrayHeader(3);
+        writer.Write(SaveFileFormat.Version);
+        writer.Write(payload.Length);
+        writer.Write(saveId.ToString("D", System.Globalization.CultureInfo.InvariantCulture));
+        writer.Flush();
+
+        var file = new byte[buffer.WrittenCount + payload.Length];
+        buffer.WrittenSpan.CopyTo(file);
+        payload.CopyTo(file, buffer.WrittenCount);
+        return file;
+    }
+
+    private static void SkipValues(ref MessagePackReader reader, int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            reader.Skip();
+        }
+    }
+
+    // ───────────────────────────── T055：[Key(n)] 的键序号 ─────────────────────────────
+
+    /// <summary>
+    /// T055 / 契约十 §4 + §5 条款 4：每个 DTO 的 <c>[Key(n)]</c> MUST 恰为 <c>0..N-1</c>，
+    /// 且第 <c>n</c> 个键 MUST 落在契约键表第 <c>n</c> 个成员上。
+    /// </summary>
+    /// <remarks>
+    /// 位置式数组的「位置」就是 <c>[Key]</c> 序号：只断言集合是 <c>0..N-1</c> 还不够——
+    /// 交换两个 <c>[Key]</c> 后集合照旧完整，但盘上的字节与契约错位。故这里按序号排好序后
+    /// 与契约 §4 的成员次序逐位比对。
+    /// </remarks>
+    [Fact]
+    public void 二进制键序号自零连续且与契约键表逐位一致()
+    {
+        foreach (var (type, namesByKey) in BinaryKeyTables)
+        {
+            var members = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Select(property => (
+                    Key: property.GetCustomAttribute<KeyAttribute>(),
+                    Name: property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name))
+                .ToList();
+
+            // 成员数与契约键表一致，且每个成员都带 [Key] / [JsonPropertyName]。
+            Assert.Equal(namesByKey.Length, members.Count);
+            Assert.All(members, member =>
+            {
+                Assert.NotNull(member.Key);
+                Assert.NotNull(member.Name);
+            });
+
+            var ordered = members.OrderBy(member => member.Key!.IntKey!.Value).ToList();
+
+            // 序号 MUST 恰为 0..N-1：不重、不漏、不从 1 起。
+            Assert.Equal(
+                Enumerable.Range(0, namesByKey.Length),
+                ordered.Select(member => member.Key!.IntKey!.Value));
+
+            // 第 n 个键 MUST 是契约键表的第 n 个成员。
+            Assert.Equal(namesByKey, ordered.Select(member => member.Name));
+        }
+    }
+
+    /// <summary>契约十 §4 的二进制键表：<c>[Key(0..N-1)]</c> 依次对应的 JSON 成员名。</summary>
+    private static readonly (Type Type, string[] NamesByKey)[] BinaryKeyTables =
+    [
+        (typeof(SaveStateDto),
+            ["id", "currentYear", "currentMonth", "difficulty", "pendingDifficulty", "origin", "family", "economy"]),
+        (typeof(FamilyDto),
+            ["name", "hasShiStatus", "headId", "members", "settledOutsiders", "marriageAlignedOutsiders"]),
+        (typeof(PersonDto),
+            [
+                "id", "name", "gender", "birthYear", "birthMonth", "generation", "talents", "study",
+                "health", "lifespan", "rankLevel", "merit", "status", "timers", "occupation",
+                "monthsInOffice", "entryTrack", "fatherId", "motherId", "spouseId", "formerSpouseIds",
+                "degreeHistory",
+            ]),
+        (typeof(TalentDto), ["agriculture", "commerce", "officialdom", "craft"]),
+        (typeof(StatusTimersDto),
+            ["sentenceRemainingMonths", "examBanRemainingMonths", "promotionBanRemainingMonths", "awaitingPostRemainingMonths"]),
+        (typeof(DegreeRecordDto),
+            ["level", "placement", "changedYear", "changedMonth", "cause", "imperialClass"]),
+        (typeof(FamilyEconomyDto),
+            ["livingStandard", "pendingLivingStandard", "grainPriceIndex", "treasury", "holdings", "ledger", "famine"]),
+        (typeof(TreasuryDto),
+            ["cash", "savings", "merchantCapital", "loan", "savingsRate", "savingsRateYear"]),
+        (typeof(LoanDto), ["principal", "accruedInterest", "monthsSinceInterest"]),
+        (typeof(HoldingsDto), ["farmlandMu", "ruralHouses", "urbanHouses", "shops"]),
+        (typeof(LedgerEntryDto), ["year", "month", "personId", "category", "amountWen"]),
+        (typeof(FamineDto), ["stage", "elapsedMonths"]),
+    ];
 
     /// <summary>造一个账本有 <paramref name="entryCount"/> 条的状态。</summary>
     /// <param name="entryCount">账本条目数。</param>

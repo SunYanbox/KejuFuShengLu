@@ -22,7 +22,7 @@ namespace KFL.Tests.Infrastructure;
 /// ⑨ 天赋与寿数；⑩ 可变属性（学业/体质/政绩/职业/在职月数）；⑪ 官阶；
 /// ⑫ 状态位与四类计时（含 <c>EntryTrack</c>）；⑬ 科举履历；⑭ 配偶与前配偶；
 /// ⑮ 三资金池 / 贷款 / 储蓄利率；⑯ 资产四项；⑰ 账本（家族级与成员级、正负号）；
-/// ⑱ 饥馑阶段与计时；⑲ 外来者记账（落籍旁系 + 联姻对齐）。
+/// ⑱ 饥馑阶段与计时；⑲ 外来者记账（落籍旁系 + 联姻对齐）；⑳ 前史纪年（出生年与功名变迁年含 <c>0</c> 与负数）。
 /// </para>
 /// <para>
 /// <b>标识确定性</b>：状态标识是固定的 <see cref="Guid"/> 字面量，成员标识来自
@@ -100,6 +100,28 @@ public static class SaveFixtures
             5,
             generation: family.BoughtCollateralGeneration));
         family.SetOutsiderGeneration(collateral.Id, family.BoughtCollateralGeneration);
+
+        // ⑳ 前史纪年（T064 / spec Edge Case「成员年月含 0 / 负年份」）：`GameDate` 的年份取 `int` 全域
+        //（规格书 §17 裁决回写 2026-10-08 Q4：开局家人的父母辈必然生于 1 年 1 月之前），
+        // 故出生年与功名变迁年都要用 0 与负数各覆盖一次——两个格式 MUST 原样带回，而不是把它们
+        // 当成「缺省值」重新推导。
+        var forebear = family.AddOutsider(FamilyFixtures.NewPerson(
+            12,
+            "陈前史",
+            Gender.Male,
+            -3,
+            7,
+            generation: family.BoughtCollateralGeneration));
+        forebear.AppendDegree(new DegreeRecord(
+            DegreeLevel.BaiShen,
+            placement: null,
+            new GameDate(-1, 12),
+            DegreeChangeCause.Initial));
+        forebear.AppendDegree(new DegreeRecord(
+            DegreeLevel.GongShi,
+            placement: null,
+            new GameDate(0, 1),
+            DegreeChangeCause.ExamPass));
 
         var economy = RichEconomy(son.Id);
         var state = new GameState(

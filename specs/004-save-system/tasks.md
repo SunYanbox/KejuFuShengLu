@@ -404,3 +404,111 @@ Task: "T034 KFL.Rules/Save/TurnOutcome.cs（增量快照）"
 - `KFL.Presentation` / `KFL.App` 一行不动；无界面、无成就持久化、无旧格式迁移、无并发/文件锁、
   无写入时间戳
 - 避免：含糊任务、同一文件并发改写、破坏故事独立性的跨故事依赖
+
+---
+
+## Phase 7: Convergence（缺口收敛；`/speckit-converge` 审计于 2026-10-12）
+
+> **追加式阶段**：本节由 `/speckit-converge` 对基线 `ef93ed3`（分支 `004-save-system`，审计时工作树干净）
+> 的只读审计后追加，MUST NOT 回改 Phase 1~6 的任何既有条目（AGENTS.md：历史记录类工件不回改）。
+> 审计对象 = `spec.md` / `plan.md` / `contracts/`（九/十/十一）/ `data-model.md` / `quickstart.md`
+> 的全部需求、验收锚点与不变量 × 现有 489 个测试与实现代码。
+> 结论：**无 CRITICAL**；17 条有证据的缺口，逐条一个任务（T049~T065）。
+> 「已核对且判定无缺口」的关键面登记在文末「审计确证清单」，不产生任务。
+
+**严重度口径**：CRITICAL = 违反章程 MUST 或阻塞 P1 验收；HIGH = 核心 FR / 验收场景缺失或部分未落地；
+MEDIUM = 契约细则或次要验收锚点的行为/断言缺口；LOW = 边界断言与活工件登记缺口。
+**判定口径**：`missing` = 审计提纲要求的项完全不存在；`partial` = 部分存在但不满足该条；
+`contradicts` = 实现/工件与规格书或契约的规定冲突；`needs-confirm` = 需先实测/裁决才能定论。
+
+### 发现登记表
+
+| ID | 判定 | 严重度 | 锚点（需求/契约/SC） | 证据（文件:行） | 任务 |
+| --- | --- | --- | --- | --- | --- |
+| C-01 | `contradicts` | HIGH | 契约十 §6 第③步（`contracts/save-format.md:111-120`，③在④之前）、FR-014、SC-007 | `src/KFL.Infrastructure/Save/JsonSaveFormat.cs:89-121`（`EnsureVersion` 在 `:94`；`remaining` 在 `:101` 仅被 `:108` 的 `catch (JsonException ex) when (remaining < header.PayloadLength)` 使用）；对照 `src/KFL.Infrastructure/Save/MessagePackSaveFormat.cs:73-78` | T049 |
+| C-02 | `missing` | HIGH | SC-002（`spec.md:317-318`）、US1 Independent Test（`spec.md:52-53`）、T029③（`tasks.md:122`）、`tasks.md:315` 已把 SC-002 标给 T029/T030 | 004 特性测试内 grep「SC-002」/「24 个月」/「读回后继续」零命中；`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs:178-180` 的 US1/AS5 用例只接内存 `TurnRunner`、不经磁盘 `Load` | T050 |
+| C-03 | `contradicts` | HIGH | FR-022（测试 MUST 用临时目录）、`tasks.md:403` Notes | 实测门禁失败 1/489：`KFL.Tests.Architecture.SolutionShapeTests.globalJson只锁十点零版本带` → `System.UnauthorizedAccessException : Access to the path '…\tests\KFL.Tests\bin\Debug\net10.0\save-tests\6d013381f5794feea970b97cab6e9666' is denied.`（`tests/KFL.Tests/Architecture/RepositoryLocator.cs:35` ← `SolutionShapeTests.cs:26`）；`tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs:52-54` 把沙箱建在 `AppContext.BaseDirectory` 下 | T051 |
+| C-04 | `partial` | MEDIUM | 契约九 §7 条款 7（「本次备份/切换中清理」）、FR-011 | `SaveService.Backup` 不经 `RemoveStaleSiblings`（同 SaveId 旧备份残留）；`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs:102-107` 固化「改名时补写旧名备份」 | T052 |
+| C-05 | `partial` | MEDIUM | 契约十 §5 条款 3（缺失 MUST 被检出，MUST NOT 静默默认化）、FR-002 | `src/KFL.Infrastructure/Save/MessagePackSaveFormat.cs:142-158` 只校验**顶层**数组 == `SaveStateMemberCount(8)`；`MessagePackSaveFormat.cs:35` 注释宣称位置式数组长度即成员齐备判据，而 Person 22 / StatusTimers 4 / Treasury 6 / Loan 3 / Holdings 4 / LedgerEntry 5 / Famine 2 / Family 6 / FamilyEconomy 7 的长度在 Format / `SaveStateMapper` / `SaveStateValidator` 三层均无检查 | T053 |
+| C-06 | `partial` | MEDIUM | SC-010（`spec.md:337-338`）、T030⑤（`tasks.md:123`） | `tests/KFL.Tests/Infrastructure/SaveFormatContractTests.cs:161-174` 只断 `Count == 1200` + 单文件 + 无备份；夹具 `LongLedgerState`（`:179-207`）的 1200 条金额互异、年月递增却未逐条断言；`:157` 注释误写 SC-006 | T054 |
+| C-07 | `partial` | MEDIUM | 契约十 §4 键表 / §5 条款 4 / §7「§4 键表逐项」、FR-002 | 键表断言只比对 JSON 属性路径集；tests 全目录 grep「KeyAttribute / GetCustomAttribute / MessagePackObject」零命中 ⇒ 重排 `PersonDto` 的 `[Key(0..21)]` 既不失败也不改变往返 | T055 |
+| C-08 | `missing` | MEDIUM | T030③（`tasks.md:123`）、契约十 §3 条款 1、data-model §3.10 | 全仓 grep「非法枚举 / 越界」零命中；`SaveFormatContractTests.cs` 只断言枚举在 JSON 落成名字、二进制落成整数 | T056 |
+| C-09 | `contradicts` | MEDIUM | data-model §3.9（未登记状态位 ⇒ `InvalidStructure`） | 二进制：`src/KFL.Infrastructure/Save/SaveStateMapper.cs:141-145` 检 `(status & ~KnownStatusFlags) != None` ⇒ `InvalidStructure`；JSON：`SaveFileFormat.cs` 的 `StatusFlagJsonConverter.Read` 抛 `JsonException`，被 `JsonSaveFormat.cs:154-160` 统一包成 `Malformed` | T057 |
+| C-10 | `partial` | MEDIUM | SC-006（`spec.md:330-331`）、SC-003、T037/T038（`tasks.md:153-158`） | `tests/KFL.Tests/Infrastructure/AtomicWriteTests.cs` 注入中断后从不 `Load` 真实存档；T038 的 12 回合用例只比内存状态、不比磁盘内容；「换格式后旧格式备份移除」「写失败保留旧格式」无覆盖 | T058 |
+| C-11 | `partial` | MEDIUM | SC-007（`spec.md:331-332`）、契约十 §6 条款 4、T044（`tasks.md:182`） | `tests/KFL.Tests/Infrastructure/SaveFailureTests.cs` 只断言 `Kind`，不比对失败前后的原文件字节与已持有 `GameState`；截断（`:39`）、版本不符（`:97`）、版本闸门（`:116`）、字节损坏（`:136`）四条全部只跑 `SaveFormat.Binary` | T059 |
+| C-12 | `missing` | MEDIUM | FR-009、契约九 §6 条款 5 | `SaveService.Rename` 的「备份改名失败」暴露路径无任何用例（tests 内无该注入点） | T060 |
+| C-13 | `needs-confirm` | MEDIUM | FR-008（同名判定大小写不敏感）、FR-009 | 仅大小写差异的改名目标（如 `甲档` → `甲档B` 以外的 `A` → `a`）走 `File.Move` 不带 overwrite，NTFS 上是否自冲突未实测、无用例 | T061 |
+| C-14 | `missing` | LOW | FR-007/FR-008、T043（`tasks.md:185`） | 大小写在磁盘上未被改写（`SaveServiceTests.cs:158` 只断内存 `slot.Name`）、档名内部空格放行、只有 `backups/` 无主档时 `Exists == false`、JSON `FindBySaveId` 只读头——四小项均无断言 | T062 |
+| C-15 | `needs-confirm` | LOW | FR-007（放行集为 255 字符名） | `src/KFL.Infrastructure/Save/SaveName.cs` 无长度上界；临时文件名约 +37 字符，255 字符名在 Windows `MAX_PATH = 260` 下是否超限无实测 | T063 |
+| C-16 | `missing` | LOW | spec Edge Cases（`spec.md:168`）、Q8（`spec.md:26`）、FR-003 | 夹具出生年月与功名年份全为 ≥1（`SaveFixtures`/`PlainState` 的 `changedYear` 为 1）；`GameDate`/`GameState` 支持 0 与负年份但无断言 | T064 |
+| C-17 | `partial` | LOW | AGENTS.md 铁律第 1 条、`plan.md` 回写义务清单 | (a) FR-022 的「临时目录」落点（`SaveTestSandbox` 建在 `AppContext.BaseDirectory` 下，见 C-03）未在活工件登记；(b) T020/T021 的 `tests/KFL.Tests/Fixtures/SaveFixtures.cs` 与 `SaveTestSandbox.cs` 文件落点未登记进 `plan.md` | T065 |
+
+### HIGH
+
+- [X] T049 [US1] 补齐 JSON 读档的契约十 §6 **第③步独立截断判定**并修正 ③/④ 次序：在 `src/KFL.Infrastructure/Save/JsonSaveFormat.cs` 的 `Read` 中于 `JsonDocument.Parse` **之前**加无条件 `remaining < header.PayloadLength ⇒ Truncated`（现在的 `remaining` 只在 `:108` 的 `catch (JsonException ex) when (…)` 过滤器里生效，合法文本的截断/头 `PayloadLength` 被改大都会**静默读档成功**），并使版本闸门退回第④位（对照 `src/KFL.Infrastructure/Save/MessagePackSaveFormat.cs:73-78`：二进制是「截断检查 → 版本闸门」）——依据 `specs/004-save-system/contracts/save-format.md:111-120`（③`剩余字节 ≥ PayloadLength` 在④`FormatVersion == 1` 之前）与 `:126`（判据 MUST 与 SC-007 四类输入一一对应）。**验收**：把 `tests/KFL.Tests/Infrastructure/SaveFailureTests.cs` 的截断、版本不符、版本闸门三条用例由 `SaveFormat.Binary` 参数化到两种格式后全绿，且新增一条「JSON 正文合法但头 `PayloadLength` 大于实际字节数 ⇒ `Truncated`」用例
+- [X] T050 [US1] 补齐 **SC-002** 的落地测试（`spec.md:317-318`）并修正套错的标注：在 `tests/KFL.Tests/Infrastructure/SaveServiceTests.cs` 新增「连续落盘 **24 个月**（每回合结算成功后 `Save` 到同一槽位）→ `Load` 读回 → 读回态与不落盘基线逐字段差异 = 0 → 两路各继续推进 **12 个月**后再次逐字段差异 = 0（用 `SaveStateComparer.AssertEquivalent`）」；同时把 `:178-180` 那条实际只接内存 `TurnRunner` 的用例的「US1 / AS5」注释改正（它验证的是 US2 的「开启自动存档不改变模拟结果」，不是 US1 AS5 的「读回后继续结算」）。**验收**：新增用例在两种 `SaveFormat` 下通过；`tasks.md:315` 的 SC-002 行此后有真实断言支撑（本任务**不回改**该历史表格，仅在提交信息/`implementation-notes.md` 记明）
+- [X] T051 修复门禁第四条的非确定性失败（本轮审计实测 488/489，唯一失败即此项）：(a) 在 `tests/KFL.Tests/Architecture/RepositoryLocator.cs:35` 之前排除 `bin`/`obj`（枚举时用 `EnumerationOptions` + 过滤，或先按目录段剪枝，MUST NOT 先枚举后过滤，否则仍会走进 `tests/KFL.Tests/bin/Debug/net10.0/save-tests/<guid>` 并抛 `UnauthorizedAccessException`）；(b) 让 `tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs:52-54` 的沙箱改为 `Path.GetTempPath()` 下的一次性目录（FR-022「临时目录」；现落在 `AppContext.BaseDirectory` 下，且残留目录的 ACL 带 `Everyone Deny DeleteSubdirectoriesAndFiles`、只剩 GUID 空壳，删残留后即 489/489 连续绿 11 次）。**验收**：`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false` 连续 **5 次** 489/489 全绿，且 `tests/KFL.Tests/bin/**` 下不再出现 `save-tests/` 残留；仓库工作区无存档产物（SC-009）
+
+### MEDIUM
+
+- [X] T052 [US3] 收口 `Backup()` 的同 SaveId 清理口径：`src/KFL.Infrastructure/Save/SaveService.cs` 的 `Backup` 目前不经同名的 `RemoveStaleSiblings` 清理点，与契约九 §7 条款 7「本次备份/切换中清理」不一致；先按 `specs/004-save-system/contracts/save-service.md` 该条原文确认「清理是 `Save` 的专属义务还是两入口共有」，再让 `Backup` 复用同一清理点（`ConcurrentDictionary` 内的槽位/活文件登记 MUST NOT 被绕过）。**验收**：`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs:102-107`（改名补写旧名备份那条）按新口径调整并全绿，新增「同 SaveId 连做两次 `Backup` 后 `backups/` 恒 1 份」用例（SC-003）
+- [X] T053 [US1] 补二进制嵌套位置式数组长度的缺失检出：`src/KFL.Infrastructure/Save/MessagePackSaveFormat.cs:142-158` 的 `EnsurePayloadShape` 只校验顶层 8 成员，须按契约十 §5 条款 3 延伸到嵌套（Person 22 / StatusTimers 4 / Treasury 6 / Loan 3 / Holdings 4 / LedgerEntry 5 / Famine 2 / Family 6 / FamilyEconomy 7），或在 `:35` 注释处改口径并给出等价检出——**先实测** MessagePack-CSharp `2.5.305` 对短于 maxKey 的位置式数组是否抛异常（不抛即静默默认化，属 MUST NOT）。**验收**：新增「手工截短的嵌套数组」用例断言 `InvalidStructure`；若库本身抛异常，则该用例把库行为钉死并同步 `:35` 注释
+- [X] T054 [US1] 补 **SC-010** 的账本逐条断言：`tests/KFL.Tests/Infrastructure/SaveFormatContractTests.cs:161-174` 现只断 `Count == 1200`；按 T030⑤「条目顺序一致」（`tasks.md:123`）对返回的 `loaded.Economy.Ledger.Entries` 逐条比对 `(date, category, personId, amountWen)`（夹具 `LongLedgerState`（`:179-207`）的 1200 条金额互异、年月递增，已具备逐条断言条件），并把 `:157` 注释误写的 SC-006 改为 SC-010。**验收**：两种格式各一条用例全绿，且「顺序被反转/条目被替换」时断言必然失败
+- [X] T055 [US1] 补二进制 `[Key(n)]` 键序的反射断言（契约十 §4 键表 + §5 条款 4）：新增用例反射遍历每个 DTO 的 `[Key]`，断言其集合恰为 `0..N-1` 且与 `specs/004-save-system/contracts/save-format.md` §4 的编号一一对应（现有 JSON 键名断言**漏掉**这一层：重排 `[Key]` 既不改变 JSON 键名、也不改变读写对称的往返结果）。**验收**：故意交换 `PersonDto` 两个 `[Key]` 后该断言失败
+- [X] T056 [US1] 补 T030③「非法枚举名 / 越界整数被拒」的两条用例：JSON 侧非法枚举**名**（`JsonStringEnumConverter` 默认也接受数字，须确认 Core 校验是否兜住）与二进制侧越界整数，断言 `Kind`（契约十 §3 条款 1、data-model §3.10、`tasks.md:123`）。**验收**：两条用例均断言失败形态为 `InvalidStructure`（若实测为 `Malformed`，则先按 C-09 的口径裁决再落断言）
+- [X] T057 [US1] 统一**未登记状态位名**在 JSON 路径的失败分类：data-model §3.9 要求未登记位 ⇒ `InvalidStructure`（二进制的 `src/KFL.Infrastructure/Save/SaveStateMapper.cs:141-145` 已如此），而 JSON 由 `SaveFileFormat.cs` 的 `StatusFlagJsonConverter.Read` 抛 `JsonException`、被 `JsonSaveFormat.cs:154-160` 包成 `Malformed`。二选一并同步：让 converter 抛可被识别为 `InvalidStructure` 的异常（改代码），或先在 `specs/004-save-system/data-model.md` §3.9 / `contracts/save-format.md` 明确「未登记**名字** ⇒ `Malformed`、未登记**位** ⇒ `InvalidStructure`」（改工件，涉数值/口径者按规格书 §17 裁决），两种格式的对照断言随后补齐。**验收**：同一输入在两格式下的 `Kind` 有明文口径且被用例固定
+- [X] T058 [US2] 收口 US2 的三处测试空白：(a) `tests/KFL.Tests/Infrastructure/AtomicWriteTests.cs` 注入中断后 MUST 用真实 `Load` 读回存档并断言「要么旧、要么新」且始终可读（SC-006 现只验字节形态）；(b) T038 的 12 回合用例 MUST 同时比对磁盘内容与内存状态（现只比内存）；(c) 新增「换格式后旧格式备份被移除」「写失败时旧格式归档保留」两条（SC-003/FR-011 末句）。**验收**：三条全绿，且 (a) 在「注入后把文件截断」的变异下失败
+- [X] T059 [US1][US3] 补 **SC-007** 的「原文件与内存差异 = 0」断言并参数化失败输入：`tests/KFL.Tests/Infrastructure/SaveFailureTests.cs` 的每条失败用例加「调用前后**原文件字节完全相同**」与「调用方已持有的 `GameState` 逐字段未被污染」；把截断（`:39`）、版本不符（`:97`）、版本闸门（`:116`）、字节损坏（`:136`）四条参数化到两种 `SaveFormat`（契约十 §6 条款 4）。**验收**：四类输入 × 两格式全绿；任一失败路径被改为「先删原文件再报错」或用例可被断言捕获
+- [X] T060 [US3] 补 Rename 的备份改名失败暴露路径：按 FR-009 与契约九 §6 条款 5 注入「备份改名失败」（`src/KFL.Infrastructure/Save/SaveService.cs` 的 `Rename`），断言失败可识别（`SaveNameConflictException` 或契约九该条规定的形态）、原档与旧备份均未被破坏。**验收**：注入点可用且有断言；无注入点时先补测试接缝（属测试侧夹具，不改生产签名）
+- [X] T061 [US3] 确认并固定「仅大小写差异的改名目标」行为：实测 `src/KFL.Infrastructure/Save/SaveService.cs` 的 `Rename` 在 NTFS 上把 `A` 改名为 `a` 时 `File.Move`（不带 overwrite）是否自冲突；据结果补用例并在实现里走大小写不敏感的同一槽位判定（FR-008 的口径）。**验收**：该场景有确定行为与用例；若无歧义则记录实测结论到 `implementation-notes.md`
+
+### LOW
+
+- [X] T062 [US3] 补 US3 的零散断言（四小项，均落在 `tests/KFL.Tests/Infrastructure/SaveServiceTests.cs` 或同目录新测试类）：(a) 档名大小写在**磁盘上**未被改写（现 `:158` 只断内存 `slot.Name`）；(b) 档名**内部空格**放行；(c) 只有 `backups/` 而无主档时 `Exists == false`；(d) JSON 档的 `FindBySaveId` 只读头、不解析正文。**验收**：四条全绿
+- [X] T063 [US3] 确认并收口档名长度上界：`src/KFL.Infrastructure/Save/SaveName.cs` 允许 255 字符名，而原子写的临时文件名在档名基础上再增约 37 字符（`MAX_PATH = 260` 风险）。**验收**：先实测 255 字符名在原子写路径下是否可用；若超限，则在 `SaveName` 落下与实测一致的长度上界（涉数值者经规格书 §17 裁决后回写 `spec.md`/契约十）或改为不依赖档名长度构造临时名，并补边界用例
+- [X] T064 [US1] 补 Edge Case「成员年月含 0 / 负年份」的往返覆盖（`spec.md:168`、Q8 `spec.md:26`）：夹具（`tests/KFL.Tests/Infrastructure/SaveFixtures.cs`）加一名 `birthYear ≤ 0` 的成员或一条 `changedYear ≤ 0` 的功名记录，纳入两格式逐字段往返（FR-003）。**验收**：`GameDate` 的 0 与负年份在两格式下逐字段相等
+- [X] T065 补两处活工件登记（AGENTS.md 铁律第 1 条）：在 `specs/004-save-system/plan.md` 的回写义务清单中登记 (a) FR-022「临时目录」的实际落点（与 T051 的 `SaveTestSandbox` 改法同一提交）与 (b) `tests/KFL.Tests/Fixtures/SaveFixtures.cs`（T020）与 `tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs`（T021）两处文件落点。**MUST NOT** 回改 `tasks.md` 既有条目与 `implementation-notes.md`。**验收**：`plan.md` 的清单能逐条对上现实现文件
+
+### Phase 7 执行约束
+
+- **同文件串行（不可并行）**：`src/KFL.Infrastructure/Save/JsonSaveFormat.cs`（T049）；`src/KFL.Infrastructure/Save/SaveService.cs`（T052 → T060 → T061）；`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs`（T050 → T052 → T060 → T061 → T062）；`tests/KFL.Tests/Infrastructure/SaveFailureTests.cs`（T049 → T056 → T057 → T059）；`tests/KFL.Tests/Infrastructure/SaveFormatContractTests.cs`（T053 → T054 → T055 → T056）
+- **[P] 可用**：T051（架构/沙箱）与 T058、T064 触文件不重叠，可与上列任一线并行
+- **顺序**：HIGH（T049~T051）→ MEDIUM（T052~T061）→ LOW（T062~T065）；每条完成即跑四条门禁（`tasks.md:42-51`），T051 未完成前门禁结果不可信
+- **回写**：T057、T063、T065 若判定为「口径需变更」，MUST 先经规格书 §17 裁决并**在同一提交**内回写受影响活工件（`spec.md`/`plan.md`/`contracts/`）；T057 的代码侧改动须与 `data-model.md` §3.9 的措辞一致
+
+### 审计确证清单（已核对，无缺口，不产生任务）
+
+- 12 个 DTO 的 JSON 键表与契约十 §4 逐字段一致（76 个线上成员；`[Key]` 自 0 连续、`[JsonPropertyName]` + `[JsonRequired]` 齐全；属性改名不改键名）；`SalaryMode` / `TreasuryPool` 未泄入任何键表
+- 复原次序符合 data-model §3.11；五类 `Kind` 互不相同且各有触发路径；两种格式的版本闸门都在**主体解析之前**（次序问题仅 C-01 的 ③/④）
+- `SaveOptions.DefaultFormat` 被 pin 属契约十 §4 的明文要求（缩面 R-14⑤），判为**合规**而非死形
+- 回写义务登记表 12 行、架构门禁 G-01~G-08、`.slnx` 恰好六工程、`ConfigLiteralTests.RegisteredValues` 未增补小数、`// arch-guard:allow` 豁免行可逐一列举——均已落地
+- 四类失败分类（Missing/Malformed/Truncated/UnsupportedVersion）在**二进制**侧逐条可识别；`SaveName` 非法字符集与 `-` 放行、同名判定大小写不敏感在 `Exists`/覆盖冲突/改名目标三处口径一致
+
+---
+
+## Phase 7 回写范围登记（实现期追加；AGENTS.md 铁律第 3 条）
+
+> 本节只登记「同步了哪些文件、同步到哪里」，供后续审计核对；**MUST NOT** 回改本文件 Phase 1~6 的既有条目、
+> `implementation-notes.md` 与既有 `checklists/`（历史记录类工件）。T050 原计划把 SC-002 的标注更正记入
+> 提交信息或 `implementation-notes.md`，实现期改记于本节（该文件属历史记录类工件，不得回改）。
+
+| 任务 | 活工件同步 | 同步到哪里 |
+| --- | --- | --- |
+| T049 | 无（契约十 §6 第③/④步原文未变，是**实现向契约对齐**，非契约变更） | `src/KFL.Infrastructure/Save/JsonSaveFormat.cs`（③无条件截断判定 ⇒ ④版本闸门）；`tests/KFL.Tests/Infrastructure/SaveFailureTests.cs` |
+| T050 | 无（SC-002 的锚点文本本身未变，缺的是断言） | `tests/KFL.Tests/Infrastructure/SaveServiceTests.cs`（新增 24+12 个月长跑；`:178` 注释 US1/AS5 → US2/AS5） |
+| T051 | `plan.md` 回写义务清单**第 13 行**（FR-022「临时目录」实际落点） | `specs/004-save-system/plan.md` 的「回写义务清单（AGENTS.md「铁律」+ spec Assumptions 的落地）」表 |
+| T056 | 无（`EnsureEnumsDefined` 是**补足** data-model §3.10 已有的「越界整数 ⇒ 明确失败」义务，非口径变更） | `src/KFL.Infrastructure/Save/Serialization/SaveStateMapper.cs`（`Build` 的 ⓪ 步）；`tests/KFL.Tests/Infrastructure/SaveFailureTests.cs` |
+| T057 | `data-model.md` §3.9（L224）、§3.10 枚举行（L234）；`contracts/save-format.md` §6 **新条款 6** | 「JSON 非法枚举**名** ⇒ 第⑤步 ⇒ `Malformed`；二进制越界整数 / 未登记状态位 ⇒ 第⑦步 ⇒ `InvalidStructure`」。**未改任何数值或步骤序列**，故不经规格书 §17 裁决（只把契约十 §6 的步号映射写到明文） |
+| T063 | 无（不把实测可写长度写进 `SaveName`——它是**根路径**的函数，随部署路径变化） | `src/KFL.Infrastructure/Save/AtomicFileWriter.cs`（临时名长度恒定：档名前 16 字符 + 随机后缀）；`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs` 边界用例 |
+| T064 | 无（`SaveFixtures` 为测试夹具，非需求工件） | `tests/KFL.Tests/Infrastructure/SaveFixtures.cs`（新增前史纪年成员 + 两条 `changedYear ≤ 0` 的功名记录） |
+| T045 遗留 | `plan.md` 回写义务清单**第 12 行**（结清结构树 L238 引用的「第 12 行」） | `specs/004-save-system/plan.md`：`src/KFL.Core/Entities/FamineState.cs` 的 `Stage`/`ElapsedMonths` 由 `private set` 放宽为 `internal set` |
+| T065 | `plan.md` 回写义务清单第 13 行（(a) FR-022 落点、(b) `SaveFixtures.cs`（T020）与 `SaveTestSandbox.cs`（T021）的文件落点） | `specs/004-save-system/plan.md`；两处测试文件实际都在 `tests/KFL.Tests/Infrastructure/`（见 plan.md「结构树补注（T048）」） |
+
+**实测结论留档（T061 / T063 的 needs-confirm 项）**：
+
+- T061：NTFS + .NET 10 下，同目录「不带 overwrite 的移动」对**仅大小写差异**的改名（`甲A档` → `甲a档`）**能成功**
+  （Windows 视作同一对象的改名，不报 already exists）⇒ `SaveService.Rename` 无需特判；结论落在
+  `tests/KFL.Tests/Infrastructure/SaveServiceTests.cs` 该用例的 doc 注释（`implementation-notes.md` 属历史记录类工件，不回改）。
+- T063：`LongPathsEnabled = 1`，但 testhost 不受长路径政策保护；255 字符档名在原子写路径上**撞 `MAX_PATH`**
+  （主档全路径 372 字符 ⇒ 原子改名处抛 `IOException`）⇒ 255 只是**校验层**上界，「写得下多少」由**根路径**长度决定；
+  收口办法 = 临时名长度恒定（+54 字符，与档名长度无关），边界用例按 `259 - 根长 - 扩展名` 的动态预算取名。

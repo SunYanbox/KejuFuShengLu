@@ -33,8 +33,48 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     /// </summary>
     /// <remarks>
     /// 位置式数组的「数组长度」就是「本版本必需成员是否齐备」的判据（契约十 §6 第 ⑥ 步）。
+    /// <para>
+    /// <b>嵌套层同样要检</b>：MessagePack-CSharp 2.5.305 对「短于 <c>maxKey</c> 的位置式数组」
+    /// **不抛异常**，而是把缺失成员静默留成默认值（实测：4 成员的 <c>TalentDto</c> 砍成
+    /// <c>fixarray(3)</c> 后反序列化得到 <c>Craft = 0</c>，无任何异常）。这既是 FR-020 禁止的
+    /// 「为序列化放宽不变量」，也让 §6 第 ⑥ 步形同虚设——故
+    /// <see cref="EnsurePayloadShape"/> 逐层核对每个 DTO 的成员数（契约十 §5 条款 3）。
+    /// </para>
     /// </remarks>
     private const int SaveStateMemberCount = 8;
+
+    /// <summary>嵌套 DTO 的成员数（契约十 §4 键表；全部按 <c>[Key(0..n-1)]</c> 连续编号）。</summary>
+    private const int FamilyMemberCount = 6;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int PersonMemberCount = 22;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int TalentMemberCount = 4;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int StatusTimersMemberCount = 4;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int DegreeRecordMemberCount = 6;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int FamilyEconomyMemberCount = 7;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int TreasuryMemberCount = 6;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int LoanMemberCount = 3;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int HoldingsMemberCount = 4;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int LedgerEntryMemberCount = 5;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int FamineMemberCount = 2;
 
     /// <inheritdoc />
     public SaveFormat Format => SaveFormat.Binary;
@@ -139,21 +179,121 @@ public sealed class MessagePackSaveFormat : ISaveFormat
         }
     }
 
+    /// <summary>
+    /// 逐层核对位置式数组的成员数（契约十 §4 键表 / §5 条款 3 / §6 第 ⑥ 步）。
+    /// </summary>
+    /// <remarks>
+    /// 只核对「成员数」这一件事：值本身的合法性由第 ⑤ 步（反序列化）与第 ⑦ 步（复原/mapper）
+    /// 负责。核对次序与 <c>[Key(n)]</c> 的编号一一对应（T055 的反射断言把这条对应钉死）。
+    /// </remarks>
+    /// <param name="payloadBytes">主体字节。</param>
     private static void EnsurePayloadShape(ReadOnlySpan<byte> payloadBytes)
     {
         try
         {
             var reader = new MessagePackReader(payloadBytes.ToArray());
-            var memberCount = reader.ReadArrayHeader();
-            if (memberCount != SaveStateMemberCount)
-            {
-                throw InvalidStructure(
-                    $"主体缺本版本必需成员：应有 {SaveStateMemberCount} 个，实际 {memberCount} 个（契约十 §6 第 ⑥ 步）。");
-            }
+
+            EnsureArrayHeader(ref reader, SaveStateMemberCount, "SaveStateDto");
+            Skip(ref reader, 6);                    // 0 Id / 1 年 / 2 月 / 3 难度 / 4 待定难度 / 5 出身
+            EnsureFamilyShape(ref reader, "SaveStateDto.Family");       // 6
+            EnsureEconomyShape(ref reader, "SaveStateDto.Economy");     // 7
         }
-        catch (MessagePackSerializationException ex)
+        catch (Exception ex) when (ex is MessagePackSerializationException or EndOfStreamException)
         {
-            throw Malformed($"主体的数组头读不出（契约十 §6 第 ⑤ 步）：{ex.Message}", ex);
+            // 与「第 ⑤ 步」同款：读不出结构即字节损坏（结构性缺成员在上面走 InvalidStructure）。
+            throw Malformed($"主体读不出（契约十 §6 第 ⑤/⑥ 步）：{ex.Message}", ex);
+        }
+    }
+
+    private static void EnsureFamilyShape(ref MessagePackReader reader, string path)
+    {
+        EnsureArrayHeader(ref reader, FamilyMemberCount, path);
+        Skip(ref reader, 3);                        // 0 名 / 1 士籍 / 2 家主
+
+        var members = reader.ReadArrayHeader();     // 3 成员（含归档者）
+        for (var index = 0; index < members; index++)
+        {
+            EnsurePersonShape(ref reader, $"{path}.Members[{index}]");
+        }
+
+        SkipGuidList(ref reader);                   // 4 已落籍旁系
+        SkipGuidList(ref reader);                   // 5 外嫁对齐旁系
+    }
+
+    private static void EnsurePersonShape(ref MessagePackReader reader, string path)
+    {
+        EnsureArrayHeader(ref reader, PersonMemberCount, path);
+        Skip(ref reader, 6);                        // 0..5 Id/名/性别/生年/生月/辈分
+
+        EnsureArrayHeader(ref reader, TalentMemberCount, $"{path}.Talents");   // 6
+        Skip(ref reader, TalentMemberCount);
+
+        Skip(ref reader, 6);                        // 7..12 才学/健康/寿数/官阶/功名/状态位
+
+        EnsureArrayHeader(ref reader, StatusTimersMemberCount, $"{path}.Timers");   // 13
+        Skip(ref reader, StatusTimersMemberCount);
+
+        Skip(ref reader, 3);                        // 14..16 职业/在职月数/入仕轨
+        Skip(ref reader, 3);                        // 17..19 父/母/配偶
+
+        SkipGuidList(ref reader);                   // 20 历任配偶
+
+        var degrees = reader.ReadArrayHeader();     // 21 功名履历
+        for (var index = 0; index < degrees; index++)
+        {
+            EnsureArrayHeader(ref reader, DegreeRecordMemberCount, $"{path}.DegreeHistory[{index}]");
+            Skip(ref reader, DegreeRecordMemberCount);
+        }
+    }
+
+    private static void EnsureEconomyShape(ref MessagePackReader reader, string path)
+    {
+        EnsureArrayHeader(ref reader, FamilyEconomyMemberCount, path);
+        Skip(ref reader, 3);                        // 0 生活水准 / 1 待定水准 / 2 粮价指数
+
+        EnsureArrayHeader(ref reader, TreasuryMemberCount, $"{path}.Treasury");    // 3
+        Skip(ref reader, 3);                        // 0 现银 / 1 储蓄 / 2 商本
+
+        EnsureArrayHeader(ref reader, LoanMemberCount, $"{path}.Treasury.Loan");   // 3
+        Skip(ref reader, LoanMemberCount);
+
+        Skip(ref reader, 2);                        // 4 储蓄利率 / 5 利率年份
+
+        EnsureArrayHeader(ref reader, HoldingsMemberCount, $"{path}.Holdings");    // 4
+        Skip(ref reader, HoldingsMemberCount);
+
+        var entries = reader.ReadArrayHeader();     // 5 账本
+        for (var index = 0; index < entries; index++)
+        {
+            EnsureArrayHeader(ref reader, LedgerEntryMemberCount, $"{path}.Ledger[{index}]");
+            Skip(ref reader, LedgerEntryMemberCount);
+        }
+
+        EnsureArrayHeader(ref reader, FamineMemberCount, $"{path}.Famine");        // 6
+        Skip(ref reader, FamineMemberCount);
+    }
+
+    private static void SkipGuidList(ref MessagePackReader reader)
+    {
+        var count = reader.ReadArrayHeader();
+        Skip(ref reader, count);
+    }
+
+    private static void EnsureArrayHeader(ref MessagePackReader reader, int expected, string path)
+    {
+        var actual = reader.ReadArrayHeader();
+        if (actual != expected)
+        {
+            throw InvalidStructure(
+                $"主体缺本版本必需成员：{path} 应有 {expected} 个成员，实际 {actual} 个（契约十 §4、§6 第 ⑥ 步）。");
+        }
+    }
+
+    private static void Skip(ref MessagePackReader reader, int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            reader.Skip();
         }
     }
 

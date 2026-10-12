@@ -98,16 +98,47 @@ public static class RepositoryLocator
         return null;
     }
 
-    private static IEnumerable<string> EnumerateFiles(string root, string pattern) =>
-        Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories)
-            .Where(file => !IsIgnored(root, file));
-
-    private static bool IsIgnored(string root, string file)
+    /// <summary>
+    /// 递归枚举匹配文件，**在进入目录之前**就剪掉 <c>.git</c>/<c>bin</c>/<c>obj</c>。
+    /// </summary>
+    /// <remarks>
+    /// MUST NOT 先枚举后过滤：<c>Directory.EnumerateFiles(…, AllDirectories)</c> 会先递归进
+    /// <c>tests/KFL.Tests/bin/…/save-tests/&lt;guid&gt;</c> 之类的目录，而测试并行跑时那类目录可能
+    /// 正在被创建或删除，于是扫描抛 <c>UnauthorizedAccessException</c>——门禁就会出现「与代码无关的
+    /// 非确定性失败」。
+    /// </remarks>
+    /// <param name="root">仓库根。</param>
+    /// <param name="pattern">文件模式。</param>
+    /// <returns>匹配的文件路径。</returns>
+    private static IEnumerable<string> EnumerateFiles(string root, string pattern)
     {
-        var relative = Path.GetRelativePath(root, file);
-        return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => IgnoredPathSegments.Contains(segment, StringComparer.OrdinalIgnoreCase));
+        var pending = new Stack<string>();
+        pending.Push(root);
+
+        while (pending.Count > 0)
+        {
+            var directory = pending.Pop();
+
+            foreach (var subdirectory in Directory.EnumerateDirectories(directory))
+            {
+                if (!IsIgnored(Path.GetFileName(subdirectory)))
+                {
+                    pending.Push(subdirectory);
+                }
+            }
+
+            foreach (var file in Directory.EnumerateFiles(directory, pattern))
+            {
+                yield return file;
+            }
+        }
     }
+
+    /// <summary>路径段是否在忽略表内（大小写不敏感，与各平台一致）。</summary>
+    /// <param name="segment">单个路径段（目录名或文件名）。</param>
+    /// <returns>被忽略即真。</returns>
+    private static bool IsIgnored(string segment) =>
+        IgnoredPathSegments.Contains(segment, StringComparer.OrdinalIgnoreCase);
 
     private static string Relative(string root, string file) => Path.GetRelativePath(root, file);
 }
