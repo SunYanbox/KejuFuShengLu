@@ -311,6 +311,146 @@ public sealed class SaveFailureTests
         AssertFailurePreserves(path, corrupted, held, reference);
     }
 
+    /// <summary>
+    /// 契约十 §6 第 ② 步：空文件或**头记录内部**被截断的二进制档 ⇒ <c>Malformed</c>。
+    /// </summary>
+    /// <remarks>
+    /// 头读取越过流尾时 MessagePack 抛的是 <c>EndOfStreamException</c>（不是
+    /// <c>MessagePackSerializationException</c>）；它 MUST 被归类成失败信号，而不是裸奔到调用方
+    /// （审核 2.1）。既有用例只损坏**尾部**，这条把「头本身不完整」补上。
+    /// </remarks>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    public void 头记录不完整的二进制档报Malformed(int remainingBytes)
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("子档", SaveFormat.Binary);
+        var (held, reference) = SaveAndHold(service, slot);
+
+        var path = service.FilePathOf(slot);
+        SaveTestSandbox.TruncateTo(path, remainingBytes);
+        var corrupted = SaveTestSandbox.ReadBytes(path);
+
+        var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
+
+        Assert.Equal(SaveFileErrorKind.Malformed, exception.Kind);
+        AssertFailurePreserves(path, corrupted, held, reference);
+    }
+
+    /// <summary>
+    /// 契约十 §5 条款 3（「缺失 MUST 被检出、MUST NOT 静默默认化」）：JSON 里集合成员写成
+    /// <c>null</c> ⇒ <c>InvalidStructure</c>。
+    /// </summary>
+    /// <remarks>
+    /// <c>[JsonRequired]</c> 只保证键**在**，挡不住 <c>null</c>；若放行，复原时会被当成空集合
+    /// 静默载入（审核 2.3）。
+    /// </remarks>
+    [Theory]
+    [InlineData("family.members")]
+    [InlineData("family.settledOutsiders")]
+    [InlineData("economy.ledger")]
+    public void JSON集合成员为null时报InvalidStructure(string memberName)
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("丑档", SaveFormat.Json);
+        var (held, reference) = SaveAndHold(service, slot);
+
+        var path = service.FilePathOf(slot);
+        var parts = memberName.Split('.');
+        RewritePayload(path, state => state[parts[0]]![parts[1]] = null);
+        var corrupted = SaveTestSandbox.ReadBytes(path);
+
+        var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
+
+        Assert.Equal(SaveFileErrorKind.InvalidStructure, exception.Kind);
+        AssertFailurePreserves(path, corrupted, held, reference);
+    }
+
+    /// <summary>
+    /// 契约十 §5 条款 3：JSON 集合里的 <c>null</c> **元素**（如 <c>"members":[null]</c>）
+    /// MUST 以 <c>InvalidStructure</c> 浮出，MUST NOT 让调用方看到裸 <c>NullReferenceException</c>（审核 2.2）。
+    /// </summary>
+    [Fact]
+    public void JSON集合含null元素时报InvalidStructure()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("寅档", SaveFormat.Json);
+        var (held, reference) = SaveAndHold(service, slot);
+
+        var path = service.FilePathOf(slot);
+        RewritePayload(path, state => state["family"]!["members"]!.AsArray()[0] = null);
+        var corrupted = SaveTestSandbox.ReadBytes(path);
+
+        var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
+
+        Assert.Equal(SaveFileErrorKind.InvalidStructure, exception.Kind);
+        AssertFailurePreserves(path, corrupted, held, reference);
+    }
+
+    /// <summary>
+    /// 契约十 §2：头成员**次序固定**（<c>FormatVersion</c> → <c>PayloadLength</c> → <c>SaveId</c>），
+    /// 次序不符 ⇒ <c>Malformed</c>；二进制侧由 <c>fixarray(3)</c> 天然强制，JSON 侧必须显式判定。
+    /// </summary>
+    [Fact]
+    public void JSON头成员次序不符时报Malformed()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("卯档", SaveFormat.Json);
+        var (held, reference) = SaveAndHold(service, slot);
+
+        var path = service.FilePathOf(slot);
+        var file = JsonNode.Parse(ReadText(path))!.AsObject();
+        var reordered = new JsonObject
+        {
+            ["PayloadLength"] = file["PayloadLength"]!.DeepClone(),
+            ["FormatVersion"] = file["FormatVersion"]!.DeepClone(),
+            ["SaveId"] = file["SaveId"]!.DeepClone(),
+            ["State"] = file["State"]!.DeepClone(),
+        };
+
+        SaveTestSandbox.WriteBytes(path, Encoding.UTF8.GetBytes(reordered.ToJsonString(PayloadJsonOptions)));
+        var corrupted = SaveTestSandbox.ReadBytes(path);
+
+        var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
+
+        Assert.Equal(SaveFileErrorKind.Malformed, exception.Kind);
+        AssertFailurePreserves(path, corrupted, held, reference);
+    }
+
+    /// <summary>契约十 §2：同一个头成员重复出现 ⇒ <c>Malformed</c>（MUST NOT 让「后者胜」）。</summary>
+    [Fact]
+    public void JSON头成员重复时报Malformed()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("辰档", SaveFormat.Json);
+        var (held, reference) = SaveAndHold(service, slot);
+
+        var path = service.FilePathOf(slot);
+        var file = JsonNode.Parse(ReadText(path))!.AsObject();
+        var stateJson = file["State"]!.ToJsonString(PayloadJsonOptions);
+        var version = SaveFileFormat.Version.ToString(CultureInfo.InvariantCulture);
+        var duplicated = string.Concat(
+            "{\n  \"FormatVersion\": ", version,
+            ",\n  \"FormatVersion\": ", version,
+            ",\n  \"PayloadLength\": ", Encoding.UTF8.GetByteCount(stateJson).ToString(CultureInfo.InvariantCulture),
+            ",\n  \"SaveId\": \"", file["SaveId"]!.GetValue<string>(),
+            "\",\n  \"State\": ", stateJson, "\n}");
+
+        SaveTestSandbox.WriteBytes(path, Encoding.UTF8.GetBytes(duplicated));
+        var corrupted = SaveTestSandbox.ReadBytes(path);
+
+        var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
+
+        Assert.Equal(SaveFileErrorKind.Malformed, exception.Kind);
+        AssertFailurePreserves(path, corrupted, held, reference);
+    }
+
     /// <summary>把主体字节拼成一个完整的二进制档（头是 fixarray(3) + 版本 + 主体长度 + 档标识）。</summary>
     /// <param name="saveId">主体标识（须与头一致，否则会先撞上标识一致性判定）。</param>
     /// <param name="payload">主体字节。</param>

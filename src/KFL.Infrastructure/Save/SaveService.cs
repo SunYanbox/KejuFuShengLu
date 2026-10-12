@@ -35,6 +35,12 @@ public sealed class SaveService : ISaveService
     private readonly ISaveFormat _jsonFormat = new JsonSaveFormat();
     private readonly AtomicFileWriter _writer;
 
+    /// <summary>
+    /// 只读头探针的读取上界（字节）。头记录（三个成员 + 主体之前的固定外壳）远小于此；
+    /// 上界的作用是让探针**不随档的大小增长**（契约九 §5 条款 3：MUST NOT 读主体）。
+    /// </summary>
+    private const int HeaderProbeBytes = 4096;
+
     /// <summary>用默认选项建服务：存档根 = 可执行文件旁的 <c>saves/</c>，默认格式 = 二进制。</summary>
     public SaveService()
         : this(new SaveOptions())
@@ -79,9 +85,21 @@ public sealed class SaveService : ISaveService
     /// <inheritdoc />
     public SaveSlot? FindBySaveId(Guid saveId)
     {
+        var matches = FindAllBySaveId(saveId);
+
+        return matches.Count > 0 ? matches[0] : null;
+    }
+
+    /// <summary>列出根下**全部**指向该标识的存档（契约九 §5 条款 3/4 的唯一性判定要看全部命中）。</summary>
+    /// <param name="saveId">存档标识。</param>
+    /// <returns>命中项（无序；空标识 ⇒ 空表）。</returns>
+    private List<SaveSlot> FindAllBySaveId(Guid saveId)
+    {
+        var matches = new List<SaveSlot>();
+
         if (saveId == Guid.Empty)
         {
-            return null;
+            return matches;
         }
 
         foreach (var file in SaveCatalog.ListFiles(RootDirectory))
@@ -93,11 +111,11 @@ public sealed class SaveService : ISaveService
 
             if (header.SaveId == saveId)
             {
-                return new SaveSlot(SaveCatalog.FileNameStemOf(file), format);
+                matches.Add(new SaveSlot(SaveCatalog.FileNameStemOf(file), format));
             }
         }
 
-        return null;
+        return matches;
     }
 
     /// <inheritdoc />
@@ -125,10 +143,15 @@ public sealed class SaveService : ISaveService
         }
 
         // ③ 同一标识并存于**另一个文件名** ⇒ 一个字节都不写（契约九 §2、§5；结清 001 R-03）。
-        if (FindBySaveId(state.Id) is { } existing && !SaveName.IsSameName(existing.Name, name))
+        //    探测 MUST 看**全部**同标识文件：盘上出现两个同 SaveId 的档是外部可见的坏状态，
+        //    只看第一个命中会让结果依赖目录枚举次序（契约九 §5 条款 4）。
+        foreach (var existing in FindAllBySaveId(state.Id))
         {
-            throw new SaveIdentityConflictException(
-                $"存档标识已存在于另一个档名下：{state.Id}（{existing.Name}）");
+            if (!SaveName.IsSameName(existing.Name, name))
+            {
+                throw new SaveIdentityConflictException(
+                    $"存档标识已存在于另一个档名下：{state.Id}（{existing.Name}）");
+            }
         }
 
         // ④ 序列化先于落盘：这一步失败时旧档仍完好（FR-013）。
@@ -142,7 +165,8 @@ public sealed class SaveService : ISaveService
         _writer.Write(SaveCatalog.Combine(RootDirectory, name + extension), fileBytes);
 
         // ⑦ 写完**之后**才清同名异构档与该存档的旧格式备份（契约九 §5、§7 第 7 条）。
-        RemoveStaleSiblings(name, extension, state.Id);    }
+        RemoveStaleSiblings(name, extension, state.Id);
+    }
 
     /// <inheritdoc />
     public GameState Load(SaveSlot slot)
@@ -151,15 +175,16 @@ public sealed class SaveService : ISaveService
         var path = SaveCatalog.Combine(RootDirectory, name + SaveFileFormat.ExtensionOf(slot.Format));
 
         // ① 文件存在吗 ⇒ 否 ⇒ Missing。
-        if (!SaveCatalog.FileExists(path))
-        {
-            throw new SaveFileException(SaveFileErrorKind.Missing, $"存档不存在：{name}");
-        }
-
+        //    判据取「读一下」而不是「先问存不存在」：目录不可读时存在性检查只会答「不存在」，
+        //    把访问失败误报成缺档（契约九 §2、§4 条款 5）。
         byte[] fileBytes;
         try
         {
             fileBytes = SaveCatalog.ReadAllBytes(path);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            throw new SaveFileException(SaveFileErrorKind.Missing, $"存档不存在：{name}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
@@ -289,8 +314,9 @@ public sealed class SaveService : ISaveService
 
         try
         {
-            // 只读头（契约九 §5）：FindBySaveId 是 O(1) 探针，MUST NOT 解析主体。
-            header = FormatOf(format).ReadHeader(SaveCatalog.ReadAllBytes(path));
+            // 只读头（契约九 §5 条款 3）：FindBySaveId 是 O(1) 探针，MUST NOT 解析主体。
+            // 封顶前缀读（而非整档）是这条的落地：头记录远小于 HeaderProbeBytes。
+            header = FormatOf(format).ReadHeader(SaveCatalog.ReadBytes(path, HeaderProbeBytes));
             return true;
         }
         catch (SaveFileException)

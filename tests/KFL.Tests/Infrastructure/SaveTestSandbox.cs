@@ -150,22 +150,32 @@ public sealed class SaveTestSandbox : IDisposable
         }
     }
 
-    /// <summary>选定并**预建**父目录（根本身仍留给被测代码自己建）；候选全部失败即抛。</summary>
+    /// <summary>
+    /// 选定并**预建**父目录（根本身仍留给被测代码自己建）；候选全部失败即抛。
+    /// </summary>
     /// <returns>父目录绝对路径。</returns>
+    /// <remarks>
+    /// 每个候选**重试一次**：同一进程里并行跑的用例会在 <see cref="Dispose"/> 里回收空的父目录
+    /// （<see cref="ReleaseParentDirectory"/>），「建目录」与「删空目录」撞在一起时第一次可能拿到
+    /// <c>IOException</c>；重试即可建回（这曾表现为千分之一的偶发失败）。
+    /// </remarks>
     private static string EnsureParentDirectory()
     {
         Exception? lastFailure = null;
 
         foreach (var candidate in ParentDirectoryCandidates)
         {
-            try
+            for (var attempt = 0; attempt < 2; attempt++)
             {
-                Directory.CreateDirectory(candidate); // arch-guard:allow 测试沙箱：预建临时根的父目录（候选与次序见构造函数的 remarks）
-                return candidate;
-            }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
-            {
-                lastFailure = ex;
+                try
+                {
+                    Directory.CreateDirectory(candidate); // arch-guard:allow 测试沙箱：预建临时根的父目录（候选与次序见构造函数的 remarks）
+                    return candidate;
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+                {
+                    lastFailure = ex;
+                }
             }
         }
 

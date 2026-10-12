@@ -1,5 +1,6 @@
 using KFL.Core.Entities;
 using KFL.Core.ValueObjects;
+using KFL.Infrastructure.Save.Serialization;
 using Xunit;
 
 namespace KFL.Tests.Infrastructure;
@@ -35,6 +36,14 @@ internal static class SaveStateComparer
 
         AssertFamily(expected.Family, actual.Family);
         AssertEconomy(expected.Economy, actual.Economy);
+
+        // ⑲ 外来者簿记（落籍旁系 / 联姻对齐）：领域侧只有 internal 读取通道（KFL.Tests 看不见），
+        // 故按 DTO 投影比**内容**。这两处簿记没有公开读取通道，漏存即静默失真，而成员集合里
+        // 看不出它（契约十 §4 FamilyDto 键 4/5、data-model §3.11 第 ⑦ 步）。
+        var expectedDto = SaveStateMapper.ToDto(expected).Family;
+        var actualDto = SaveStateMapper.ToDto(actual).Family;
+        Assert.Equal(expectedDto.SettledOutsiders, actualDto.SettledOutsiders);
+        Assert.Equal(expectedDto.MarriageAlignedOutsiders, actualDto.MarriageAlignedOutsiders);
     }
 
     /// <summary>断言两个金额**位级**相等（标度也算）。</summary>

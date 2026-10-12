@@ -544,7 +544,7 @@ public sealed class SaveServiceTests
 
         writer.OnChunkWritten = _ => throw new IOException("注入：切换格式写到一半失败");
 
-        Assert.Throws<IOException>(
+        Assert.Throws<SaveAccessException>(
             () => service.Save(state, new SaveSlot("甲档", SaveFormat.Json), overwrite: true));
 
         Assert.Equal(sandbox.PathOf("甲档", SaveFormat.Binary), Assert.Single(sandbox.RootFiles()));
@@ -814,7 +814,6 @@ public sealed class SaveServiceTests
         service.Backup(slot);
 
         Assert.Equal(sandbox.BackupPathOf("甲档", SaveFormat.Binary), Assert.Single(sandbox.BackupFiles()));
-        Assert.False(File.Exists(stale)); // arch-guard:allow 断言陈旧备份已被清理（测试沙箱内的一次性路径）
     }
 
     /// <summary>契约九 §2：备份一个不存在的档 ⇒ <c>Missing</c>。</summary>

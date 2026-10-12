@@ -117,7 +117,7 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 改 **1** 个（`Config/GameConfig.cs` 的转发组）；测试增 **6** 个文件、改 **2** 个（存档夹具）；
 `.gitignore` 改 1 处；**0** 个界面功能、**0** 行界面代码。
 
-> **无跨特性形状变更**：本特性**不**增删 `KFL.Core` 领域字段、**不**改任何上游步骤序列
+> **无跨特性形状变更（公开面）**：本特性**不**增删 `KFL.Core` 领域字段、**不**改任何上游步骤序列
 > （见「回写义务清单」的说明）。故 AGENTS.md「铁律」要登记的是**声明与验证义务**的
 > 回写，而非字段级回写。
 >
@@ -125,6 +125,17 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 > `KFL.Core/Entities/FamineState.cs` 的 `Stage`/`ElapsedMonths` 由 `private set` 放宽为
 > `internal set`（对外只读性不变，不新增不变量）。该处已在 `tasks.md`「回写义务登记」
 > 第 12 行登记，并已在本节「技术路线」的 `KFL.Core` 一条下补注。
+>
+> **回写补注（T065，收敛轮）**：上两段的「零签名变更」**只对公开面成立**。实现期在 `internal`
+> 面共 6 处放宽 / 新增，逐条为：① `FamineState.Stage` / `ElapsedMonths` 放宽为 `internal set`
+> （即上条 T048 补注）；② `Family.CaptureOutsiderBookkeeping()`；③
+> `Family.RestoreOutsiderBookkeeping(OutsiderBookkeeping)`；④ 新增
+> `KFL.Core/Entities/OutsiderBookkeeping.cs`（`internal sealed record`）；⑤ 新增
+> `KFL.Core/AssemblyInfo.cs` 的 `[assembly: InternalsVisibleTo("KFL.Infrastructure")]`；
+> ⑥ `FamilyEconomy.RestoreFamine(FamineStage, int)`（002 的类型，见 §3.6 的登记）。
+> `KFL.Core` 的**公开 API 面**、领域字段与 001 / 002 的不变量语义均未改变（与 FR-020 的边界见
+> [spec.md](./spec.md) 的「本特性对上游 `KFL.Core` 的形状变更」条目）。回写落点见下方清单
+> 第 12 行、[spec.md](./spec.md) Assumptions 第 7 项与 `tasks.md` 的 Phase 7 回写范围登记。
 
 ## Constitution Check
 
@@ -166,7 +177,9 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 | **Q7** | 同名判定的大小写口径 | **大小写不敏感**（与 Windows 文件系统语义一致，也沿用保留设备名 `CON`/`con` 的既有口径）；保存保留输入写法；不做 Unicode NFC 规范化 | FR-008；SC-005；[契约九 §4 条款 1.1](./contracts/save-service.md) |
 | **Q8** | 回合计数与「任意年月」的适用面 | 推演进程的 `CurrentDate` **恒自 1 年 1 月起算**（0/负数年份只在角色的**出生年月**等成员字段）；回合数恒为正、无需为负年份设计备份节奏；Edge Case 的「任意年月」收窄为成员年月字段。**不改任何数值** | FR-011；Edge Cases；[契约十一 §1 条款 1](./contracts/save-cadence.md)；R-16 |
 
-> Q4~Q8 属**声明与验证义务**类回写（零 `KFL.Core` 字段增删、零签名变更）；本轮已同步
+> Q4~Q8 属**声明与验证义务**类回写（这五条裁决本身零 `KFL.Core` 字段增删、零公开签名变更；
+> 本特性整体另有 6 处 `internal` 面的放宽 / 新增，见本节「无跨特性形状变更」块的回写补注与
+> 「回写义务清单」第 12 行）；本轮已同步
 > `research.md`（R-16/R-17/R-18/R-19/R-25 + 追加节）、`data-model.md`（§6.1/§6.3/§6.4）、
 > `contracts/save-service.md`（§1/§4/§5/§6/§7）、`contracts/save-cadence.md`（§1/§2/§5），
 > 并 MUST 在 `tasks.md` 登记同步范围（AGENTS.md 的「铁律」；spec 的 `Assumptions` Q4~Q8 段
@@ -174,10 +187,16 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 
 ## 回写义务清单（AGENTS.md「铁律」+ spec Assumptions 的落地）
 
-**先说结论**：本特性**没有**对任何上游 `KFL.Core` 类型或既有契约做**形状变更**——零字段增删、
-零签名变更、零步骤序列插入（落盘被刻意放在结算**之外**的一层，R-17）。因此本清单登记的是
-**声明与验证义务**的回写：哪些「待阶段④ 处理」的登记被**结清**、哪一个「接口待定义」被**落实**、
-哪一处「无验证对象」的断言**首次获得可验证对象**。
+**先说结论**：本特性在**公开面**上没有对任何上游 `KFL.Core` 类型或既有契约做**形状变更**——
+零领域字段增删、零**公开**签名变更、零上游步骤序列插入（落盘被刻意放在结算**之外**的一层，
+R-17）；但**在 `internal` 面上有 6 处**放宽或新增（逐条见下方清单第 12 行，与
+[spec.md](./spec.md) 的「本特性对上游 `KFL.Core` 的形状变更」条目）：`FamineState` 的
+`Stage`/`ElapsedMonths` 访问器放宽为 `internal set`、`Family.CaptureOutsiderBookkeeping()`、
+`Family.RestoreOutsiderBookkeeping(...)`、新增 `OutsiderBookkeeping` 类型、新增
+`AssemblyInfo.cs` 的 `InternalsVisibleTo`、`FamilyEconomy.RestoreFamine(...)`。因此本清单登记的是
+**声明与验证义务**的回写
+（哪些「待阶段④ 处理」的登记被**结清**、哪一个「接口待定义」被**落实**、哪一处「无验证对象」
+的断言**首次获得可验证对象**），外加这 6 处的**字段 / 签名级落点登记**。
 
 | # | 目标工件（活工件） | 回写内容 | 依据 |
 | --- | --- | --- | --- |
@@ -192,7 +211,7 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 | 9 | `specs/002-monthly-settlement-economy/contracts/ledger.md` §6（L73–74）与 §7（L78–79） | **只补注**：把「阶段④ 落盘时实测后再决定（001 R-16 已登记该未决事项）」标注为**已由 004 按 Q2 裁决结清**；§7 的「存档序列化格式（阶段④）」改为**已由 004 交付**并指向 [契约十](./contracts/save-format.md)。**不改**判定句本身（它记录的是当时的取舍） | spec Assumptions 4/5；AGENTS.md 的「活工件只在含义已改变处补注」 |
 | 10 | `specs/002-monthly-settlement-economy/data-model.md`（L7）、`plan.md`（L43–44）、`research.md`（L283–285） | 「存档落盘属阶段④，**此时增删字段无迁移成本**」属**当时事实**：按 §16.2 的迁移口径**保留原文、MUST NOT 回改**；只在「含义已改变」处补注一句「004 之后，落盘形态已固定为 [契约十](./contracts/save-format.md) 的版本 1，跨版本变更须走 §14 的版本闸门（拒绝而非迁移）」 | spec Assumptions 5 |
 | 11 | `specs/004-save-system/tasks.md` | 登记上述回写范围（同步了哪些文件、同步到哪里），供后续审计核对 | spec Assumptions 6；AGENTS.md 的「铁律」 |
-| 12 | `src/KFL.Core/Entities/FamineState.cs` | **签名放宽登记**（结构树 L238 引用的「第 12 行」即此处）：`Stage` / `ElapsedMonths` 由 `private set` 放宽为 `internal set`，供 `FamilyEconomy.RestoreFamine` 精确复原任意「阶段 + 计时」组合；授权在 plan.md 的「核心层改动」，此处登记其落点 | T045；AGENTS.md 铁律第 1 条（变更授权的同一提交落地） |
+| 12 | `src/KFL.Core` 的 **`internal` 面（6 处）** | **签名放宽 / 新增登记**（结构树 L238 引用的「第 12 行」即此处）：① `src/KFL.Core/Entities/FamineState.cs` 的 `Stage` / `ElapsedMonths` 由 `private set` 放宽为 `internal set`，供 `FamilyEconomy.RestoreFamine` 精确复原任意「阶段 + 计时」组合；② `Family.CaptureOutsiderBookkeeping()`；③ `Family.RestoreOutsiderBookkeeping(OutsiderBookkeeping)`；④ 新增 `src/KFL.Core/Entities/OutsiderBookkeeping.cs`（`internal sealed record`）；⑤ 新增 `src/KFL.Core/AssemblyInfo.cs` 的 `[assembly: InternalsVisibleTo("KFL.Infrastructure")]`；⑥ `FamilyEconomy.RestoreFamine(FamineStage, int)`（002 的类型）。**公开 API 面、领域字段与 001/002 的不变量语义均未改变**；授权在 plan.md 的「核心层改动」，逐条说明见本节上方「无跨特性形状变更（公开面）」块的回写补注，回写落点汇总见 [spec.md](./spec.md) Assumptions 第 7 项 | T045；T065；AGENTS.md 铁律第 1 条（变更授权的同一提交落地）；PR #10 审核「一」 |
 | 13 | 本清单（`plan.md`）：**FR-022 的「临时目录」落点**与**两处测试文件落点** | **(a) FR-022 的「临时目录」实际落点**：测试沙箱根 = **系统临时目录优先**（`<temp>/kfl-save-tests`），受限宿主下建目录被拒时**回落**到测试程序集旁（`bin/<tfm>/save-tests/`）；两条候选都不落在仓库工作区内（后者已被 `.gitignore` 忽略），SC-009 实测工作区存档相关变更数 = 0。**(b) 文件落点**：`SaveFixtures.cs`（T020）实际在 `tests/KFL.Tests/Infrastructure/`（**不在** `Fixtures/`，见上文「结构树补注（T048）」）、`SaveTestSandbox.cs`（T021）同样在 `tests/KFL.Tests/Infrastructure/` 且是测试侧**唯一**的临时目录/文件操作辅助（豁免行 ≤15，契约九 §4.1） | T051；T065；FR-022；SC-009；[契约九 §4.1](./contracts/save-service.md) |
 
 > **不改的**：`tasks.md`（001~003 的既有条目）、`implementation-notes.md`、既有 `checklists/` 属

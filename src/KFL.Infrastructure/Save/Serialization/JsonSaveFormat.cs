@@ -44,6 +44,12 @@ public sealed class JsonSaveFormat : ISaveFormat
     private const string StateName = "State";
 
     /// <summary>
+    /// 头成员的**固定次序**（契约十 §2：<c>State</c> 之前恰有这三个成员）。
+    /// </summary>
+    private static readonly string[] HeaderMemberNames =
+        [FormatVersionName, PayloadLengthName, SaveIdName];
+
+    /// <summary>
     /// <c>SaveStateDto</c> 上所有 <c>[JsonPropertyName]</c>，即本版本的键表（契约十 §4.1）。
     /// </summary>
     /// <remarks>
@@ -145,7 +151,7 @@ public sealed class JsonSaveFormat : ISaveFormat
                 }
             }
 
-            EnsureRequiredMembersPresent(stateElement, typeof(SaveStateDto));
+            EnsureRequiredMembersPresent(stateElement, typeof(SaveStateDto), "SaveStateDto");
 
             SaveStateDto payload;
             try
@@ -169,17 +175,38 @@ public sealed class JsonSaveFormat : ISaveFormat
     /// 递归核对「本类型声明的必需成员都在」——判据只看键名是否存在，
     /// MUST NOT 依赖异常文本（契约十 §6 条款 3）。
     /// </summary>
-    private static void EnsureRequiredMembersPresent(JsonElement element, Type type)
+    /// <param name="element">当前 JSON 元素。</param>
+    /// <param name="type">该元素对应的声明类型。</param>
+    /// <param name="path">用于失败信息的成员路径（<c>SaveStateDto.Family.Members[0].Talents</c>）。</param>
+    private static void EnsureRequiredMembersPresent(JsonElement element, Type type, string path)
     {
         var underlying = Nullable.GetUnderlyingType(type) ?? type;
+
+        // 契约十 §5 条款 3：任一字段的缺失 MUST 被检出，MUST NOT 静默默认化。
+        // JSON 的 null 不属于「值合法」的任何一种：值类型里只有 Nullable<T> 收 null，
+        // 引用成员（字符串 / 集合 / 嵌套 DTO）在本版本全都有非空默认值——null 必须按
+        // 「必需成员缺失」拒掉，否则 null 集合会被复原期的 ?? [] 静默吞成空、null 元素
+        // 会在复原期炸成未分类的 NullReferenceException（契约十 §6 第 ⑥ 步）。
+        if (element.ValueKind == JsonValueKind.Null)
+        {
+            if (Nullable.GetUnderlyingType(type) is not null)
+            {
+                return;   // 可空成员（Guid? / int? / 枚举?）的 null 是本版本允许的取值
+            }
+
+            throw InvalidStructure(
+                $"文件里 {path} 为 null，但本版本该成员不可为空（契约十 §5 条款 3、§6 第 ⑥ 步）。");
+        }
 
         if (element.ValueKind == JsonValueKind.Array)
         {
             if (TryGetElementType(underlying, out var elementType))
             {
+                var index = 0;
                 foreach (var item in element.EnumerateArray())
                 {
-                    EnsureRequiredMembersPresent(item, elementType);
+                    EnsureRequiredMembersPresent(item, elementType, $"{path}[{index}]");
+                    index++;
                 }
             }
 
@@ -209,7 +236,7 @@ public sealed class JsonSaveFormat : ISaveFormat
                 continue;
             }
 
-            EnsureRequiredMembersPresent(child, property.PropertyType);
+            EnsureRequiredMembersPresent(child, property.PropertyType, $"{path}.{name}");
         }
     }
 
@@ -239,6 +266,7 @@ public sealed class JsonSaveFormat : ISaveFormat
         int? payloadLength = null;
         Guid? saveId = null;
         var payloadOffset = -1;
+        var position = 0;   // 已读到的头成员个数（契约十 §2 的固定次序）
 
         try
         {
@@ -268,6 +296,20 @@ public sealed class JsonSaveFormat : ISaveFormat
                     break;
                 }
 
+                // 契约十 §2：State 之前**恰有**这三个成员，且次序固定——与二进制侧的
+                // fixarray(3) 位置语义对齐；重复或换序都按「头记录读不出」拒掉，MUST NOT 后者胜。
+                if (position >= HeaderMemberNames.Length)
+                {
+                    throw Malformed(
+                        $"头记录在 {StateName} 之前出现了多余成员 {name}（契约十 §2：State 之前恰有三个头成员）。");
+                }
+
+                if (!string.Equals(name, HeaderMemberNames[position], StringComparison.Ordinal))
+                {
+                    throw Malformed(
+                        $"头记录成员次序不符：第 {position + 1} 个成员 MUST 是 {HeaderMemberNames[position]}，实际是 {name}（契约十 §2）。");
+                }
+
                 switch (name)
                 {
                     case FormatVersionName:
@@ -282,6 +324,8 @@ public sealed class JsonSaveFormat : ISaveFormat
                     default:
                         throw Malformed($"头记录出现未知成员 {name}（契约十 §2 只允许 FormatVersion/PayloadLength/SaveId/State）。");
                 }
+
+                position++;
             }
         }
         catch (JsonException ex)

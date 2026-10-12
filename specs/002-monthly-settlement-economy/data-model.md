@@ -193,10 +193,15 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 | 成员 | 类型 | 说明 | 来源 |
 | --- | --- | --- | --- |
-| `Stage` | `FamineStage` | 当前阶段 | §5.4；FR-019 |
-| `ElapsedMonths` | `int` | **本阶段**已持续月数（转入当月记 1） | §5.4 |
+| `Stage` | `FamineStage` | 当前阶段；访问器自 **004 起**为 `{ get; internal set; }`（公开面仍只读，见下） | §5.4；FR-019；004 R-03 |
+| `ElapsedMonths` | `int` | **本阶段**已持续月数（转入当月记 1）；访问器同 `Stage`（**004 放宽**为 `internal set`） | §5.4；004 R-03 |
 
 **不变量**：`Stage == None` ⇔ `ElapsedMonths == 0`。
+**强制点**：① 产品写入路径——`TransitionTo` / `Tick` / `Clear` 三个转移方法在写入时同时维护两侧；
+② **004 起**存档复原路径——`FamilyEconomy.RestoreFamine`（§3.6）只落值、不判定，该不变量由
+存档层 `SaveStateValidator` 第 7 条在复原后校验（004 R-04；004 `data-model.md` §3.11 第 ⑩ 步）。
+**仅存档复原路径需要这第二个强制点**：复原要表达任意的「(阶段, 已历时月数)」组合，而
+`TransitionTo` 会把计时钉成 1、`Tick` 只能逐月步进，组合二者无法精确表达该组合。
 **方法**：`void TransitionTo(FamineStage stage)`（置阶段并把 `ElapsedMonths` 置 1；仅
 `TransitionTo(None)` 例外，按 `Clear()` 语义归 0——否则会破坏下面的不变量）、
 `void Tick()`（阶段非 `None` 时 +1）、`void Clear()`（归 `None`/0）。
@@ -206,6 +211,11 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 （时限在 `FamineTimeline`）。
 **形状**：`class`（非结构体）并提供**公开复制构造**，供 `SettlementResult.FamineBefore/After`
 取快照——不为快照开放 setter，避免绕过不变量。
+**写入通道（004 补充）**：产品代码只有上述三个转移方法；`Stage` / `ElapsedMonths` 的
+`{ get; internal set; }`（**004 放宽**）**只服务**存档复原路径，经 `FamilyEconomy.RestoreFamine`
+直接落值，可见范围仅 `KFL.Infrastructure`
+（[契约二 §4](../../001-core-skeleton/contracts/injection-seams.md)）——**公开面仍是只读**，
+快照仍走上面的公开复制构造，故本节的写入纪律未变。
 **明确不含**：3 个月与 12 个月的阈值、救济折扣、体质下降与死亡判定——阈值与折扣在
 `KFL.Rules/Config/FamineTimeline`；体质与死亡属逻辑轨 ⑦（FR-019）。
 
@@ -231,6 +241,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `LoanRepayment RepayLoan(Money amount, GameDate date)` | 扣付资金池 + `Loan.Repay` + 落 1~2 条资金类条目（`LoanPrincipalRepaid` / `LoanInterestRepaid`，金额为 0 的部分不落条目） |
 | `Money AccrueLoanInterest(Money interest, GameDate date)` | `Loan.AccrueInterest` + 落一条**事件类**条目 `LoanInterestAccrued` |
 | `void EnterFamineStage(FamineStage stage, Money amount, GameDate date)` | 落对应的事件类条目（`FamineEntered` / `FamineReliefEntered` / `FamineSevereEntered` / `FamineResolved`） |
+| `void RestoreFamine(FamineStage stage, int elapsedMonths)` | **004 新增（`internal`）**：存档复原路径——**直接落** `Famine.Stage` 与 `Famine.ElapsedMonths`；**MUST NOT** 用 `TransitionTo`（把计时钉成 1）或 `Tick`（只能逐月步进）组合逼近，否则无法表达任意「(阶段, 已历时月数)」。只落值、**不**判定：「阶段为零 ⇔ 计时为零」归存档层 `SaveStateValidator` 第 7 条（§3.5 强制点 ②） |
 
 **不变量**
 1. **资金池不为负**：任何 `Apply`/`RepayLoan` 结束后，`Cash`、`Savings`、`MerchantCapital`
