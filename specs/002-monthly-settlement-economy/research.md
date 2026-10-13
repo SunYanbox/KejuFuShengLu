@@ -284,7 +284,7 @@ spec.md FR-005 与 Assumptions 同步）。落点：`KFL.Rules/Config/LivingCost
 001 已经把这三点登记为「阶段② 议题」，且存档落盘属阶段④——**此时改构造零迁移成本**，
 是 001 data-model「宁可后置，不可预置」的直接受益点。**补注（004 之后）**：本句是**当时事实**；
 004 落盘后，盘上形态已固定为 [004 `contracts/save-format.md`](../004-save-system/contracts/save-format.md)
-的版本 1，跨版本变更须走 §14 的版本闸门（**拒绝而非迁移**），不再有「零迁移成本」。
+的版本 2，跨版本变更须走 §14 的版本闸门（**拒绝而非迁移**），不再有「零迁移成本」。
 
 **Alternatives considered**:
 - 保持 5 参构造、`Economy` 延迟初始化：每个消费者都要判空，且「空经济」与「零资产家族」
@@ -331,7 +331,7 @@ MUST NOT 转贷款——§9.5/§5.4 的同一口径），落**资金类**条目�
 ## R-16 测试组织与夹具
 
 **Decision**: 新增 `tests/KFL.Tests/Rules/`，按收入来源与机制分文件：
-`LivingCostTests`、`IncomeTests`、`SettlementEngineTests`（引擎级：七步顺序、次月生效、米价
+`LivingCostTests`、`IncomeTests`、`SettlementEngineTests`（引擎级：八步顺序、次月生效、米价
 clamp、条目与资金池同步）、`LoanTests`（含 §16 必测三项：先本后息 / 划扣 20/40/80 /
 12 月计息不滚本金）、`SavingsTests`、`FamineTimelineTests`（4 阶段流转）、
 `LedgerTests`（SC-005 的等式与两个聚合维度）、`SalaryTableTests`（18 级锚点 72/420/5100）、

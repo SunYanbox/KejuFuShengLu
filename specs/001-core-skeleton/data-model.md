@@ -76,6 +76,12 @@
 **不变量**：`Placement is not null` ⇒ `Level == DegreeLevel.JinShi`（§6：进甲者才是状元/
 榜眼/探花）。
 
+> **引用注（005 科举周期）**：一甲名次 `Placement` 非空 ⟺ 甲第 `Class = ImperialClass.FirstClass`。
+> 005 是**该配对的首个生产者**——中第经既有 `Person.AppendDegree` 追加，`Cause = ExamPass`；
+> 一甲 `FirstClass` 且带名次，二甲/三甲 `Class` 非空而名次为空（005 契约十三 §6 条款 2/7，
+> 005 `data-model.md` §2.2）。005 之前的产品写入路径（开局 `Initial` 记录、存档复原）
+> 从未同时置起这两个成员。
+
 **为什么必须带日期与原因**：§4.1 要求功名以「变迁历史」呈现，而 §7.4 的连坐会
 **降一级功名**（进士→贡士→举人→白身）。若只记录「考试考成功的功名」，被降级者的历史
 末条会一直写着「进士」，与其真实功名矛盾——历史本身就成了假的。带 `Cause` 后，一次中式
@@ -111,6 +117,12 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 **明确不含**：计时递减逻辑——服刑/禁考/禁升属逻辑轨 ⑥，待阙的递减与「递减到 0 的当月授官」
 属逻辑轨 ③（`OfficialCareerAdvance`），其 6~24 区间属 `OfficialCareerPolicy`。
 
+> **引用注（005 科举周期）**：005 是**待阙计时与其状态位配对的首个产品生产者**——
+> 殿试及第当月经 003 的 `AppointmentEntry.BeginForImperialGraduate` 置入
+> `AwaitingPostRemainingMonths` 与 `StatusFlag.AwaitingPost`（**当月不递减**，次月起走；
+> 005 契约十三 §7.1）。另：本结构在 005 的资格判定中**只被读取**（`ServingSentence` /
+> `ExamBanned` / `AwaitingPost`），MUST NOT 递减或新建（005 契约十二 §3.2）。
+
 ---
 
 ## 2. 聚合与实体（`KFL.Core`）
@@ -141,6 +153,9 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `FatherId` / `MotherId` | `PersonId?` | 否 | §4.1 父母引用 |
 | `SpouseId` | `PersonId?` | 是 | §4.1 婚姻关系；一夫一妻（§9.1） |
 | `FormerSpouseIds` | `IReadOnlyList<PersonId>` | 是 | §9.1「丧偶可再婚」+ spec Edge Case（须能表达既往婚姻） |
+| `JieShiFailureCount` | `int`（>= 0） | 是 | **005 新增**：解试累计失败数（单调递增）；**只读、无公开 setter**（写入通道见不变量 2）——005 FR-023；契约十二 §2 |
+| `ShengShiFailureCount` | `int`（>= 0） | 是 | **005 新增**：省试累计失败数（单调递增）；**只读、无公开 setter**（写入通道见不变量 2）——005 FR-023；契约十二 §2 |
+| `AppliedExam` | `ExamLevel?` | 是 | **005 新增**：报名标记，`null` 或 ∈ {`JieShi`, `ShengShi`}；**殿试不是合法报名态**；**当月态**，结算结束后必为 `null`；**只读、无公开 setter**（写入通道见不变量 2）——005 FR-005、FR-023；契约十二 §2 |
 
 > **「可变」列的含义**：指该字段的**值**会随推演时间改变，**不表示 `Person` 暴露公开
 > setter**。写入通道只有两类，见不变量 2 与 §2.2 不变量 4：跨实体引用（配偶、父母、
@@ -159,22 +174,38 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 1. `Talents`、`Study`、`Health` 落在 0~100（FR-005、FR-006）。
 2. **无写入通道的成员（全集，测试须逐个反射断言）**：`Id`、`Gender`、`BirthDate`、
    `Talents`、`Lifespan`、`Generation`、`FatherId`、`MotherId`、`SpouseId`、
-   `FormerSpouseIds`、`DegreeHistory`、`CurrentDegree`、`CurrentPlacement`——均为只读
-   属性，**不存在公开 setter**（FR-005、FR-007、FR-008、§4.4）。
+   `FormerSpouseIds`、`DegreeHistory`、`CurrentDegree`、`CurrentPlacement`、
+   `JieShiFailureCount`（005 新增）、`ShengShiFailureCount`（005 新增）、
+   `AppliedExam`（005 新增）——均为只读属性，**不存在公开 setter**
+   （FR-005、FR-007、FR-008、§4.4；005 FR-023）。
    **`Person` 自持的可写属性**只有十个：`Name`、`Study`、`Health`、`Rank`、`Merit`、
    `Status`、`Timers`、`Occupation`、`MonthsInOffice`（003 新增）、`EntryTrack`（003 新增）。
    分界依据：凡「出生即定」或「跨实体一致性」的字段一律只读——前者如 `Gender` /
    `Talents` / `Lifespan`，后者如 `SpouseId` / `FatherId` / `MotherId` / `Generation`
    （唯一入口在 `Family`，见 §2.2 不变量 4）。
+   **005 的三个只读成员另有受控写入通道（公开面唯一）**：`ApplyForExam(ExamLevel)`
+   （拒绝 `DianShi`；同级别幂等；冲突级别抛 `InvalidOperationException`）、
+   `ClearExamApplication()`（`null` 时 no-op）、`RecordExamFailure(ExamLevel)`
+   （对应计数 +1；`DianShi` 抛 `InvalidOperationException`，殿试不掷录取骰）；复原走
+   `internal RestoreExamProgress(int, int, ExamLevel?)`——与 `SetGeneration` / `SetSpouse` /
+   `AddFormerSpouse` 同款，唯一程序集面为 `InternalsVisibleTo("KFL.Infrastructure")`。
+   除这三者与复原通道外 MUST NOT 新增公开 setter（005 FR-023；契约十二 §2）。
 3. `FatherId != Id`、`MotherId != Id`、`SpouseId != Id`；`FormerSpouseIds` 不含 `SpouseId` 且不重复。
 4. `Timers` 与 `Status` 一致（见 1.7）；003 新增的 `EntryTrack` 同向一致
    （非空 ⇒ `AwaitingPost` 位为真；清除该位前 MUST 先置 `null`——`Timers` 的
    `AwaitingPostRemainingMonths` 与它 MUST 同生同灭）。
+   **005 引用注**：科举季的资格判定**只消费** `ServingSentence` / `ExamBanned` /
+   `AwaitingPost` 三个状态位，MUST NOT 递减或新建本结构的任何计时（005 契约十二 §3.2）；
+   005 新增的 `AppliedExam` 是**当月态**、与状态位无关，本月结算结束后必为 `null`
+   （005 FR-005；契约十三 §1.2）。
 5. **年龄不落裸字段**：`AgeAt(GameDate)` = `BirthDate.AgeInYearsAt(at)`（R-07）。
 6. 出生时辰与「已亡」时间不落字段：§4.1 未列，且 §12.1 的归档排序属界面轨 U2。
 7. `DegreeHistory` 按 `ChangedAt` **非降序**（追加式）；既有记录 MUST NOT 被改写或删除。
    `CurrentDegree` / `CurrentPlacement` MUST 由末条派生，MUST NOT 另存独立字段——否则
    §7.4 的连坐降级会让两处数据失配（见 1.5）。
+   **005 引用注**：005 是本仓库**首个经 `Person.AppendDegree` 追加 `ExamPass` 记录的产品路径**
+   （一次完整链条白身 → 举人 → 贡士 → 进士恰好追加 3 条），一甲名次与甲第的配对由此**首次**
+   被生产（005 契约十三 §6）。
 8. `Generation` 的分层规则（§4.4）：血亲成员（`FatherId` 或 `MotherId` 至少一方为本家族
    成员）的辈分 = 父母辈分 + 1，出生即定、**终身不可变更**；外来者（`FatherId` 与
    `MotherId` 皆 `null`——开局成员、娶入配偶、§9.5 买来的旁系）的辈分由 `Family` 指定，
@@ -204,6 +235,7 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `SpouseOf(PersonId)` | 方法 | 配偶 | FR-011 |
 | `RegisteredMembers` | 属性 | **在册** = 非「已亡」且非「外嫁」 | §12.1、§15 |
 | `ArchivedMembers` | 属性 | 已归档 = 已亡 或 外嫁 | §12.1 |
+| `AutoExamApplication` | `bool` | **005 新增**：持续报考开关，默认 `false`，**可写**（形状与 `HasShiStatus` 同款）；为真时科举季步按资格自动报名，MUST NOT 覆盖已有报名标记 | 规格书 §3；005 FR-017 |
 
 **变更入口（`Family` 是跨实体唯一写入方，§4.4 辈分与 §9.1 一夫一妻的强制点）**
 
@@ -231,6 +263,8 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 4. 只有 `Family` 能改配偶、父母引用、辈分与家主；`Person` 不提供公开写入通道（章程原则 II：
    实体不承担跨实体编排）。
 5. `HasShiStatus` 与任何 `Origin` 可任意组合（§10.2：出身终身特性与仕身份叠加并存）。
+   005 起该字段有了**首个生产者**：家族产生首个进士的当月由科举季步置 `true`（幂等，
+   仅首次记入快照 `HasShiStatusBecomesTrue`）——见 005 契约十三 §7.2、005 FR-020。
 6. `HeadId` 要么为 `null`（家族内无在册男性成员——该情形**不构成绝嗣**，§15 判定与性别
    无关），要么指向本家族的**在册**成员；MUST NOT 指向已亡或外嫁的已归档成员（§4.4）。
 
@@ -249,6 +283,12 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 **§17 裁决**: `HasShiStatus` 建在家族级而非成员级——§10.2 的效果（录取率 ×1.1、婚嫁规格、
 贷款划扣 20%）在本项目「一存档一家族」的模型下由家族统一承载；嫁入配偶的差异在逻辑轨 ⑦
 真正实现该效果时再细分，本阶段不预置按人标记。
+
+**005 落实（首个生产者）**: `Family.HasShiStatus` 由科举季步（`ExamSeasonRunner`）在家族
+产生**首个进士**的当月置 `true`——幂等，已为 `true` 时 no-op，快照仅以
+`HasShiStatusBecomesTrue` 记录**首次**为真（005 契约十三 §7.2；005 FR-020）。
+这是该字段在本仓库中的**首个写入者**；003~004 只有读取者（贷款划扣、录取率加成）与
+存档复原路径。
 
 **家主的分期**: `Family.HeadId` 进 001——它在 001 内**有真实消费者**：§4.4 的辈分规则
 要求「买来的旁系辈分 = 家主辈分 + 1」。但**继任判定不进 001**：它由死亡推进触发，属

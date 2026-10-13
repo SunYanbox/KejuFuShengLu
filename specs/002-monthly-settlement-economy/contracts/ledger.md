@@ -81,5 +81,5 @@ readonly record struct LedgerEntry(GameDate Date, PersonId? PersonId, LedgerCate
 CSV 导出、图表、统计页的筛选器（界面轨 U3）、存档序列化格式（阶段④）、买人口的支出类别
 （逻辑轨 ⑦ 新增类别时须同时补 `LedgerCategoryMetadata` 的两种查询口径）。
 **补注（004 之后）**：「存档序列化格式（阶段④）」已由 004 交付——盘上形态固定为
-[004 `contracts/save-format.md`](../004-save-system/contracts/save-format.md) 的版本 1；
+[004 `contracts/save-format.md`](../004-save-system/contracts/save-format.md) 的版本 2；
 本条的其余不包含项不变。

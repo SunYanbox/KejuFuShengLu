@@ -58,8 +58,8 @@ public sealed record SaveOptions
 | 目标文件缺失 | `Load` 拒绝：`SaveFileException(Kind = Missing)` |
 | 文件被截断（剩余字节 < 头声明的 `PayloadLength`） | `Load` 拒绝：`Kind = Truncated` |
 | 头记录读不出（字节损坏） | `Load` 拒绝：`Kind = Malformed` |
-| `FormatVersion != 1` | `Load` 拒绝：`Kind = UnsupportedVersion`（**读不懂就明说**，FR-015） |
-| 主体可解析但缺**本版本必需**成员，或违反 data-model 的九条一致性校验 | `Load` 拒绝：`Kind = InvalidStructure` |
+| `FormatVersion != 2` | `Load` 拒绝：`Kind = UnsupportedVersion`（**读不懂就明说**，FR-015） |
+| 主体可解析但缺**本版本必需**成员，或违反 data-model 的十条一致性校验 | `Load` 拒绝：`Kind = InvalidStructure` |
 | 其余解析失败 | `Load` 拒绝：`Kind = Malformed` |
 
 **失败原子性**：`Save` 的全部拒绝路径 MUST 在校验通过之前不产生任何文件写入；`Load` 的全部拒绝路径

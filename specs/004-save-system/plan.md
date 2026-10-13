@@ -209,7 +209,7 @@ R-17）；但**在 `internal` 面上有 6 处**放宽或新增（逐条见下方
 | 7 | `specs/001-core-skeleton/research.md` R-04 的未决事项行（L393）与 `plan.md`（L39） | 「系统时钟抽象：阶段④（存档写入时间戳）首次需要时引入」→ **结清为「不需要」**：本特性不落盘时间戳，故 MUST NOT 引入墙钟接缝（R-23） | spec Assumptions（「不落盘写入时间戳」）；R-23 |
 | 8 | `specs/002-monthly-settlement-economy/research.md` 未决事项表（L441） | 「流水账落盘体量与按年分块：阶段④ 实测后决定」→ 标注**已由 004 结清**（同 #6） | spec Assumptions 4 |
 | 9 | `specs/002-monthly-settlement-economy/contracts/ledger.md` §6（L73–74）与 §7（L78–79） | **只补注**：把「阶段④ 落盘时实测后再决定（001 R-16 已登记该未决事项）」标注为**已由 004 按 Q2 裁决结清**；§7 的「存档序列化格式（阶段④）」改为**已由 004 交付**并指向 [契约十](./contracts/save-format.md)。**不改**判定句本身（它记录的是当时的取舍） | spec Assumptions 4/5；AGENTS.md 的「活工件只在含义已改变处补注」 |
-| 10 | `specs/002-monthly-settlement-economy/data-model.md`（L7）、`plan.md`（L43–44）、`research.md`（L283–285） | 「存档落盘属阶段④，**此时增删字段无迁移成本**」属**当时事实**：按 §16.2 的迁移口径**保留原文、MUST NOT 回改**；只在「含义已改变」处补注一句「004 之后，落盘形态已固定为 [契约十](./contracts/save-format.md) 的版本 1，跨版本变更须走 §14 的版本闸门（拒绝而非迁移）」 | spec Assumptions 5 |
+| 10 | `specs/002-monthly-settlement-economy/data-model.md`（L7）、`plan.md`（L43–44）、`research.md`（L283–285） | 「存档落盘属阶段④，**此时增删字段无迁移成本**」属**当时事实**：按 §16.2 的迁移口径**保留原文、MUST NOT 回改**；只在「含义已改变」处补注一句「004 之后，落盘形态已固定为 [契约十](./contracts/save-format.md) 的版本 2，跨版本变更须走 §14 的版本闸门（拒绝而非迁移）」 | spec Assumptions 5 |
 | 11 | `specs/004-save-system/tasks.md` | 登记上述回写范围（同步了哪些文件、同步到哪里），供后续审计核对 | spec Assumptions 6；AGENTS.md 的「铁律」 |
 | 12 | `src/KFL.Core` 的 **`internal` 面（6 处）** | **签名放宽 / 新增登记**（结构树 L238 引用的「第 12 行」即此处）：① `src/KFL.Core/Entities/FamineState.cs` 的 `Stage` / `ElapsedMonths` 由 `private set` 放宽为 `internal set`，供 `FamilyEconomy.RestoreFamine` 精确复原任意「阶段 + 计时」组合；② `Family.CaptureOutsiderBookkeeping()`；③ `Family.RestoreOutsiderBookkeeping(OutsiderBookkeeping)`；④ 新增 `src/KFL.Core/Entities/OutsiderBookkeeping.cs`（`internal sealed record`）；⑤ 新增 `src/KFL.Core/AssemblyInfo.cs` 的 `[assembly: InternalsVisibleTo("KFL.Infrastructure")]`；⑥ `FamilyEconomy.RestoreFamine(FamineStage, int)`（002 的类型）。**公开 API 面、领域字段与 001/002 的不变量语义均未改变**；授权在 plan.md 的「核心层改动」，逐条说明见本节上方「无跨特性形状变更（公开面）」块的回写补注，回写落点汇总见 [spec.md](./spec.md) Assumptions 第 7 项 | T045；T065；AGENTS.md 铁律第 1 条（变更授权的同一提交落地）；PR #10 审核「一」 |
 | 13 | 本清单（`plan.md`）：**FR-022 的「临时目录」落点**与**两处测试文件落点** | **(a) FR-022 的「临时目录」实际落点**：测试沙箱根 = **系统临时目录优先**（`<temp>/kfl-save-tests`），受限宿主下建目录被拒时**回落**到测试程序集旁（`bin/<tfm>/save-tests/`）；两条候选都不落在仓库工作区内（后者已被 `.gitignore` 忽略），SC-009 实测工作区存档相关变更数 = 0。**(b) 文件落点**：`SaveFixtures.cs`（T020）实际在 `tests/KFL.Tests/Infrastructure/`（**不在** `Fixtures/`，见上文「结构树补注（T048）」）、`SaveTestSandbox.cs`（T021）同样在 `tests/KFL.Tests/Infrastructure/` 且是测试侧**唯一**的临时目录/文件操作辅助（豁免行 ≤15，契约九 §4.1） | T051；T065；FR-022；SC-009；[契约九 §4.1](./contracts/save-service.md) |
@@ -228,7 +228,7 @@ specs/004-save-system/
 ├── plan.md                        # 本文件
 ├── spec.md                        # 规格（Q1~Q3 已裁决并回写规格书 §14）
 ├── research.md                    # 阶段 0：25 项抉择（R-01~R-25，全部有结论；含依赖实测表）
-├── data-model.md                  # 阶段 1：文件布局 / 76 个线上成员 / 存储侧与规则侧类型 / 状态转移 / 需求映射
+├── data-model.md                  # 阶段 1：文件布局 / 80 个线上成员 / 存储侧与规则侧类型 / 状态转移 / 需求映射
 ├── quickstart.md                  # 阶段 1：8 个可运行的人工验收场景
 ├── contracts/
 │   ├── save-service.md            # 契约九：ISaveService 入口、失败矩阵、原子性、命名、唯一性、改名、备份
@@ -241,7 +241,7 @@ specs/004-save-system/
 > `contracts/{monthly-settlement,ledger,config-registry}.md`、003 的
 > `contracts/{new-game-setup,official-career,config-registry}.md` 是**跨阶段契约**，本特性**继承**并
 > 做**三处最小修订**：契约二 §5（`ISaveService` 已定义）与 §2 末句的时钟注（R-23）、
-> 契约四 §6/§7（R-16 未决项结清与存档格式已交付）。**契约三（月度结算的七步序列）一字不动**。
+> 契约四 §6/§7（R-16 未决项结清与存档格式已交付）。**契约三（月度结算的八步序列）一字不动**。
 
 ### Source Code (repository root)
 
@@ -268,7 +268,7 @@ src/
 │   │   ├── SaveOptions.cs               # 【新】RootDirectory（null ⇒ 默认 saves/）+ DefaultFormat（命名空间按契约九 §1 的代码围栏写作 KFL.Infrastructure.Abstractions）
 │   │   ├── SaveFileException.cs         # 【新】Kind 五值 + 三个专用冲突/访问异常（R-07）
 │   │   ├── SaveFileHeader.cs            # 【新】readonly record struct（版本 / 长度 / 标识）
-│   │   ├── SaveFileFormat.cs            # 【新】Version = 1、扩展名、备份目录名、编解码选项单点
+│   │   ├── SaveFileFormat.cs            # 【新】Version = 2、扩展名、备份目录名、编解码选项单点
 │   │   ├── SaveName.cs                  # 【新】名称口径唯一真源（R-13）
 │   │   ├── AtomicFileWriter.cs          # 【新】临时文件 + 同卷替换 + 测试用写入钩子（R-14）
 │   │   ├── SaveCatalog.cs               # 【新】目录枚举 / 存在性 / 只读头的 SaveId 探针（R-18）
@@ -280,7 +280,7 @@ src/
 │   │       ├── SaveStateDto.cs          # 【新】主体根 DTO + 家族/人物/经济子 DTO（契约十 §4）
 │   │       ├── SaveStateValueDtos.cs    # 【新】天赋 / 计时 / 功名记录 / 资金 / 贷款 / 资产 / 账本 / 饥馑 DTO
 │   │       ├── SaveStateMapper.cs       # 【新】逐字段双向映射（R-02、R-12；data-model §3.11 的次序）
-│   │       └── SaveStateValidator.cs    # 【新】九条一致性校验（R-04）
+│   │       └── SaveStateValidator.cs    # 【新】十条一致性校验（R-04）
 │   └── KFL.Infrastructure.csproj        # 【改】PackageReference MessagePack 2.5.305
 ├── KFL.Rules/                           # net10.0
 │   ├── Config/
@@ -336,7 +336,7 @@ DTO 与映射器放在 `Save/Serialization/` 之下，是为了让「契约十�
 | `KFL.Infrastructure/Save/Serialization/` 的**瞬态 DTO + 显式映射器** | FR-020 禁止 `KFL.Core` 依赖具体序列化框架，而框架也无法穿过 `Core` 的不变量校验复原不可变字段（R-02） | ① `Core` 类型加序列化注解（违反 FR-020）；② DTO 放 `Core` + 无注解契约序列化（线上形状退化成「成员顺序」的隐式契约，改个成员次序就静默改存档格式）；③ 为每个 Core 类型写自定义 formatter（每格式每类型一份，漂移面翻倍） |
 | `ISaveFormat` + 两个实现 | FR-004/FR-005 明令两种格式且**信息集必须等价**；把两套编解码放在一个类里会让「两格式同形」不可断言 | 单类内 `switch (format)`——两种格式的差异（头写法、选项、枚举写法、失败分类）会被织进同一批方法，契约十的「信息集等价」失去可指认的对象 |
 | `Infrastructure/Save/` 独立目录（`AtomicFileWriter`/`SaveCatalog`/`SaveName`/`SaveService`） | FR-013 的原子性、FR-019 的「文件系统访问收敛在少数明确行」、R-18 的 UUID 探针各自是独立的可测关注点；存档是本项目**唯一**的持久化设施 | 全塞进 `SaveService`——文件系统行会散落在含业务判断的方法里，SC-008 的「豁免行数可被逐一列举」将无法核对；且 `Services/` 目录语义是「接缝实现」（`GameStateClock`/`SeededRandomService` 等），存档是一整块子系统 |
-| `Rules/Save/TurnRunner` | FR-010/FR-011 要求「每回合结算成功后覆盖保存、每 3 回合备份」**可脱离界面被断言**；契约三 §1 的「MUST NOT 存在」清单明列「存档写入」，故落盘只能落在结算之外的一层 | ① 塞进 `MonthlySettlementEngine`——改 002 的七步序列（跨特性形状变更）且让纯规则动作带上 I/O；② 交给界面轨 U1 自己「结算后保存」——US2 的三条 AS 会全部落到界面轨，本特性内无可断言对象 |
+| `Rules/Save/TurnRunner` | FR-010/FR-011 要求「每回合结算成功后覆盖保存、每 3 回合备份」**可脱离界面被断言**；契约三 §1 的「MUST NOT 存在」清单明列「存档写入」，故落盘只能落在结算之外的一层 | ① 塞进 `MonthlySettlementEngine`——改 002 的八步序列（跨特性形状变更）且让纯规则动作带上 I/O；② 交给界面轨 U1 自己「结算后保存」——US2 的三条 AS 会全部落到界面轨，本特性内无可断言对象 |
 | `tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs` 单一沙箱辅助类 | 存档测试**本质**需要文件系统，而 G-07 与 SC-008 的扫描范围含 `tests/KFL.Tests/Infrastructure/`——豁免行必须能集中列举 | ① 新建 `tests/KFL.Tests/Save/`（不在扫描根内）——等于给新代码开守卫盲区；② 各测试类各自碰文件系统——豁免行散落，无法逐一核对 |
 
 ## 阶段 0 / 阶段 1 小结

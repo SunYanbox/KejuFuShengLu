@@ -93,7 +93,7 @@ git status --porcelain                                     # 期望：跑完后�
 6. 持续报考开启后，8 月与次年 3 月**自动报名并在同一结算内完成判定**；关闭后 MUST NOT 自动报名
    （FR-017）。
 
-**落点**：`tests/KFL.Tests/Rules/ExamRegistrationTests.cs`、`ExamSeasonTests.cs`、`Core/LedgerTests.cs`。
+**落点**：`tests/KFL.Tests/Rules/ExamRegistrationTests.cs`、`ExamSeasonTests.cs`、`Core/LedgerInvariantTests.cs`。
 
 ---
 
