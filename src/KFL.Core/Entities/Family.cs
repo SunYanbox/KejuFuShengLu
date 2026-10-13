@@ -48,6 +48,13 @@ public sealed class Family
     public bool HasShiStatus { get; set; }
 
     /// <summary>
+    /// **持续报考**开关（规格书 §3、FR-017）：为真时每到报名月（解试 8 月、省试次年 3 月）
+    /// 由科举季对全部「合格且未报名」的成员**自动报名**，并在**同一结算内**完成判定。
+    /// 默认 <c>false</c>（不自动报考）。形状与 <see cref="HasShiStatus"/> 同款：家族级可写布尔。
+    /// </summary>
+    public bool AutoExamApplication { get; set; }
+
+    /// <summary>
     /// 家主。<c>null</c> = 家族内无在册男性成员（该情形**不构成绝嗣**，规格书 §15）；
     /// 否则 MUST 指向本家族的**在册**成员。唯一写入入口是 <see cref="SetHead"/>。
     /// </summary>

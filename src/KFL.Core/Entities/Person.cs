@@ -37,7 +37,10 @@ public sealed class Person
     private int _health;
     private int _merit;
     private int _monthsInOffice;
+    private int _jieShiFailureCount;
+    private int _shengShiFailureCount;
     private AppointmentTrack? _entryTrack;
+    private ExamLevel? _appliedExam;
     private PersonId? _spouseId;
     private StatusFlag _status;
     private StatusTimers _timers;
@@ -169,6 +172,94 @@ public sealed class Person
     /// <summary>当前一甲名次：由 <see cref="DegreeHistory"/> 末条派生；空历史时为 <c>null</c>。**无公开写入通道**。</summary>
     public ImperialPlacement? CurrentPlacement =>
         _degreeHistory.Count == 0 ? null : _degreeHistory[^1].Placement;
+
+    /// <summary>
+    /// 解试**累计失败数**（<c>&gt;= 0</c>，只增不减）。**无公开 setter**；
+    /// 唯一写入通道是 <see cref="RecordExamFailure"/>。
+    /// </summary>
+    /// <remarks>
+    /// 它决定**免解**资格（<c>&gt;= 3</c> 后每次解试不再掷录取骰，FR-013）。
+    /// 「连坐降级」等降级动作 MUST NOT 清零本计数。
+    /// </remarks>
+    public int JieShiFailureCount => _jieShiFailureCount;
+
+    /// <summary>
+    /// 省试**累计失败数**（<c>&gt;= 0</c>，只增不减）。**无公开 setter**；
+    /// 唯一写入通道是 <see cref="RecordExamFailure"/>。
+    /// </summary>
+    /// <remarks>它决定**特奏名**资格（<c>&gt;= 6</c> 且年满 50，FR-012）。</remarks>
+    public int ShengShiFailureCount => _shengShiFailureCount;
+
+    /// <summary>
+    /// **本月报名标记**：<c>null</c> = 未报名；非空只允许
+    /// <see cref="ExamLevel.JieShi"/> 或 <see cref="ExamLevel.ShengShi"/>（殿试不是报名态）。
+    /// **无公开 setter**，唯一写入通道是 <see cref="ApplyForExam"/> / <see cref="ClearExamApplication"/>。
+    /// </summary>
+    /// <remarks>
+    /// 报名窗口 = **考试当月**（幂等，不消耗随机、不读写字账本，FR-004/FR-005）；
+    /// 无论中第、落第、免解、弃考还是资格不符，本月结算结束后它 MUST 回到 <c>null</c>。
+    /// </remarks>
+    public ExamLevel? AppliedExam => _appliedExam;
+
+    /// <summary>
+    /// **报名**参加 <paramref name="level"/> 的考试。
+    /// </summary>
+    /// <param name="level">考试级别；只允许 <see cref="ExamLevel.JieShi"/> 或 <see cref="ExamLevel.ShengShi"/>。</param>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="level"/> 为 <see cref="ExamLevel.DianShi"/>；或已有一个**不同**级别的报名标记。
+    /// </exception>
+    /// <remarks>重复报名**同一**级别是幂等的：不抛异常、不改任何字段。</remarks>
+    public void ApplyForExam(ExamLevel level)
+    {
+        if (level == ExamLevel.DianShi)
+        {
+            throw new InvalidOperationException(
+                "殿试由省试及第自动进入，不存在「报名参加殿试」这一状态（FR-005）。");
+        }
+
+        if (level is not (ExamLevel.JieShi or ExamLevel.ShengShi))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(level), level, "报名标记只允许解试或省试（EX-13）。");
+        }
+
+        if (_appliedExam == level)
+        {
+            return;
+        }
+
+        if (_appliedExam is not null)
+        {
+            throw new InvalidOperationException(
+                $"已有「{_appliedExam}」报名标记，MUST 先清除后才能改报「{level}」（FR-005）。");
+        }
+
+        _appliedExam = level;
+    }
+
+    /// <summary>清除本月报名标记；标记本为 <c>null</c> 时是 no-op。</summary>
+    public void ClearExamApplication() => _appliedExam = null;
+
+    /// <summary>
+    /// 记录一次 <paramref name="level"/> 的落第：对应累计失败数 <c>+1</c>（**无上限**）。
+    /// </summary>
+    /// <param name="level">落第的考试级别；只允许解试或省试。</param>
+    /// <exception cref="InvalidOperationException"><paramref name="level"/> 为 <see cref="ExamLevel.DianShi"/>（殿试必中，不存在落第）。</exception>
+    public void RecordExamFailure(ExamLevel level)
+    {
+        switch (level)
+        {
+            case ExamLevel.JieShi:
+                _jieShiFailureCount++;
+                break;
+            case ExamLevel.ShengShi:
+                _shengShiFailureCount++;
+                break;
+            default:
+                throw new InvalidOperationException(
+                    "殿试不掷录取骰（100% 中第），MUST NOT 记录殿试落第（FR-009）。");
+        }
+    }
 
     /// <summary>官阶；<c>null</c> = 无官职（规格书 §8、FR-009）。</summary>
     public OfficialRank? Rank { get; set; }
@@ -319,6 +410,44 @@ public sealed class Person
         }
 
         _degreeHistory.Add(record);
+    }
+
+    /// <summary>
+    /// 复原三个科举进度成员（**仅供存档层调用**，data-model §3.11）。
+    /// </summary>
+    /// <param name="jieShiFailureCount">解试累计失败数；<c>&gt;= 0</c>。</param>
+    /// <param name="shengShiFailureCount">省试累计失败数；<c>&gt;= 0</c>。</param>
+    /// <param name="appliedExam">报名标记；<c>null</c> 或 <see cref="ExamLevel.JieShi"/> / <see cref="ExamLevel.ShengShi"/>。</param>
+    /// <exception cref="ArgumentOutOfRangeException">任一失败数为负。</exception>
+    /// <exception cref="ArgumentException"><paramref name="appliedExam"/> 不是合法的报名态。</exception>
+    /// <remarks>
+    /// 这是这三个成员**唯一**的非公开写入通道：它们没有公开 setter，也不经由
+    /// <see cref="ApplyForExam"/> / <see cref="RecordExamFailure"/> 的语义校验
+    /// （否则无法还原「失败数 &gt; 0 但月内无报名」这类合法状态）。
+    /// </remarks>
+    internal void RestoreExamProgress(int jieShiFailureCount, int shengShiFailureCount, ExamLevel? appliedExam)
+    {
+        if (jieShiFailureCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(jieShiFailureCount), jieShiFailureCount, "解试累计失败数 MUST >= 0（FR-013）。");
+        }
+
+        if (shengShiFailureCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(shengShiFailureCount), shengShiFailureCount, "省试累计失败数 MUST >= 0（FR-012）。");
+        }
+
+        if (appliedExam is not (null or ExamLevel.JieShi or ExamLevel.ShengShi))
+        {
+            throw new ArgumentException(
+                "报名标记只允许 null / 解试 / 省试，殿试不是合法报名态（EX-13）。", nameof(appliedExam));
+        }
+
+        _jieShiFailureCount = jieShiFailureCount;
+        _shengShiFailureCount = shengShiFailureCount;
+        _appliedExam = appliedExam;
     }
 
     /// <summary>设置辈分。**仅供 <see cref="Family"/> 调用**：血亲不可变更，外来者须尚无子女。</summary>

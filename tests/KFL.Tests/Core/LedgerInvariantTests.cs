@@ -75,6 +75,7 @@ public class LedgerInvariantTests
     [InlineData(LedgerCategory.FamineReliefEntered, LedgerEntryKind.Event, null)]
     [InlineData(LedgerCategory.FamineSevereEntered, LedgerEntryKind.Event, null)]
     [InlineData(LedgerCategory.FamineResolved, LedgerEntryKind.Event, null)]
+    [InlineData(LedgerCategory.ExamTravelCost, LedgerEntryKind.Treasury, null)]
     public void 类别元数据逐行一致(
         LedgerCategory category, LedgerEntryKind kind, LedgerCreditTarget? creditTarget)
     {
@@ -83,11 +84,12 @@ public class LedgerInvariantTests
     }
 
     [Fact]
-    public void 类别全集恰为十九个取值且无买人口聘礼贿赂()
+    public void 类别全集恰为二十个取值且无买人口聘礼贿赂()
     {
         string[] expected =
         [
             "ArtisanBonus", "AssetPurchase", "AssetSale", "CraftingIncome",
+            "ExamTravelCost",
             "FamineEntered", "FamineReliefEntered", "FamineResolved", "FamineSevereEntered",
             "FarmingWageIncome", "LandRentIncome", "LivingCost",
             "LoanInterestAccrued", "LoanInterestRepaid", "LoanPrincipalRepaid",
@@ -131,7 +133,7 @@ public class LedgerInvariantTests
 
         Assert.Equal(expectedEvents.OrderBy(category => category), events);
 
-        // 全覆盖无遗漏：19 个取值逐个可求值（未登记的取值会抛，见下一条）。
+        // 全覆盖无遗漏：20 个取值逐个可求值（未登记的取值会抛，见下一条）。
         foreach (var category in categories)
         {
             var kind = LedgerCategoryMetadata.KindOf(category);
@@ -140,13 +142,14 @@ public class LedgerInvariantTests
             _ = LedgerCategoryMetadata.CreditTargetOf(category);
         }
 
-        // 无正额入账目标 = 4 个恒负支出类 + 5 个事件类。
+        // 无正额入账目标 = 5 个恒负支出类 + 5 个事件类。
         LedgerCategory[] expectedWithoutCreditTarget =
         [
             LedgerCategory.LivingCost,
             LedgerCategory.LoanPrincipalRepaid,
             LedgerCategory.LoanInterestRepaid,
             LedgerCategory.AssetPurchase,
+            LedgerCategory.ExamTravelCost,
             LedgerCategory.LoanInterestAccrued,
             LedgerCategory.FamineEntered,
             LedgerCategory.FamineReliefEntered,

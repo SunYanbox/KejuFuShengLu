@@ -1,7 +1,7 @@
 namespace KFL.Core.Enums;
 
 /// <summary>
-/// 家族流水账的类别全集（19 个取值；data-model §2.1，逐行取自规格书 §12.3 与 §5.1~§5.4）。
+/// 家族流水账的类别全集（20 个取值；data-model §2.1，逐行取自规格书 §12.3 与 §5.1~§5.4）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -13,7 +13,7 @@ namespace KFL.Core.Enums;
 /// ① **不**为 <see cref="Occupation"/> 新增「自耕」「务农」等取值——收入来源是**账本类别**，
 /// 不是职业（E-02）；
 /// ② **不**出现「买人口」「聘礼 / 嫁妆」「贿赂」等阶段⑤⑥⑧ 的类别（FR-028：本阶段 MUST NOT 存在该类型，
-/// 以「无该类别」断言）。
+/// 以「无该类别」断言）；005 只新增 <see cref="ExamTravelCost"/> 一项（FR-021）。
 /// </para>
 /// </remarks>
 public enum LedgerCategory
@@ -74,4 +74,7 @@ public enum LedgerCategory
 
     /// <summary>饥馑全部解除（**事件类**；§5.4）。</summary>
     FamineResolved,
+
+    /// <summary>省试路费（资金类，恒为负；规格书 §12.3 / 契约十三 §3.1）。</summary>
+    ExamTravelCost,
 }
