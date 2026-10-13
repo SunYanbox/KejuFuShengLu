@@ -118,6 +118,12 @@ public sealed class FamilyDto
     [JsonPropertyName("marriageAlignedOutsiders")]
     [JsonRequired]
     public List<Guid> MarriageAlignedOutsiders { get; set; } = [];
+
+    /// <summary>是否自动为合格成员报名科举（005-exam-cycle；契约十四 §2 ①自动报名）。</summary>
+    [Key(6)]
+    [JsonPropertyName("autoExamApplication")]
+    [JsonRequired]
+    public bool AutoExamApplication { get; set; }
 }
 
 /// <summary>
@@ -262,4 +268,25 @@ public sealed class PersonDto
     [JsonPropertyName("degreeHistory")]
     [JsonRequired]
     public List<DegreeRecordDto> DegreeHistory { get; set; } = [];
+
+    /// <summary>解试累计失败数（<c>&gt;= 0</c>；005-exam-cycle）。</summary>
+    [Key(22)]
+    [JsonPropertyName("jieShiFailureCount")]
+    [JsonRequired]
+    public int JieShiFailureCount { get; set; }
+
+    /// <summary>省试累计失败数（<c>&gt;= 0</c>；005-exam-cycle）。</summary>
+    [Key(23)]
+    [JsonPropertyName("shengShiFailureCount")]
+    [JsonRequired]
+    public int ShengShiFailureCount { get; set; }
+
+    /// <summary>
+    /// 本月报名级别；<c>null</c> = 未报名（005-exam-cycle）。
+    /// 殿试由省试及第自动进入，**不是**合法报名态 ⇒ 校验第 ⑩ 条拒绝。
+    /// </summary>
+    [Key(24)]
+    [JsonPropertyName("appliedExam")]
+    [JsonRequired]
+    public ExamLevel? AppliedExam { get; set; }
 }

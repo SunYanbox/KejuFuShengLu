@@ -20,7 +20,7 @@ namespace KFL.Tests.Infrastructure;
 /// <remarks>
 /// <para>
 /// 四类输入对应契约十 §6 的八个判定步：不存在 ⇒ <c>Missing</c>；头之后字节损坏 ⇒ <c>Malformed</c>；
-/// 剩余字节不足头声明 ⇒ <c>Truncated</c>；版本不是 1 ⇒ <c>UnsupportedVersion</c>；
+/// 剩余字节不足头声明 ⇒ <c>Truncated</c>；版本不是 2 ⇒ <c>UnsupportedVersion</c>；
 /// 主体可解析但成员缺失或违反一致性 ⇒ <c>InvalidStructure</c>。
 /// </para>
 /// <para>
@@ -141,12 +141,15 @@ public sealed class SaveFailureTests
         AssertFailurePreserves(path, corrupted, held, reference);
     }
 
-    /// <summary>FR-015：头记录版本不为 1 ⇒ <c>UnsupportedVersion</c>。</summary>
+    /// <summary>FR-015：头记录版本不为 2（旧版 1 与更新版 3 同样拒）⇒ <c>UnsupportedVersion</c>。</summary>
     /// <param name="format">格式。</param>
+    /// <param name="version">写进头里的非本版本版本号。</param>
     [Theory]
-    [InlineData(SaveFormat.Binary)]
-    [InlineData(SaveFormat.Json)]
-    public void 头版本不为一时报UnsupportedVersion(SaveFormat format)
+    [InlineData(SaveFormat.Binary, 1)]
+    [InlineData(SaveFormat.Json, 1)]
+    [InlineData(SaveFormat.Binary, 3)]
+    [InlineData(SaveFormat.Json, 3)]
+    public void 头版本不为二时报UnsupportedVersion(SaveFormat format, int version)
     {
         using var sandbox = new SaveTestSandbox();
         var service = sandbox.CreateService();
@@ -154,7 +157,7 @@ public sealed class SaveFailureTests
         var (held, reference) = SaveAndHold(service, slot);
 
         var path = service.FilePathOf(slot);
-        SetVersionToTwo(path, format);
+        SetVersionTo(version, path, format);
         var corrupted = SaveTestSandbox.ReadBytes(path);
 
         var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
@@ -165,10 +168,13 @@ public sealed class SaveFailureTests
 
     /// <summary>契约十 §6 条款 1：版本闸门 MUST 早于任何主体解析——主体同时损坏也先报版本。</summary>
     /// <param name="format">格式。</param>
+    /// <param name="version">写进头里的非本版本版本号。</param>
     [Theory]
-    [InlineData(SaveFormat.Binary)]
-    [InlineData(SaveFormat.Json)]
-    public void 版本闸门早于主体解析(SaveFormat format)
+    [InlineData(SaveFormat.Binary, 1)]
+    [InlineData(SaveFormat.Json, 1)]
+    [InlineData(SaveFormat.Binary, 3)]
+    [InlineData(SaveFormat.Json, 3)]
+    public void 版本闸门早于主体解析(SaveFormat format, int version)
     {
         using var sandbox = new SaveTestSandbox();
         var service = sandbox.CreateService();
@@ -179,12 +185,38 @@ public sealed class SaveFailureTests
         var bytes = SaveTestSandbox.ReadBytes(path);
         CorruptTail(bytes);
         SaveTestSandbox.WriteBytes(path, bytes);
-        SetVersionToTwo(path, format);
+        SetVersionTo(version, path, format);
         var corrupted = SaveTestSandbox.ReadBytes(path);
 
         var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
 
         Assert.Equal(SaveFileErrorKind.UnsupportedVersion, exception.Kind);
+        AssertFailurePreserves(path, corrupted, held, reference);
+    }
+
+    /// <summary>
+    /// 契约十四 §10 / 契约十 §6 条款 7：报名级别 MUST 为 <c>null</c> 或 ∈ { <c>JieShi</c>, <c>ShengShi</c> }；
+    /// 殿试由省试及第**自动进入**，不是可报名级别 ⇒ 第 ⑩ 条 ⇒ <c>InvalidStructure</c>。
+    /// </summary>
+    /// <remarks>
+    /// 这里刻意走 JSON：<c>"DianShi"</c> 是本版本**认得的枚举名**，故第 ⑤ 步读得出来、第 ⑦ 步
+    /// 也放行，只有第 ⑩ 条的合法域判据能拦住它——这正是「枚举合法 ⇏ 语义合法」的分界。
+    /// </remarks>
+    [Fact]
+    public void JSON报名级别为殿试时报InvalidStructure()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("壬档", SaveFormat.Json);
+        var (held, reference) = SaveAndHold(service, slot);
+
+        var path = service.FilePathOf(slot);
+        RewritePayload(path, state => state["family"]!["members"]!.AsArray()[0]!["appliedExam"] = "DianShi");
+        var corrupted = SaveTestSandbox.ReadBytes(path);
+
+        var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
+
+        Assert.Equal(SaveFileErrorKind.InvalidStructure, exception.Kind);
         AssertFailurePreserves(path, corrupted, held, reference);
     }
 
@@ -526,21 +558,25 @@ public sealed class SaveFailureTests
         SaveTestSandbox.WriteBytes(path, Encoding.UTF8.GetBytes(replaced));
     }
 
-    /// <summary>把头记录的版本改成 2；两种格式的改法不同（二进制是定长整数、JSON 是可读数字文本）。</summary>
+    /// <summary>把头记录的版本改成 <paramref name="version"/>；两种格式的改法不同（二进制是定长整数、JSON 是可读数字文本）。</summary>
+    /// <param name="version">目标版本号（用于造「旧版」与「更新版」两种拒绝面）。</param>
     /// <param name="path">档路径。</param>
     /// <param name="format">格式。</param>
-    private static void SetVersionToTwo(string path, SaveFormat format)
+    private static void SetVersionTo(int version, string path, SaveFormat format)
     {
         if (format == SaveFormat.Binary)
         {
             var bytes = SaveTestSandbox.ReadBytes(path);
-            bytes[1] = 0x02; // 头是 fixarray(3) + 版本整数，版本恰在偏移 1。
+            bytes[1] = (byte)version; // 头是 fixarray(3) + 版本整数，版本恰在偏移 1。
             SaveTestSandbox.WriteBytes(path, bytes);
             return;
         }
 
         var text = ReadText(path);
-        var replaced = text.Replace($"\"{FormatVersionName}\": 1", $"\"{FormatVersionName}\": 2", StringComparison.Ordinal);
+        var replaced = text.Replace(
+            $"\"{FormatVersionName}\": {SaveFileFormat.Version.ToString(CultureInfo.InvariantCulture)}",
+            $"\"{FormatVersionName}\": {version.ToString(CultureInfo.InvariantCulture)}",
+            StringComparison.Ordinal);
         Assert.NotEqual(text, replaced);
         SaveTestSandbox.WriteBytes(path, Encoding.UTF8.GetBytes(replaced));
     }

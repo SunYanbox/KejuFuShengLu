@@ -58,6 +58,7 @@ public static class SaveStateMapper
                 Members = [.. family.Members.Select(ToDto)],
                 SettledOutsiders = [.. bookkeeping.Settled.Select(id => id.Value)],
                 MarriageAlignedOutsiders = [.. bookkeeping.MarriageAligned.Select(id => id.Value)],
+                AutoExamApplication = family.AutoExamApplication,
             },
             Economy = ToDto(state.Economy),
         };
@@ -101,7 +102,11 @@ public static class SaveStateMapper
         EnsureEnumsDefined(dto);
 
         var familyDto = Required(dto.Family, nameof(dto.Family));
-        var family = new Family(familyDto.Name) { HasShiStatus = familyDto.HasShiStatus };
+        var family = new Family(familyDto.Name)
+        {
+            HasShiStatus = familyDto.HasShiStatus,
+            AutoExamApplication = familyDto.AutoExamApplication,
+        };
         var memberDtos = Required(familyDto.Members, "family.members");
         var persons = new List<Person>(memberDtos.Count);
 
@@ -137,6 +142,13 @@ public static class SaveStateMapper
             person.Merit = memberDto.Merit;
             person.Occupation = memberDto.Occupation;
             person.MonthsInOffice = memberDto.MonthsInOffice;
+
+            // 科举进度（005）：唯一的写入通道是 internal 的 RestoreExamProgress，
+            // 它同时校验两个计数 >= 0 且报名级别 ∈ {null, JieShi, ShengShi}。
+            person.RestoreExamProgress(
+                memberDto.JieShiFailureCount,
+                memberDto.ShengShiFailureCount,
+                memberDto.AppliedExam);
         }
 
         // ③ 状态位 MUST 先于计时与入仕途径：Person.Status 的 setter 会拒绝「清掉某位而其计时仍在」，
@@ -348,6 +360,9 @@ public static class SaveStateMapper
             Cause = record.Cause,
             ImperialClass = record.Class,
         })],
+        JieShiFailureCount = person.JieShiFailureCount,
+        ShengShiFailureCount = person.ShengShiFailureCount,
+        AppliedExam = person.AppliedExam,
     };
 
     private static FamilyEconomyDto ToDto(FamilyEconomy economy) => new()

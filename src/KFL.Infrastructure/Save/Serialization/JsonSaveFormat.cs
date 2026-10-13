@@ -13,7 +13,7 @@ namespace KFL.Infrastructure.Save.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 文件形状 <c>{"FormatVersion":1,"PayloadLength":N,"SaveId":"…","State":&lt;主体&gt;}</c>：
+/// 文件形状 <c>{"FormatVersion":2,"PayloadLength":N,"SaveId":"…","State":&lt;主体&gt;}</c>：
 /// 三个头成员**先于** <c>State</c> 出现且次序固定（契约十 §2）。头用
 /// <see cref="Utf8JsonWriter.WriteRawValue(ReadOnlySpan{byte}, bool)"/> 拼装，主体保持
 /// 它自己的逐行缩进。

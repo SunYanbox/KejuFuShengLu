@@ -80,6 +80,14 @@ public static class SaveFixtures
             DegreeChangeCause.ExamPass,
             ImperialClass.FirstClass));
 
+        // ⑬′ 科举进度（005-exam-cycle）：两个失败计数与报名标记都取**非默认值**——
+        //      漏存时默认值（0 / null）会让往返比对静默通过，正是夹具存在的意义。
+        family.AutoExamApplication = true;
+        son.RecordExamFailure(ExamLevel.JieShi);
+        son.RecordExamFailure(ExamLevel.ShengShi);
+        son.RecordExamFailure(ExamLevel.ShengShi);
+        son.ApplyForExam(ExamLevel.ShengShi);
+
         // ⑭ 前配偶：先娶一个外来者，再解除——两条 FormerSpouseIds 与「配偶已被清空」同时出现。
         var wife = family.AddOutsider(FamilyFixtures.NewPerson(
             11,
@@ -167,7 +175,7 @@ public static class SaveFixtures
         // ⑮ 三资金池 + 贷款 + 储蓄利率（**利率先于所属年份**：Core 的 setter 就是这么互锁的）。
         var treasury = new Treasury(Money.FromGuan(120m), Money.FromGuan(45m), Money.FromGuan(30m));
         treasury.SavingsRateYear = ReferenceDate.Year;
-        treasury.SavingsRate = 0.01m;
+        treasury.SavingsRate = 0.01m; // arch-guard:allow 储蓄利率夹具值
 
         var loan = new Loan
         {
