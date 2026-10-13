@@ -56,6 +56,7 @@ internal static class SaveStateComparer
     {
         Assert.Equal(expected.Name, actual.Name);
         Assert.Equal(expected.HasShiStatus, actual.HasShiStatus);
+        Assert.Equal(expected.AutoExamApplication, actual.AutoExamApplication);
         Assert.Equal(expected.HeadId, actual.HeadId);
 
         // 成员**含归档者**、且按加入次序（契约十 §4 FamilyDto 键 3）。
@@ -95,6 +96,9 @@ internal static class SaveStateComparer
         Assert.Equal(expected.SpouseId, actual.SpouseId);
         Assert.Equal(expected.FormerSpouseIds, actual.FormerSpouseIds);
         Assert.Equal(expected.DegreeHistory, actual.DegreeHistory);
+        Assert.Equal(expected.JieShiFailureCount, actual.JieShiFailureCount);
+        Assert.Equal(expected.ShengShiFailureCount, actual.ShengShiFailureCount);
+        Assert.Equal(expected.AppliedExam, actual.AppliedExam);
 
         // 派生值也要一致（履历顺序错了，这里会先亮）。
         Assert.Equal(expected.CurrentDegree, actual.CurrentDegree);

@@ -5,7 +5,7 @@ using KFL.Core.ValueObjects;
 namespace KFL.Infrastructure.Save.Serialization;
 
 /// <summary>
-/// 存档级**一致性校验**九条（004-save-system；research R-04、data-model §3.11 第 ⑩ 步）。
+/// 存档级**一致性校验**十条（004-save-system；research R-04、data-model §3.11 第 ⑩ 步）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -14,14 +14,14 @@ namespace KFL.Infrastructure.Save.Serialization;
 /// <see cref="SaveFileException"/>（<see cref="SaveFileErrorKind.InvalidStructure"/>）。
 /// </para>
 /// <para>
-/// 第 1~7、9 条是**跨对象**的（单看一个对象的 setter 看不出「配偶是否互相指向」），
+/// 第 1~7、9、10 条是**跨对象**的（单看一个对象的 setter 看不出「配偶是否互相指向」），
 /// 故必须在整体复原之后才有意义；第 8 条是**同一份文件内**的自一致性检查
 /// （头是主体标识的 O(1) 探针副本），由 <see cref="ValidateIdentity"/> 承担。
 /// </para>
 /// </remarks>
 public static class SaveStateValidator
 {
-    /// <summary>校验复原后的状态（第 1~7、9 条）。</summary>
+    /// <summary>校验复原后的状态（第 1~7、9、10 条）。</summary>
     /// <param name="state">已完整复原的状态。</param>
     /// <exception cref="ArgumentNullException"><paramref name="state"/> 为 <c>null</c>。</exception>
     /// <exception cref="SaveFileException">任一不成立（分类恒为 <see cref="SaveFileErrorKind.InvalidStructure"/>）。</exception>
@@ -39,6 +39,7 @@ public static class SaveStateValidator
         EnsureEntryTrackBackedByStatus(members);
         EnsureFamineConsistency(state.Economy);
         EnsureLedgerAmountsNonZero(state.Economy);
+        EnsureExamProgressInRange(members);
     }
 
     /// <summary>校验第 8 条：头记录的 <c>SaveId</c> MUST 等于主体的 <c>GameState.Id</c>。</summary>
@@ -211,6 +212,32 @@ public static class SaveStateValidator
             if (entry.Amount == Money.Zero)
             {
                 throw Invalid($"账本第 {entry.Date.Year} 年 {entry.Date.Month} 月的资金类条目 {entry.Category} 金额为 0（R-04 第 9 条）。");
+            }
+        }
+    }
+
+    /// <summary>第 10 条：科举进度合法（005-exam-cycle；契约十四 §10）。</summary>
+    /// <remarks>
+    /// 两个失败数 MUST <c>&gt;= 0</c>；报名级别非空时 MUST 是 <c>JieShi</c> 或 <c>ShengShi</c>
+    /// ——殿试由省试及第自动进入，**不是**可报名级别。判据同时覆盖二进制侧的越界整数
+    /// （<c>0</c> 与 <c>&gt; 3</c>），JSON 侧认不得的**名字**在第 ⑤ 步即以
+    /// <see cref="SaveFileErrorKind.Malformed"/> 失败。
+    /// </remarks>
+    private static void EnsureExamProgressInRange(IReadOnlyCollection<Person> members)
+    {
+        foreach (var member in members)
+        {
+            if (member.JieShiFailureCount < 0 || member.ShengShiFailureCount < 0)
+            {
+                throw Invalid(
+                    $"成员 {member.Id} 的科举失败数为负（解试 {member.JieShiFailureCount}、省试 {member.ShengShiFailureCount}，R-04 第 10 条）。");
+            }
+
+            if (member.AppliedExam is { } applied &&
+                applied is not ExamLevel.JieShi and not ExamLevel.ShengShi)
+            {
+                throw Invalid(
+                    $"成员 {member.Id} 的报名级别 {applied} 不是合法的报名态（只允许 JieShi 与 ShengShi，R-04 第 10 条）。");
             }
         }
     }

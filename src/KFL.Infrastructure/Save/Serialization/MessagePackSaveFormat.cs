@@ -44,10 +44,10 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     private const int SaveStateMemberCount = 8;
 
     /// <summary>嵌套 DTO 的成员数（契约十 §4 键表；全部按 <c>[Key(0..n-1)]</c> 连续编号）。</summary>
-    private const int FamilyMemberCount = 6;
+    private const int FamilyMemberCount = 7;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
-    private const int PersonMemberCount = 22;
+    private const int PersonMemberCount = 25;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
     private const int TalentMemberCount = 4;
@@ -223,6 +223,7 @@ public sealed class MessagePackSaveFormat : ISaveFormat
 
         SkipGuidList(ref reader);                   // 4 已落籍旁系
         SkipGuidList(ref reader);                   // 5 外嫁对齐旁系
+        Skip(ref reader, 1);                        // 6 自动报名（005）
     }
 
     private static void EnsurePersonShape(ref MessagePackReader reader, string path)
@@ -249,6 +250,8 @@ public sealed class MessagePackSaveFormat : ISaveFormat
             EnsureArrayHeader(ref reader, DegreeRecordMemberCount, $"{path}.DegreeHistory[{index}]");
             Skip(ref reader, DegreeRecordMemberCount);
         }
+
+        Skip(ref reader, 3);                        // 22..24 解试失败数/省试失败数/报名级别（005）
     }
 
     private static void EnsureEconomyShape(ref MessagePackReader reader, string path)

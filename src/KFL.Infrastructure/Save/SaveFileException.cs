@@ -18,7 +18,7 @@ public enum SaveFileErrorKind
     /// <summary>字节损坏：头读不出，或主体以任何其它方式解析失败（规格书未列举的兜底类）。</summary>
     Malformed,
 
-    /// <summary>版本不符（<c>FormatVersion != 1</c>）：读不懂就明说，MUST NOT 猜读（FR-015）。</summary>
+    /// <summary>版本不符（<c>FormatVersion != 2</c>）：读不懂就明说，MUST NOT 猜读（FR-015）。</summary>
     UnsupportedVersion,
 
     /// <summary>结构不符：主体能解析，但缺本版本必需成员，或违反一致性校验。</summary>
