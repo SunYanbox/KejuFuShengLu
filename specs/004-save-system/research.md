@@ -402,7 +402,7 @@ MUST NOT 静默吞（Edge Case）。
 | — | `SaveOnExit(GameState)`：**复用同一个保存入口**（FR-012），MUST NOT 另写一套 | — |
 
 **Rationale**: 契约三 §1 的「**MUST NOT 存在**的步骤」清单**明列「存档写入」**，`MonthlySettlementEngine`
-的类文档亦自述「唯一编排入口、每月一次」——把落盘塞进它等于改 002 的七步序列（跨特性形状变更，
+的类文档亦自述「唯一编排入口、每月一次」——把落盘塞进它等于改 002 的八步序列（跨特性形状变更，
 需先回写契约三）。`TurnRunner` 把「结算」与「落盘」显式分成两步，「写入 MUST NOT 发生在结算中途」
 因此是**结构性**成立的（不是靠约定）。每回合在 `Rules` 内新建一次结算引擎是既有惯例：全部既有测试
 都写作 `new MonthlySettlementEngine(random, new GameStateClock(state))`，因为 `GameStateClock` 绑定

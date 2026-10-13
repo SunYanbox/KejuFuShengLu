@@ -56,6 +56,35 @@ public class ExamAdmissionTests
         }
     }
 
+    /// <summary>
+    /// T055 / FR-014 / SC-002：spec US1 AS1 的示例录取率——**勘误后**为
+    /// <c>0.01 × (0.4 + 0.012 × 60) × (1 + 60/400) × 1.0 × 1.0 = 0.01288</c>（即 1.288%），
+    /// **不是** 1.42%。该锚点把 plan.md「勘误登记」落到可执行断言上。
+    /// </summary>
+    /// <remarks>
+    /// 期望值经 <see cref="GameConfig.Exam"/> 的数值成员组合（唯一数值来源仍是
+    /// <c>KFL.Rules/Config/ExamPolicy</c>）；本用例只出现被验证对象本身 <c>0.01288m</c>，
+    /// 不书写任何规则数值。
+    /// </remarks>
+    [Fact]
+    public void 科举示例录取率等于勘误后的百分之一二八八()
+    {
+        var person = RulesHarness.Member(102, Gender.Male, 20, officialdom: 60);
+        person.Study = 60;
+
+        var expected = GameConfig.Exam.JieShiBaseRate
+            * GameConfig.Exam.StudyFactor(person.Study)
+            * (decimal.One + (person.Talents.Officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
+            * GameConfig.Exam.NeutralBribeMultiplier;
+
+        // arch-guard:allow 锚点即被验证对象：spec US1 AS1 的勘误后示例值（非规则数值副本）
+        Assert.Equal(0.01288m, expected);
+        Assert.Equal(
+            expected,
+            ExamAdmission.AdmissionRate(
+                ExamLevel.JieShi, person, hasShiStatus: false, bribeMultiplier: GameConfig.Exam.NeutralBribeMultiplier));
+    }
+
     /// <summary>省试录取率与解试同形，只把基础率换成 <c>ShengShiBaseRate</c>。</summary>
     [Fact]
     public void 省试录取率使用省试基础率()

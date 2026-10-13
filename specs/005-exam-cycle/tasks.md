@@ -452,3 +452,42 @@ Task: "T013 新建 src/KFL.Rules/Exam/ExamCalendar.cs（依赖 T005）"
 | SC-009 双格式往返 + 版本闸门 | T037~T044 |
 | SC-010 门禁四条 + 变更数 = 0 | T001、T052 |
 | SC-011 七项回写同提交 + 清单核对 | T045~T050、T052 |
+
+---
+
+## Phase 8: Convergence
+
+> 由 `$speckit-converge`（2026-10-13）追加：**只追加本节，未改动任何既有条目、任何 `spec.md` / `plan.md` 与任何应用代码**。分级依据见本次会话内的收敛findings表（6 条：HIGH×3 / MEDIUM×1 / LOW×2，无 CRITICAL）。
+
+- [X] T053 回写 `specs/002-monthly-settlement-economy/data-model.md` §2.1（`LedgerCategory` 全集的**文档形式真源**，与 `src/KFL.Core/Enums/LedgerCategoryMetadata.cs` 的可执行形式同源，见 `specs/002-monthly-settlement-economy/contracts/ledger.md:18`）：把 `ExamTravelCost`（省试路费，**资金类**，`正额入账目标` = 「—（恒为负）」，来源 规格书 §6/§12.3）作为**第 20 行**追加到类别表末尾；同步表下计数与名单——「**9** 个类别（**4** 个恒为负的支出类 + 5 个事件类）」→「**10** 个类别（**5** 个恒为负的支出类 + 5 个事件类）」，且「**只有 4 个恒为负的支出类**（`LivingCost`、`LoanPrincipalRepaid`、`LoanInterestRepaid`、`AssetPurchase`）」补入 `ExamTravelCost`，使该表的行数与名单同 `LedgerCategoryMetadata`（20 个取值）逐行一致 per FR-021/FR-028② (partial)
+
+- [X] T054 在 `tests/KFL.Tests/Core/PersonTests.cs` 补齐既有任务 T017 承诺、当前缺失的行为断言（该文件现仅有「无公开 setter」反射集合）：`ApplyForExam` 同级别重复报名幂等（不抛、逐字段不变）、`ApplyForExam(ExamLevel.DianShi)` 抛 `InvalidOperationException`、`RecordExamFailure(ExamLevel.DianShi)` 抛 `InvalidOperationException`、`ClearExamApplication()` 对 `AppliedExam == null` 为 no-op、`RecordExamFailure` 只 +1 对应计数且不触碰另一计数，逐条覆盖 `specs/005-exam-cycle/data-model.md` §6 的不变量 I-1/I-2/I-3（`RecordExamFailure(DianShi)` 的拒绝与 `ClearExamApplication()` 的 null no-op 目前**在任何测试文件中都无断言**）per FR-023/FR-025 (partial)
+
+- [X] T055 在测试中落实计划阶段勘误（`plan.md:309`「spec 的 1 处算式勘误在测试锚点中的落实」，T012/T023 承诺）：于 `tests/KFL.Tests/Rules/SpecAnchorTests.cs` 的「科举数值锚点」节与/或 `tests/KFL.Tests/Rules/ExamAdmissionTests.cs` 写入 spec US1 AS1 勘误后的示例值 `0.01 × (0.4 + 0.012 × 60) × (1 + 60/400) × 1.0 × 1.0 = 0.01288`（即 `1.288%`，`hasShiStatus = false`；**不是** `1.42%`），断言值 MUST 经 `ExamPolicy` 的数值成员取得（该测试现经其转发视图 `GameConfig.Exam.*`，二者同源；若保留转发视图，须在锚点注释中注明唯一数值来源仍是 `ExamPolicy`），MUST NOT 在测试中书写规则字面量 per FR-014/FR-025 (partial)
+
+- [X] T056 补 `tests/KFL.Tests/Core/LedgerInvariantTests.cs` 的 `无正额入账目标的资金类类别以正额入账被拒`（`:259-281`）：把 `LedgerCategory.ExamTravelCost` 加入 `alwaysNegative` 数组（4 → 5 项），使「`KindOf == Treasury` ∧ `CreditTargetOf == null`」的类别全集无遗漏、正额入账对该类别同样抛 `InvalidOperationException`（现在该类别未被覆盖）per FR-021、`specs/005-exam-cycle/data-model.md` 不变量 I-5 (partial)
+
+- [X] T057 更正 005 活工件中的落盘 DTO 文件指针：`specs/005-exam-cycle/plan.md:98`、`specs/005-exam-cycle/plan.md:168`（回写范围表第 14 行）、`specs/005-exam-cycle/plan.md:222`（文件树）与 `specs/005-exam-cycle/data-model.md:396` 把 `FamilyDto`/`PersonDto` 的所在文件由 `SaveStateValueDtos.cs` 改为 `SaveStateDto.cs`（实际位置：`src/KFL.Infrastructure/Save/Serialization/SaveStateDto.cs:84` 的 `FamilyDto` 与 `SaveStateDto.cs:138` 的 `PersonDto`；`SaveStateValueDtos.cs` 只承载 `TalentDto`/`StatusTimersDto`/`DegreeRecordDto`/`TreasuryDto`/`LoanDto`/`HoldingsDto`/`LedgerEntryDto`/`FamineDto`/`FamilyEconomyDto` 等值类型 DTO），并在本次收敛任务中登记该更正（既有 `tasks.md` 的历史条目 T037 与回写范围登记第 14 行**一律不回改**）per FR-028、plan.md「同提交必须同步的实现与断言物」(contradicts)
+
+- [X] T058 消除三处残留的旧形状字样「七步」（月度结算在 005 之后为**八步**）：`specs/004-save-system/contracts/save-cadence.md:8`、`specs/004-save-system/research.md:405`、`specs/001-core-skeleton/spec.md:207`；其中 `specs/004-save-system/research.md:405` 被本 `tasks.md` 的「顺带收敛的活工件」段落声明已同步，该声明与事实不符——差异由本条收敛任务承接登记，**既有段落（历史记录）不得回改** per FR-028、AGENTS.md「活工件 MUST 与当前实现一致」 (partial)
+
+### Phase 8 回写登记（T053~T058 完成时同步的范围）
+
+| # | 同步的文件 | 同步到哪里 | 依据 |
+| --- | --- | --- | --- |
+| T053 | `specs/002-monthly-settlement-economy/data-model.md` | §2.1 类别表末行（追加 `ExamTravelCost`，**第 20 行**）与表下计数段（9→10 个类别、4→5 个恒为负的支出类） | FR-021、FR-028② |
+| T054 | `tests/KFL.Tests/Core/PersonTests.cs` | 新增分区「科举进度（T054，I-1/I-2/I-3）」4 个 `[Fact]` | FR-005、FR-023、FR-025 |
+| T055 | `tests/KFL.Tests/Rules/ExamAdmissionTests.cs` | 新增 `科举示例录取率等于勘误后的百分之一二八八` | `plan.md:309`、FR-014、SC-002 |
+| T056 | `tests/KFL.Tests/Core/LedgerInvariantTests.cs` | `无正额入账目标的资金类类别以正额入账被拒` 的 `alwaysNegative` 数组（4 → 5 项） | FR-021、data-model §6 不变量 I-5 |
+| T057 | `specs/005-exam-cycle/plan.md`（`:98` 实现面、`:168` 回写范围表第 14 行、`:222` 文件树）与 `specs/005-exam-cycle/data-model.md`（`:396` §7.3） | `SaveStateValueDtos.cs` → `SaveStateDto.cs` | FR-028、plan「同提交必须同步的实现与断言物」 |
+| T058 | `specs/004-save-system/contracts/save-cadence.md:8`、`specs/004-save-system/research.md:405`、`specs/001-core-skeleton/spec.md:207` | 七步 → 八步（001 处并注明「第③步为 003 插入、第⑦步为 005 插入」） | FR-028、AGENTS.md「活工件 MUST 与当前实现一致」 |
+
+**两条偏差登记**（供后续审计核对）：
+
+1. T053 的类别中文名取 `src/KFL.Core/Enums/LedgerCategory.cs:78` 枚举自身的注释「**省试路费**」
+   （converge 文本写作「赶考路费」）：§2.1 表的「中文名」列 MUST 与可执行形式同源，故以枚举为准。
+2. T058 **额外**收敛了第 4 处旧形状字样 `src/KFL.Rules/Save/TurnRunner.cs:14` 的类文档——原文
+   「契约三钉死的「月度结算七步」序列一个字都没动——存档不是第八步」，在 005 追加第 ⑦ 步后八步
+   已被占满，该措辞双重失真；改为「004 对契约三钉死的结算步骤序列一个字都没动（005 后该序列为
+   八步）——存档不是序列里的任何一步，而是套在结算外面的一层编排（R-17）」。该文件不在 T058 原列
+   的三处之内，按 AGENTS.md 铁律第 3 条在此承接登记。

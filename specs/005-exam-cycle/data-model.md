@@ -393,7 +393,7 @@ JieShi | ShengShi --本月结算的科举季步（消费后清除）--> (null)
 
 ### 7.3 同提交必须同步的实现与断言物
 
-`SaveStateValueDtos.cs`（两个 DTO 的 `[Key]` + `[JsonPropertyName]` + `[JsonRequired]`）→
+`SaveStateDto.cs`（两个 DTO 的 `[Key]` + `[JsonPropertyName]` + `[JsonRequired]`）→
 `MessagePackSaveFormat`（`PersonMemberCount` 22 → 25、`FamilyMemberCount` 6 → 7、
 `EnsurePersonShape` / `EnsureFamilyShape` 的 Skip 计数）→ `SaveStateMapper`
 （`ToDto(Person)` / `Build` / `CreatePerson`；复原次序见 004 data-model §3.11）→

@@ -96,12 +96,13 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `FamineReliefEntered` | 转入救济模式 | **事件类** | — | §5.4 |
 | `FamineSevereEntered` | 进入第三阶段 | **事件类** | — | §5.4 |
 | `FamineResolved` | 饥馑全部解除 | **事件类** | — | §5.4 |
+| `ExamTravelCost` | 省试路费 | 资金类 | —（恒为负） | §6、§12.3（005 追加） |
 
 **`LedgerCategoryMetadata` 的职责**（结构事实，不是平衡数值，故随枚举留在 Core，R-04）：
 `KindOf(category) → LedgerEntryKind`、`CreditTargetOf(category) → LedgerCreditTarget?`——返回
-`null` 表示**没有正额入账目标**，即上表「正额入账目标」列为「—」的 **9 个类别**（4 个恒为负的
-支出类 + 5 个事件类）。其中**只有 4 个恒为负的支出类**（`LivingCost`、`LoanPrincipalRepaid`、
-`LoanInterestRepaid`、`AssetPurchase`）在收到正额时 `FamilyEconomy.Apply` MUST 抛异常；5 个
+`null` 表示**没有正额入账目标**，即上表「正额入账目标」列为「—」的 **10 个类别**（5 个恒为负的
+支出类 + 5 个事件类）。其中**只有 5 个恒为负的支出类**（`LivingCost`、`LoanPrincipalRepaid`、
+`LoanInterestRepaid`、`AssetPurchase`、`ExamTravelCost`）在收到正额时 `FamilyEconomy.Apply` MUST 抛异常；5 个
 **事件类**的金额是**事件自身的金额语义**（阶段迁移恒 0，`LoanInterestAccrued` 为利息额、**可正**），
 `Apply` 只追加条目不移动资金池（与 `contracts/ledger.md` 的二分类一致）。
 **SC-005 的求和口径** = 对 `KindOf == Treasury` 的条目求和。
