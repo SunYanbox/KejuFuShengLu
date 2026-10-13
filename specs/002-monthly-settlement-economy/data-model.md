@@ -6,7 +6,7 @@
 与 spec 的 FR-001~FR-031；**凡规格书未列举、且本阶段无消费者的一律不建**（章程「复杂度
 MUST 被论证」）。存档落盘属阶段④，此时增删字段仍无迁移成本。
 **补注（004 之后，原文保留为当时事实）**：004 落盘后形态已固定为
-[004 `contracts/save-format.md`](../004-save-system/contracts/save-format.md) 的版本 1，
+[004 `contracts/save-format.md`](../004-save-system/contracts/save-format.md) 的版本 2，
 跨版本变更须走 §14 的版本闸门（**拒绝而非迁移**），不再有「增删字段无迁移成本」。
 
 层归属的依据见 research R-01：**状态在 `KFL.Core`，依赖数值的推导与编排在 `KFL.Rules`**。
@@ -308,6 +308,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `FamineBefore` / `FamineAfter` | `FamineState` 快照 | 阶段迁移（US4） |
 | `Entries` | `IReadOnlyList<LedgerEntry>` | 本次结算产生的**全部**条目（含事件类） |
 | `Career` | `CareerAdvanceResult` | **003 追加**（required）：第③步官吏推进的**增量快照**（授官 / 政绩 / 晋升 / 致仕 / `AppraisalSkipped` / `AppraisalPaused` / 每人三态）。它是增量、**不是与 `Person` 并存的第二真源** |
+| `ExamSeason` | `ExamSeasonSnapshot` | **005 追加**（required）：第⑦步科举季的**增量快照**（`Level`（`ExamLevel?`，非考试月为 `null`）/ `AutoApplications` / `Absences` / `Exemptions` / `Outcomes` / `Appointments` / `SpecialTributeInquiries` / `HasShiStatusBecomesTrue`）。**增量、只读、按 `PersonId` 升序**，MUST NOT 回写 `GameState`，**不是与 `Person` 并存的第二真源**；**路费金额不进快照**（在 `Entries` 的 `ExamTravelCost` 条目里） |
 | `TreasuryPoolBefore` / `After` | `Money` | 资金池前后值，供 SC-005 直接断言 |
 
 **不变量**：`Entries` MUST 与本次结算向 `Ledger` 追加的条目**逐条相同**；
@@ -319,7 +320,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 
 | 类型 | 公开形状 | 职责 |
 | --- | --- | --- |
-| `MonthlySettlementEngine` | `ctor(IRandomService, IGameClock)`；`SettlementResult Settle(GameState)` | 唯一编排入口：按契约「月度结算」§1 的**七步**顺序执行（第③步「官吏推进」由 003 追加），就地推进 `GameState` 与 `CurrentDate` |
+| `MonthlySettlementEngine` | `ctor(IRandomService, IGameClock)`；`SettlementResult Settle(GameState)` | 唯一编排入口：按契约「月度结算」§1 的**八步**顺序执行（第③步「官吏推进」由 003 追加、第⑦步「科举季」由 005 追加），就地推进 `GameState` 与 `CurrentDate`；科举季步自身 MUST NOT 调用 `AdvanceMonth`、MUST NOT 修改 `CurrentDate` |
 | `LivingCostCalculator` | `static LivingCostComputation Compute(IReadOnlyList<Person> countedMembers, GameDate date, LivingStandard livingStandard, decimal grainPriceIndex, Difficulty difficulty, Origin origin, FamineStage famineStage)` | §5.1/§5.4 生活费与逐档明细（四个乘区，R-17）；**不碰**资金池 |
 | `IncomeCalculator` | `static IncomeComputation Compute(Family family, GameDate date, Holdings holdings, Treasury treasury, Difficulty difficulty, Origin origin)` | §5.2 各来源分项与归属成员；**不碰**资金池。成员集合 = **计口 ∧ 成年**（E-16，成年按 §4.3）；城市宅加成按人归属并逐人乘本人 `(1+工/400)`（E-15）；`TradeIncome` 归属被采用的那名成员（E-18）；俸禄按三态（MUST NOT 接收仕身份 `HasShiStatus`） |
 | `SavingsSettlement` | `static decimal RollRate(IRandomService)`；`static Money Accrue(Money savings, decimal rate)` | §5.4 的 1 月 roll 与 12 月计息 |
@@ -343,7 +344,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | FR-014、FR-016 | `Loan` + `LoanSettlement` + `InterestPolicy` | 先本后息；跨 12 月节点按当时本金计息；本金清零后转冲欠息；皆清即结清；计时按自然月（E-07）；任意金额手动提前还款（`FamilyEconomy.RepayLoan` 承载） | T012、T043、T045、T046 |
 | FR-017 | `PaymentPrimitive` | 「现金 → 储蓄 → 余额转贷款」三步各一断言；本阶段无罚金入口 | T044、T046 |
 | FR-018、FR-019 | `FamineState` + `FamineController` + `FamineTimeline` | 4 阶段转移 4/4 + 解除后计时归零；**「恰好第 3 月转救济 / 恰好第 12 月转 Severe」两条边界断言**（E-14）；阶段与剩余月数可读 | T014、T050、T051、T052、T053 |
-| FR-020 | `MonthlySettlementEngine` | 七步顺序契约（E-04；第③步由 003 追加）；越界步骤（随机事件/成长/科举/绝嗣）**不存在** | T037、T041、T045、T048、T052 |
+| FR-020 | `MonthlySettlementEngine` | **八步**顺序契约（E-04；第③步由 003 追加、第⑦步「科举季」由 005 追加）；越界步骤（随机事件/成长/绝嗣）**不存在** | T037、T041、T045、T048、T052 |
 | FR-021、FR-022、SC-005 | `FamilyEconomy.Apply` / `RepayLoan` + `Ledger` | 资金池变动与条目一一对应；家族/角色两维度聚合同一批条目；归档成员历史可读 | T016、T017、T025、T054、T055 |
 | FR-023 | `KFL.Rules/Config/` 全部配置类 | 配置登记表 + 「配置类之外无第二份副本」扫描测试 | T027~T033、T058、T059 |
 | FR-024、FR-025、SC-006、SC-007 | `MonthlySettlementEngine` 的注入与随机消费次序 | 同种子复跑逐位相同；G-07 静态断言（扫描范围含新 `Rules/` 目录） | T002、T037、T060 |
@@ -395,11 +396,12 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `PendingDifficulty` / `PendingLivingStandard` | 每月第①步提升为生效值并清空待生效位（R-09） |
 | `Treasury.SavingsRate` | 1 月重 roll（与上年无关），当年内不变；12 月计息并入储蓄本金（R-11） |
 | `FamineState.ElapsedMonths` | 阶段非 `None` 时每月 +1（`TransitionTo` 的当月记为 1）；**调用点在第⑤步的足额判定之前**，阈值用推进后的值比较（E-14） |
-| `GameState.CurrentDate` | 结算末尾 `AdvanceMonth()`（跨年进位） |
+| 科举季（第⑦步，**005 追加**） | 考试月按 [契约十三 §1.2](../../005-exam-cycle/contracts/exam-session.md) 的六段次序产生报名/免解/中第与落第/及第入仕待阙/特奏名询问，并可能置位 `Family.HasShiStatus`；**非考试月 MUST NOT 产生任何状态变更、随机消费 0 次**，返回空快照 |
+| `GameState.CurrentDate` | 结算末尾第**⑧**步 `AdvanceMonth()`（跨年进位）；其前的第⑦步科举季 MUST NOT 改动 `CurrentDate` |
 
 ### 6.4 002 交付时**不建立**的状态转移
 
-属性成长/衰老/疾病/死亡（逻辑轨 ⑦）、科举季触发与功名变迁（阶段⑤）、罚金与服刑计时（阶段⑥）、
+属性成长/衰老/疾病/死亡（逻辑轨 ⑦）、罚金与服刑计时（阶段⑥）、
 婚育与外嫁归档（逻辑轨 ⑦）、绝嗣判定（逻辑轨 ⑧）、随机事件与米价灾年跳涨（逻辑轨 ⑦）、
 存档落盘与成就（阶段④/逻辑轨 ⑧）。上述项在 **002 交付时**的模型里**没有对应的写入通道**，
 因此当时不是「暂未实现」，而是「不可达」。
@@ -407,6 +409,13 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 **已从本表移出**：**待阙转授官与考课/致仕**（逻辑轨 ③）——002 交付时确在「不可达」之列，
 该步**已由 003 在结算第③步交付**（003 FR-019；见
 [契约七 §2](../../003-opening-assets-officialdom/contracts/official-career.md) 与
-[契约三 §1](./contracts/monthly-settlement.md) 的七步表），落点为 `OfficialCareerAdvance` 与
+[契约三 §1](./contracts/monthly-settlement.md) 的**八步**表），落点为 `OfficialCareerAdvance` 与
 `SettlementResult.Career`（§4.2）。四项出身的**开局初始资产发放**（规格书 §10.1）同属逻辑轨 ③、
 **已由 003 交付**（`OriginStartTable`）；002 的口径不变——它只消费已经存在的资产与资金。
+
+**005 后记（2026-10-12）**：**科举季触发与功名变迁**（逻辑轨 ⑤）同属「已从本表移出」——
+005 把它落成结算的固定新整步 ⑦「科举季」（位于 ⑥ 贷款之后、⑧ 推进时间之前；MUST NOT 调用
+`AdvanceMonth`、MUST NOT 修改 `CurrentDate`），全月结算由七步变**八步**（005 FR-019；见
+[契约十三 §1](../../005-exam-cycle/contracts/exam-session.md) 与
+[契约三 §1](./contracts/monthly-settlement.md)），落点为 `ExamSeasonRunner` / `ExamSeasonSnapshot`
+与 `SettlementResult.ExamSeason`（§4.2、§6.3）；非考试月 MUST NOT 产生任何变更。

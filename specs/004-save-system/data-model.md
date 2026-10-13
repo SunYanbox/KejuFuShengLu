@@ -49,7 +49,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 
 | 位置 | 成员 | 类型 | 语义 | 读取时机 |
 | --- | --- | --- | --- | --- |
-| 1 | `FormatVersion` | `int` | 文件格式版本，本版本 = `1` | **任何正文解析之前**（FR-015 的闸门，R-06） |
+| 1 | `FormatVersion` | `int` | 文件格式版本，本版本 = `2` | **任何正文解析之前**（FR-015 的闸门，R-06） |
 | 2 | `PayloadLength` | `int` | 主体的**字节数** | 截断判据（R-05/R-07） |
 | 3 | `SaveId` | `Guid` | 存档标识的探针副本（`D` 格式字符串） | UUID 唯一性探针（R-18） |
 
@@ -68,7 +68,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
   <PayloadLength 字节的主体 MessagePack 数组>
 
 .json（System.Text.Json，R-08 选项）
-  {"FormatVersion":1,"PayloadLength":N,"SaveId":"…","State":
+  {"FormatVersion":2,"PayloadLength":N,"SaveId":"…","State":
   <主体 JSON>}
 ```
 
@@ -119,6 +119,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | 3 | `Members` | `members` | 数组 / 数组 | `Family.Members`（**含归档成员，按加入顺序**） | 按同一顺序经 `AddOutsider`/`AddChild` 注册（R-12） |
 | 4 | `SettledOutsiders` | `settledOutsiders` | 数组 / 数组 | `Family` 的私有簿记（R-03） | `Family.RestoreOutsiderBookkeeping`（**新增 `internal`**） |
 | 5 | `MarriageAlignedOutsiders` | `marriageAlignedOutsiders` | 数组 / 数组 | 同上 | 同上 |
+| 6 | `AutoExamApplication` | `autoExamApplication` | `bool` / 布尔 | `Family.AutoExamApplication`（**005 新增**，持续报考开关） | 公开 setter（默认 `false`，与 `HasShiStatus` 同款） |
 
 > 归档**不是删除**（§12.1）：`Members` MUST 涵盖「在册」与「已归档（已亡 / 外嫁）」两类，
 > 故 `Members.Count == 在册数 + 归档数`；`Person` 的 `status` 里保留 `Deceased` / `MarriedOut` 位。
@@ -209,6 +210,9 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | 19 | `SpouseId` | `spouseId` | `str` 或 `nil` / 字符串或 `null` | `Person.SpouseId` | `Person.SetSpouse`（**既有 `internal`**，注册完成后统一写入；R-12） |
 | 20 | `FormerSpouseIds` | `formerSpouseIds` | 数组 / 数组 | `Person.FormerSpouseIds` | `Person.AddFormerSpouse`（**既有 `internal`**，逐条按序） |
 | 21 | `DegreeHistory` | `degreeHistory` | 数组 / 数组 | `Person.DegreeHistory`（**全量、按序**） | `Person.AppendDegree` 逐条（非降序与原件一致） |
+| 22 | `JieShiFailureCount` | `jieShiFailureCount` | `int` / 数字 | `Person.JieShiFailureCount`（**005 新增**，解试累计失败数） | `Person.RestoreExamProgress(…)`（**唯一 `internal` 复原通道**，一次写回 22~24，见 §3.11） |
+| 23 | `ShengShiFailureCount` | `shengShiFailureCount` | `int` / 数字 | `Person.ShengShiFailureCount`（**005 新增**，省试累计失败数） | 同上 |
+| 24 | `AppliedExam` | `appliedExam` | `int` 或 `nil` / 名字或 `null` | `Person.AppliedExam`（**005 新增**，报名标记：`null` / `JieShi` / `ShengShi`） | 同上（`Person.RestoreExamProgress(jieShiFailureCount, shengShiFailureCount, appliedExam)`；殿试不是合法报名态） |
 
 | 子 DTO | # | 成员 | 线上键名 | 源 / 复原 |
 | --- | --- | --- | --- | --- |
@@ -244,7 +248,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | 步 | 动作 | 为什么 |
 | --- | --- | --- |
 | ① | 建 `Family`（名 / 仕身份）、按序注册全部 `Person`（配偶留空） | `AddChild` 要求父母已在册（R-12） |
-| ② | 写 `Generation`（经构造函数携带）、`Study`/`Health`/`Lifespan`/`Talents`/`Rank`/`Merit`/`Occupation`/`MonthsInOffice` | 无相互依赖 |
+| ② | 写 `Generation`（经构造函数携带）、`Study`/`Health`/`Lifespan`/`Talents`/`Rank`/`Merit`/`Occupation`/`MonthsInOffice`；并写回 005 新增的三个成员——`Person.RestoreExamProgress(jieShiFailureCount, shengShiFailureCount, appliedExam)` | 无相互依赖；三个新成员**只**经这条 `internal` 通道复原，MUST NOT 走公开 setter |
 | ③ | 写 `Status`（此时 `Timers`/`EntryTrack` 仍为空 ⇒ 清位的校验恒成立） | `Person.Status` 的 setter 会拒绝「清位但计时非空」 |
 | ④ | 写 `Timers`、随后写 `EntryTrack` | 二者的 setter 要求对应状态位**已为真** |
 | ⑤ | 逐条 `AppendDegree`（按序） | 非降序校验与原件一致 |
@@ -252,7 +256,11 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | ⑦ | `SetHead`、`RestoreOutsiderBookkeeping` | `SetHead` 需在册性；簿记需成员标识（R-03） |
 | ⑧ | 建 `Treasury`（三池 + 贷款 + 利率，**先年份后利率**）、`Holdings`、`Ledger`（逐条 `Append`）、`Famine` | `Treasury` 的利率交叉校验 |
 | ⑨ | 建 `FamilyEconomy`（生活费档位 + 米价系数 + 三个子聚合）→ 建 `GameState`（identifier / 年月 / 难度 / 出身） | `LivingStandard` 与 `GrainPriceIndex` 是构造必需参数 |
-| ⑩ | 跑 `SaveStateValidator`（R-04 的九条） | 不自洽 ⇒ `InvalidStructure` |
+| ⑩ | 跑 `SaveStateValidator`（R-04 的十条） | 不自洽 ⇒ `InvalidStructure` |
+
+> **005 注**：`PersonDto` 的 22~24 三个键（`jieShiFailureCount` / `shengShiFailureCount` / `appliedExam`）
+> 由 ② 步的 `Person.RestoreExamProgress` **一次性**写回——它是唯一的复原入口
+> （`InternalsVisibleTo("KFL.Infrastructure")`），`Person` MUST NOT 为此新增公开 setter（001 不变量 2）。
 
 ---
 
@@ -269,14 +277,14 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | `SaveIdentityConflictException` | 同上文件族 | 同根下同 UUID 的另一个文件（R-18） |
 | `SaveAccessException` | 同上文件族 | 目录创建失败 / 无写权限（Edge Case；R-15） |
 | `SaveFileHeader` | `Save/SaveFileHeader.cs` | `readonly record struct (int FormatVersion, int PayloadLength, Guid SaveId)` |
-| `SaveFileFormat` | `Save/SaveFileFormat.cs` | `Version = 1`、扩展名常量、两种格式的**唯一**常量出处（R-06） |
+| `SaveFileFormat` | `Save/SaveFileFormat.cs` | `Version = 2`、扩展名常量、两种格式的**唯一**常量出处（R-06） |
 | `SaveName` | `Save/SaveName.cs` | `Validate`/`Normalize`：名称口径的唯一真源（R-13） |
 | `AtomicFileWriter` | `Save/AtomicFileWriter.cs` | 临时文件 + 同卷替换；**唯一**写盘路径（R-14） |
 | `SaveCatalog` | `Save/SaveCatalog.cs` | 目录枚举、存在性、`SaveId` 探针（只读头）、格式切换时的旧文件清理（R-18） |
 | `ISaveFormat` + `MessagePackSaveFormat` / `JsonSaveFormat` | `Save/Serialization/` | `Write(header, dto) → byte[]` / `Read(byte[]) → (header, dto)`；编解码选项的唯一出处（R-08/R-09） |
 | `SaveStateDto` 及其子 DTO | `Save/Serialization/*Dto.cs` | 线上形状的唯一真源（§3；R-02） |
 | `SaveStateMapper` | `Save/Serialization/SaveStateMapper.cs` | `ToDto(GameState)` / `ToDomain(SaveStateDto)`，逐字段显式（§3；R-02/R-12） |
-| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` | R-04 的九条一致性校验 |
+| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` | R-04 的十条一致性校验 |
 | `SaveService` | `Save/SaveService.cs` | `ISaveService` 的实现：装配 `SaveName`/`SaveCatalog`/`AtomicFileWriter`/`ISaveFormat` |
 
 ---
@@ -320,11 +328,11 @@ CompletedTurnsAt(current) = (current.Year − EpochYear) × 12 + (current.Month 
 | ① | 目标文件存在 | `Missing` |
 | ② | 头记录可读（形状 + 三成员） | `Malformed` |
 | ③ | `文件剩余字节 ≥ PayloadLength` | `Truncated` |
-| ④ | `FormatVersion == 1` | `UnsupportedVersion` |
+| ④ | `FormatVersion == 2` | `UnsupportedVersion` |
 | ⑤ | 主体文本/字节可解析 | `Malformed` |
 | ⑥ | 必需成员齐备（`[JsonRequired]` / MessagePack 数组长度） | `InvalidStructure` |
 | ⑦ | 沿 `Core` 校验路径逐字段复原（§3.11） | `InvalidStructure` |
-| ⑧ | `SaveStateValidator` 九条 | `InvalidStructure` |
+| ⑧ | `SaveStateValidator` 十条 | `InvalidStructure` |
 
 **不变量 11（失败无副作用）**：`Load` 失败 MUST NOT 修改存档文件、MUST NOT 返回默认状态或部分状态、
 MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
@@ -367,7 +375,7 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 | 需求 | 落点 | 验证物 |
 | --- | --- | --- |
 | FR-001 | `ISaveService`（`Infra/Abstractions`）+ `SaveService` | `SaveServiceTests`：全程无 UI、无 `KFL.App` 引用 |
-| FR-002 | §3 的逐字段表（76 个线上成员） | `SaveFormatContractTests` 的字段类别断言（≥14 类） |
+| FR-002 | §3 的逐字段表（80 个线上成员） | `SaveFormatContractTests` 的字段类别断言（≥14 类） |
 | FR-003 | §3.11 的复原次序 + R-04 | US1 的逐字段等价断言（两种格式各一轮） |
 | FR-004 | `ISaveFormat` 的两个实现 + §2.3 的两种布局 | 两格式各自往返 + `SaveFormatContractTests` 的键表断言 |
 | FR-005 | `SaveSlot.Format` 默认 `SaveFormat.Binary` | 未指定格式 ⇒ `.dat`；两格式结果等价 |
@@ -411,6 +419,9 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 | 12 | 落盘不改推演结果 | US1 AS5：读回后 12 个月 vs 基线逐字段相同 |
 | 13 | 存档名与家族姓氏解耦 | SC-004：改名前后 `Family.Name` 不变 |
 | 14 | 无墙钟、无全局随机、无网络（G-07 零违规） | `EnvironmentDependencyTests` |
+| 15 | `JieShiFailureCount >= 0` ∧ `ShengShiFailureCount >= 0` | `SaveStateValidator` 第 ⑩ 条；负值 ⇒ `InvalidStructure`（005） |
+| 16 | `AppliedExam ∈ { null, JieShi, ShengShi }`（殿试不是合法报名态） | `SaveStateValidator` 第 ⑩ 条（`Enum.IsDefined` 拒绝 `0` 与 `> 3`）；JSON 坏名 ⇒ `Malformed`、二进制越界整数 ⇒ `InvalidStructure`（005） |
+| 17 | 二进制 walker 的成员数常量 == DTO 键数（`PersonMemberCount` = 25、`FamilyMemberCount` = 7，连同对应 Skip 计数） | `SaveFormatContractTests` 按 005 的键数断言（005） |
 
 ---
 
@@ -423,3 +434,24 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 - **多进程/并发协调、文件锁、写入时间戳**：规格书未要求（Assumptions；R-23）。
 - **任何新的领域字段或规则数值**：本特性只把既有状态搬上磁盘；新增的唯一数值是
   `BackupIntervalTurns = 3` 与纪元 `(1, 1)`，二者**逐条出自**规格书 §14 与 §3（R-16）。
+
+---
+
+## 10. 005 后记（`005-exam-cycle` 同步注）
+
+本文件的存储侧形状随 005 的**跨特性形状变更**同步（变更授权：
+`specs/005-exam-cycle/plan.md` §「跨特性形状变更」表第 14 行、
+`specs/005-exam-cycle/contracts/exam-calendar.md`）：
+
+| 同步点 | 变更 |
+| --- | --- |
+| §2.2、§2.3、§4 | `SaveFileFormat.Version` 由 `1` 升为 `2`；头记录与 JSON 布局里的 `FormatVersion` 字样同步；版本闸门的接受谓词为 `FormatVersion == 2`（`< 2` 与 `> 2` 一律 `UnsupportedVersion`，且判定在**任何正文解析之前**） |
+| §3.2 | `FamilyDto` 6 → **7** 成员（末尾追加 `AutoExamApplication` / `autoExamApplication`(bool)） |
+| §3.8 | `PersonDto` 22 → **25** 成员（末尾追加 `JieShiFailureCount` / `ShengShiFailureCount` / `AppliedExam`，线上键 `jieShiFailureCount` / `shengShiFailureCount` / `appliedExam`）；既有成员的序号与键名不变 |
+| §3.11 | 复原次序第 ② 步并入 005 的三个新成员——`Person.RestoreExamProgress(jieShiFailureCount, shengShiFailureCount, appliedExam)` 是唯一复原通道（`internal`，`InternalsVisibleTo("KFL.Infrastructure")`），MUST NOT 借公开 setter 复原 |
+| §4、§6.2、§3.11 | `SaveStateValidator` 由「九条」变「**十条**」；第 ⑩ 条 = `appliedExam` 合法值（`null` ∨ ∈ { `JieShi`, `ShengShi` }）+ 两个失败数 `>= 0` |
+| §7、§8 | `FR-002` 的线上成员计数 76 → **80**；新增不变量 15/16/17 |
+
+**边界**：005 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`< 2` 的旧档一律 `UnsupportedVersion`）；
+`Person` / `Family` 的领域语义真源仍是 [005 data-model](../../005-exam-cycle/data-model.md)，本文件只记录它们如何变成字节。
+

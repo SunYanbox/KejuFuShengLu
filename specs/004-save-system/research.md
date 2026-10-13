@@ -120,6 +120,7 @@ API 面，也不让 `Core` 依赖任何序列化框架（R-02）。两处新增�
 | 7 | 饥馑：「阶段为零 ⇔ 计时为零」，且阶段非零时计时 ≥ 1 | 拒绝 |
 | 8 | 头记录的 `SaveId` 与主体的 `GameState.Id` 相等 | 拒绝 |
 | 9 | 账本每一条资金类条目金额非零（沿 `LedgerEntry` 的既有校验） | 拒绝 |
+| 10 | `appliedExam` 合法值（`null` ∨ ∈ { `JieShi`, `ShengShi` }）+ 两个考试失败计数 `>= 0`（005 追加） | 拒绝 |
 
 任一不成立 ⇒ `SaveFileException(Kind = InvalidStructure)`，且 **MUST NOT 返回半成品状态、MUST NOT
 修改原文件、MUST NOT 污染调用方已有的内存状态**（FR-014；`Load` 只**新建**一个 `GameState`，不改动
@@ -145,7 +146,7 @@ API 面，也不让 `Core` 依赖任何序列化框架（R-02）。两处新增�
 
 - **二进制（`.dat`）**：头 = MessagePack `fixarray(3)`，`SaveId` 以字符串写入（36 字符）；随后**直接**
   拼接主体的 MessagePack 字节流。
-- **JSON（`.json`）**：头 = `{"FormatVersion":1,"PayloadLength":N,"SaveId":"…"}`，随后是
+- **JSON（`.json`）**：头 = `{"FormatVersion":2,"PayloadLength":N,"SaveId":"…"}`，随后是
   `"State":` + 主体 JSON。
 
 写入次序固定为「先算出主体字节 → 再写头（此时 `PayloadLength` 已知）→ 拼接」，**不需两趟写盘**。
@@ -164,9 +165,9 @@ API 面，也不让 `Core` 依赖任何序列化框架（R-02）。两处新增�
 
 ## R-06 版本闸门
 
-**Decision**: `SaveFileFormat.Version = 1`（常量住在 `KFL.Infrastructure/Save/SaveFileFormat.cs`）。
-读取时 `FormatVersion != 1` 一律 `SaveFileException(Kind = UnsupportedVersion)`：
-`> 1` = 由更新版本写出（FR-015 的正面用例）；`< 1` = 无迁移路径（Out of Scope 明示不实现迁移）。
+**Decision**: `SaveFileFormat.Version = 2`（常量住在 `KFL.Infrastructure/Save/SaveFileFormat.cs`）。
+读取时 `FormatVersion != 2` 一律 `SaveFileException(Kind = UnsupportedVersion)`：
+`> 2` = 由更新版本写出（FR-015 的正面用例）；`< 2` = 无迁移路径（Out of Scope 明示不实现迁移）。
 
 **Rationale**: 本常量是**文件格式版本**，不是游戏规则数值，故不属 `KFL.Rules/Config/`。
 写入时头部先写版本，读取时在任何字段级解析之前先比对，使「更新版本写出的存档」**不可能**被静默
@@ -186,7 +187,7 @@ API 面，也不让 `Core` 依赖任何序列化框架（R-02）。两处新增�
 | 1 | 目标文件不存在 | `Missing` |
 | 2 | 头记录可读，且「文件剩余字节 < 头声明的 `PayloadLength`」 | `Truncated` |
 | 3 | 头记录本身读不出（字节损坏、魔数/形状不符） | `Malformed` |
-| 4 | 头可读且长度足够，但 `FormatVersion != 1` | `UnsupportedVersion` |
+| 4 | 头可读且长度足够，但 `FormatVersion != 2` | `UnsupportedVersion` |
 | 5 | 文本结构可解析（JSON 的 `JsonDocument.Parse` 成功 / MessagePack 的数组头成功），但**缺本版本必需成员**或**字段值违反 R-04 的校验** | `InvalidStructure` |
 | 6 | 其余一切解析失败（字节损坏、类型不符） | `Malformed` |
 

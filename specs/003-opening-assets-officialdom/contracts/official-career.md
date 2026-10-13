@@ -58,9 +58,17 @@ spec Edge Case）；服刑者仍在集合内、按下一条**显式暂停**。
 | 3 | 待阙期间该成员 MUST NOT 产生俸禄条目（其计口身份照常计入生活费，§5.1） |
 | 4 | 剩余月数 MUST 逐月递减 1；**递减到 0 的当月**授官：读 `Person.EntryTrack` 得 track，写 `Rank = InitialRankOf(track)`、`MonthsInOffice = 0`、清 `AwaitingPostRemainingMonths`、`EntryTrack` 与 `AwaitingPost` 位（**先清计时与途径、后清位**） |
 | 5 | 授官 MUST 幂等/互斥：已有官阶或已在待阙者再触发入口 MUST 被拒绝，且 MUST NOT 重置剩余月数 |
-| 6 | 初始官阶 MUST 按 track 映射：`FirstClass→L11`、`SecondClass→L13`、`ThirdClass→L15`、`SpecialTribute→L18`；track 取自**入口写入** `Person.EntryTrack` 的值，MUST NOT 在授官时从功名记录重新派生（待阙期内功名记录可能被逻辑轨 ⑤/⑥改写） |
+| 6 | 初始官阶 MUST 按 track 映射：`FirstClass→L11`、`SecondClass→L13`、`ThirdClass→L15`、`SpecialTribute→L18`；track 取自**入口写入** `Person.EntryTrack` 的值，MUST NOT 在授官时从功名记录重新派生（待阙期内功名记录可能被逻辑轨 ⑤/⑥改写）（005 后记见下表后） |
 | 7 | 进士的甲第缺失（末条记录 `Class == null`）或与名次矛盾时，入口 MUST **拒绝**，MUST NOT 猜一个等级 |
 | 8 | 官阶级数 MUST 始终落在 `SalaryTable.HighestLevel ~ LowestLevel`（无 L0、无 L19） |
+
+> **005 后记（`Person.EntryTrack` 的第二个生产者）**：本特性的「及第入仕」通用入口不再是唯一写入者。
+> `005-exam-cycle` 的殿试「及第入仕」步在 ④ 录取/进甲判定**之后**，按 `PersonId` 升序对殿试及第者调用
+> `AppointmentEntry.BeginForImperialGraduate(person, 考试月, random)`，由该入口写 `Person.EntryTrack` 与
+> `StatusFlag.AwaitingPost`（一甲 → `FirstClass`、二甲 → `SecondClass`、三甲 → `ThirdClass`）。005 MUST NOT
+> 自行写 `Person.Rank` / `Person.MonthsInOffice` / 账本，也不参与待阙递减与授官；初始官阶仍由本契约的
+> `OfficialCareerPolicy.InitialRankOf` 单点决定（L11 / L13 / L15）。本表条款 1~8 对两个入口一律适用
+> （005 spec FR-011；[契约十三 §7](../../005-exam-cycle/contracts/exam-session.md#7-及第入仕与-hasstatusfr-011fr-020)）。
 
 ## 4. 政绩与考课
 
@@ -135,6 +143,13 @@ spec Edge Case）；服刑者仍在集合内、按下一条**显式暂停**。
 | 2 | 「未命中 36 个月周期」与「因禁升被跳过」都 MUST NOT 消耗随机（是否命中由状态决定，不是随机决定） |
 | 3 | 相同种子 + 相同推进序列 MUST 得到相同的官阶轨迹、待阙月数与政绩序列 |
 
+> **005 后记（待阙时长抽取的调用方）**：待阙时长的随机抽取 `random.Next(6, 25)`（即 `[6, 24]` 整数均匀、
+> 含两端点，恰好消耗 1 次 `Next`）的**调用方**现为 `005-exam-cycle` 的殿试「及第入仕」步：005 在殿试月按
+> `PersonId` 升序调用 `AppointmentEntry.BeginForImperialGraduate(person, 考试月, random)`，抽取发生在该入口内部
+> （005 spec FR-011；[契约十三 §7](../../005-exam-cycle/contracts/exam-session.md#7-及第入仕与-hasstatusfr-011fr-020)）。
+> 该抽取仍**不在**本契约 §2 的月内步骤内，也**不进入**本节下列随机消费次序；月数区间 6~24 的唯一数值出处不变
+> （[config-registry.md](./config-registry.md) §2）。
+
 ## 9. 快照与断言面
 
 `SettlementResult.Career` MUST 提供本次结算的逐人增量：授官（成员 → 新官阶）、政绩增量、
@@ -144,6 +159,12 @@ spec Edge Case）；服刑者仍在集合内、按下一条**显式暂停**。
 
 ## 10. 本契约明确不包含
 
-科举周期与功名推进、特奏名的触发与「可拒绝」（逻辑轨 ⑤）；贿赂、惩罚矩阵、连坐、死刑、
-服刑与禁考/禁升计时的建立与递减、释放降级（逻辑轨 ⑥）；疾病、寿命与死亡判定、家主继任
-（逻辑轨 ⑦）；存档落盘与成就（逻辑轨 ④/⑧）；界面（界面轨 U1~U5）；官名表（规格书未定义）。
+> **005 后记（原「逻辑轨 ⑤」一项移出本清单）**：原列于此处、标注「逻辑轨 ⑤」的**科举周期与功名推进、
+> 特奏名的触发与「可拒绝」**，已由 `005-exam-cycle` 落地——它作为月度结算的第 ⑦ 步（科举季）推进功名，
+> 并在殿试月按 `PersonId` 升序调用本契约的 `AppointmentEntry.BeginForImperialGraduate(person, 考试月, random)`
+> 完成入仕（005 spec FR-011；[契约十三 §7](../../005-exam-cycle/contracts/exam-session.md#7-及第入仕与-hasstatusfr-011fr-020)）。
+> 其余排除项不变，仍列于下。
+
+贿赂、惩罚矩阵、连坐、死刑、服刑与禁考/禁升计时的建立与递减、释放降级（逻辑轨 ⑥）；疾病、
+寿命与死亡判定、家主继任（逻辑轨 ⑦）；存档落盘与成就（逻辑轨 ④/⑧）；界面（界面轨 U1~U5）；
+官名表（规格书未定义）。

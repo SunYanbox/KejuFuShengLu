@@ -29,7 +29,7 @@
 | 3 | `SaveId` | `Guid` | `Write(string)`（`D` 格式，36 字符） | `"SaveId"` 字符串成员 |
 
 二进制头的完整形状 = `fixarray(3)` 起手（`0x93`）后跟三个成员；JSON 头的完整形状 =
-`{"FormatVersion":1,"PayloadLength":N,"SaveId":"…","State":<主体>}`（`State` 之前恰有这三个成员，
+`{"FormatVersion":2,"PayloadLength":N,"SaveId":"…","State":<主体>}`（`State` 之前恰有这三个成员，
 次序固定）。
 
 **不变量**
@@ -74,8 +74,8 @@
 
 | DTO | Key → 键名 |
 | --- | --- |
-| `FamilyDto` | 0 `name`(string)、1 `hasShiStatus`(bool)、2 `headId`(Guid?)、3 `members`(PersonDto[])、4 `settledOutsiders`(Guid[])、5 `marriageAlignedOutsiders`(Guid[]) |
-| `PersonDto` | 0 `id`(Guid)、1 `name`(string)、2 `gender`、3 `birthYear`(int)、4 `birthMonth`(int)、5 `generation`(int)、6 `talents`(TalentDto)、7 `study`(int)、8 `health`(int)、9 `lifespan`(int)、10 `rankLevel`(int?)、11 `merit`(int)、12 `status`(StatusFlag)、13 `timers`(StatusTimersDto)、14 `occupation`、15 `monthsInOffice`(int)、16 `entryTrack`(AppointmentTrack?)、17 `fatherId`(Guid?)、18 `motherId`(Guid?)、19 `spouseId`(Guid?)、20 `formerSpouseIds`(Guid[])、21 `degreeHistory`(DegreeRecordDto[]) |
+| `FamilyDto` | 0 `name`(string)、1 `hasShiStatus`(bool)、2 `headId`(Guid?)、3 `members`(PersonDto[])、4 `settledOutsiders`(Guid[])、5 `marriageAlignedOutsiders`(Guid[])、6 `autoExamApplication`(bool) |
+| `PersonDto` | 0 `id`(Guid)、1 `name`(string)、2 `gender`、3 `birthYear`(int)、4 `birthMonth`(int)、5 `generation`(int)、6 `talents`(TalentDto)、7 `study`(int)、8 `health`(int)、9 `lifespan`(int)、10 `rankLevel`(int?)、11 `merit`(int)、12 `status`(StatusFlag)、13 `timers`(StatusTimersDto)、14 `occupation`、15 `monthsInOffice`(int)、16 `entryTrack`(AppointmentTrack?)、17 `fatherId`(Guid?)、18 `motherId`(Guid?)、19 `spouseId`(Guid?)、20 `formerSpouseIds`(Guid[])、21 `degreeHistory`(DegreeRecordDto[])、22 `jieShiFailureCount`(int)、23 `shengShiFailureCount`(int)、24 `appliedExam`(`ExamLevel?`) |
 | `TalentDto` | 0 `agriculture`、1 `commerce`、2 `officialdom`、3 `craft`（皆 `int`） |
 | `StatusTimersDto` | 0 `sentenceRemainingMonths`(int?)、1 `examBanRemainingMonths`(int?)、2 `promotionBanRemainingMonths`(int?)、3 `awaitingPostRemainingMonths`(int?) |
 | `DegreeRecordDto` | 0 `level`、1 `placement`、2 `changedYear`(int)、3 `changedMonth`(int)、4 `cause`、5 `imperialClass` |
@@ -112,27 +112,28 @@
 ① 文件存在？           否 ⇒ Missing
 ② 头记录可读？         否 ⇒ Malformed
 ③ 剩余字节 ≥ PayloadLength？ 否 ⇒ Truncated
-④ FormatVersion == 1？ 否 ⇒ UnsupportedVersion（> 1 = 更新版本写出；< 1 = 无迁移路径）
+④ FormatVersion == 2？ 否 ⇒ UnsupportedVersion（> 2 = 更新版本写出；< 2 = 旧版本，无迁移路径）
 ⑤ 主体可解析？         否 ⇒ Malformed
 ⑥ 必需成员齐备？       否 ⇒ InvalidStructure
 ⑦ 逐字段复原（Core 校验）？ 否 ⇒ InvalidStructure
-⑧ 一致性校验（九条）？ 否 ⇒ InvalidStructure
+⑧ 一致性校验（十条）？ 否 ⇒ InvalidStructure
 ```
 
 | 条款 | 要求 |
 | --- | --- |
-| 1 | 版本闸门（④）MUST 在任何主体解析之前；`> 1` MUST 明确拒绝（FR-015 的正面用例），MUST NOT 静默误读 |
-| 2 | 本版本 MUST NOT 提供任何迁移/兼容路径（Out of Scope）；`< 1` 同样拒绝 |
+| 1 | 版本闸门（④）MUST 在任何主体解析之前；接受的**唯一**谓词是 `FormatVersion == 2`——`> 2` 与 `< 2` MUST 一律拒绝（FR-015 的正面用例），MUST NOT 静默误读 |
+| 2 | 本版本 MUST NOT 提供任何迁移/兼容路径（Out of Scope）；`< 2`（含旧版 `1`）同样拒绝 |
 | 3 | 失败分类的判据 MUST 与「SC-007 的四类输入」一一对应，MUST NOT 依赖异常消息文本（R-07 的备选 ② 已被否） |
 | 4 | 全部失败路径 MUST NOT 修改原文件、MUST NOT 返回默认或部分状态（FR-014；[契约九 §2](./save-service.md)） |
 | 5 | 读取 MUST 只读该文件本身；MUST NOT 依赖任何外部状态（无时钟、无环境变量、无网络） |
 | 6 | **枚举的失败落点由线上形态决定**：JSON 写枚举**名**，不认得的名字在 ⑤ 就失败 ⇒ `Malformed`；二进制写**原值整数**，越界整数与未登记状态位都读得出来、但在 ⑦ 被拒 ⇒ `InvalidStructure`（data-model §3.9、§3.10） |
+| 7 | **第 ⑩ 条校验（005 新增）**：`appliedExam` 非空 ⇒ MUST ∈ { `JieShi`, `ShengShi` }（`Enum.IsDefined` 拒绝 `0` 与 `> 3`；殿试 `DianShi` 不是合法报名态）；`jieShiFailureCount` 与 `shengShiFailureCount` MUST `>= 0`。二进制写原值整数 ⇒ 越界整数在 ⑦ 被拒 ⇒ `InvalidStructure`；JSON 写枚举名 ⇒ 不认得的名字在 ⑤ 就读不出 ⇒ `Malformed`（与条款 6 同口径） |
 
 ## 7. 常量登记、依赖与验证物
 
 | 常量 | 声明处 | 依据 | 断言锚点 |
 | --- | --- | --- | --- |
-| 文件格式版本 **1** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」） | 版本闸门的两条用例（`2` 拒绝、`0` 拒绝） |
+| 文件格式版本 **2** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2` | 版本闸门的两条用例（`3` 拒绝、`1` 拒绝） |
 | 扩展名 `.dat` / `.json` | `SaveFileFormat` | §14 | 未指定格式 ⇒ `.dat`；指定 JSON ⇒ `.json`（FR-005） |
 | 存档根默认 `saves/` | `SaveOptions`（`null` ⇒ `AppContext.BaseDirectory`） | §14；章程「运行时路径 MUST 可配置」 | 自定义根生效 / 默认根生效（各一条） |
 | 备份目录 `backups/` | `SaveFileFormat` | §14 的 Q1 裁决 | [契约十一 §4](./save-cadence.md) |
@@ -165,3 +166,20 @@
 - **压缩、分块、按年索引、增量/差分存档**：FR-021 明文排除（Q2 裁决：单一文件、全量、不分块、不压缩）。
 - **写入时间戳与任何时钟信息**：R-23（不引入系统时钟）。
 - **界面**（格式设置项、存档列表、覆盖确认弹窗）：界面轨 U1/U5。
+
+---
+
+## 005 后记（`005-exam-cycle` 同步注）
+
+本契约随 005 的**跨特性形状变更**同步（变更授权在 `specs/005-exam-cycle/plan.md` 与
+`specs/005-exam-cycle/contracts/exam-calendar.md`）：
+
+| 同步点 | 变更 |
+| --- | --- |
+| §2、§4.2、§7 | 头记录 `FormatVersion` 与 `SaveFileFormat.Version` 由 `1` 升为 `2`；版本闸门的接受谓词改为 `FormatVersion == 2`（`< 2` 与 `> 2` 一律 `UnsupportedVersion`） |
+| §4.2 | `FamilyDto` 6 → **7** 键（末尾追加 `6 autoExamApplication`(bool)）；`PersonDto` 22 → **25** 键（末尾追加 `22 jieShiFailureCount`(int)、`23 shengShiFailureCount`(int)、`24 appliedExam`(`ExamLevel?`)）；既有键的 `Key` 序号与键名**不变**，新键**只追加** |
+| §6 | 一致性校验由「九条」变「**十条**」，新增第 ⑩ 条（`appliedExam` 合法值 + 两个失败数非负）及其 `InvalidStructure` / `Malformed` 落点（条款 7） |
+
+三个新键的**语义、来源与复原入口**（`Person.RestoreExamProgress`）见 [data-model §3.2、§3.8、§3.11](../data-model.md)——
+本契约只固定**键与类型**，MUST NOT 另行维护语义副本。
+

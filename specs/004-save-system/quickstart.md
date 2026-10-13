@@ -107,7 +107,7 @@ git status --porcelain                                     # 期望：无存档�
 | 缺失 | 不存在的档名 | `Missing` |
 | 截断 | 只保留文件的前 60% 字节 | `Truncated` |
 | 结构不符 | 合法 JSON 但删掉一个必需成员 | `InvalidStructure` |
-| 版本不符 | 把头记录的 `FormatVersion` 改成 `2` | `UnsupportedVersion` |
+| 版本不符 | 把头记录的 `FormatVersion` 改成 `3` | `UnsupportedVersion` |
 | （附加）字节损坏 | 随机改掉头记录之后的若干字节 | `Malformed` |
 
 **期望（四类共同）**：MUST NOT 返回「看起来能玩」的默认状态或部分状态；失败后**原文件内容**与
