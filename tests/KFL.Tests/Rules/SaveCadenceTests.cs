@@ -166,7 +166,7 @@ public sealed class SaveCadenceTests
         var plain = SaveFixtures.PlainState();
         var treasury = new Treasury(Money.FromGuan(10m));
         treasury.SavingsRateYear = 12;
-        treasury.SavingsRate = -0.01m;
+        treasury.SavingsRate = -0.01m; // arch-guard:allow 储蓄利率夹具值
 
         return new GameState(
             plain.Id,

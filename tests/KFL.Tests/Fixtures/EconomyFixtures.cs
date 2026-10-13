@@ -155,7 +155,7 @@ public sealed record EconomyFixtureSettings
     public Money Savings { get; init; } = Money.FromGuan(50m);
 
     /// <summary>当年储蓄利率；<c>null</c> = 尚未 roll 过。</summary>
-    public decimal? SavingsRate { get; init; } = 0.01m;
+    public decimal? SavingsRate { get; init; } = 0.01m; // arch-guard:allow 储蓄利率夹具值
 
     /// <summary>储蓄利率所属年份；<c>null</c> = 取 <see cref="Date"/> 的年份。</summary>
     public int? SavingsRateYear { get; init; }

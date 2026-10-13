@@ -397,6 +397,61 @@ public static class GameConfig
             AttributePolicy.NextLifespan(gender, random);
     }
 
+    /// <summary>科举政策（§6、§7.1、§7.2；005）：报考资格、三级录取、免解、特奏名与省试路费（只转发）。</summary>
+    public static class Exam
+    {
+        /// <summary>报考年龄下限（周岁）。</summary>
+        public static int MinimumAge => ExamPolicy.MinimumAge;
+
+        /// <summary>解试基础录取率。</summary>
+        public static decimal JieShiBaseRate => ExamPolicy.JieShiBaseRate;
+
+        /// <summary>省试基础录取率。</summary>
+        public static decimal ShengShiBaseRate => ExamPolicy.ShengShiBaseRate;
+
+        /// <summary>殿试基础进甲率。</summary>
+        public static decimal ImperialPromotionBaseRate => ExamPolicy.ImperialPromotionBaseRate;
+
+        /// <summary>学业系数基数。</summary>
+        public static decimal StudyFactorBase => ExamPolicy.StudyFactorBase;
+
+        /// <summary>学业系数每点增量。</summary>
+        public static decimal StudyFactorPerPoint => ExamPolicy.StudyFactorPerPoint;
+
+        /// <summary>仕天赋除数。</summary>
+        public static int OfficialdomDivisor => ExamPolicy.OfficialdomDivisor;
+
+        /// <summary>仕族录取率加成。</summary>
+        public static decimal ShiStatusAdmissionBonus => ExamPolicy.ShiStatusAdmissionBonus;
+
+        /// <summary>未进甲者的二甲学业线。</summary>
+        public static int SecondClassStudyThreshold => ExamPolicy.SecondClassStudyThreshold;
+
+        /// <summary>需掷骰概率的封顶。</summary>
+        public static decimal DiceRateCap => ExamPolicy.DiceRateCap;
+
+        /// <summary>本轮贿赂乘数。</summary>
+        public static decimal NeutralBribeMultiplier => ExamPolicy.NeutralBribeMultiplier;
+
+        /// <summary>免解的解试累计失败数阈值。</summary>
+        public static int JieShiExemptionFailureThreshold => ExamPolicy.JieShiExemptionFailureThreshold;
+
+        /// <summary>特奏名年龄下限。</summary>
+        public static int SpecialTributeMinimumAge => ExamPolicy.SpecialTributeMinimumAge;
+
+        /// <summary>特奏名的省试累计失败数阈值。</summary>
+        public static int SpecialTributeFailureThreshold => ExamPolicy.SpecialTributeFailureThreshold;
+
+        /// <summary>省试路费（贯）。</summary>
+        public static int ExamTravelCostGuan(Difficulty difficulty) => ExamPolicy.ExamTravelCostGuan(difficulty);
+
+        /// <summary>解试 / 省试的基础录取率。</summary>
+        public static decimal BaseRateOf(ExamLevel level) => ExamPolicy.BaseRateOf(level);
+
+        /// <summary>学业系数。</summary>
+        public static decimal StudyFactor(int study) => ExamPolicy.StudyFactor(study);
+    }
+
     /// <summary>官吏政策（§8.2；003）：待阙、授官、政绩、考课、致仕与半俸（只转发）。</summary>
     public static class Career
     {
