@@ -323,6 +323,26 @@ public class FamilyTests
         Assert.Equal(DegreeLevel.BaiShen, member.CurrentDegree);
     }
 
+    [Fact]
+    public void 连续报考开关默认为假且可独立切换()
+    {
+        // 契约十二 §5 条款 1：默认 false；与 HasShiStatus 同形（家族级持久化布尔）。
+        var family = new Family("测试");
+        var property = typeof(Family).GetProperty(nameof(Family.AutoExamApplication));
+
+        Assert.NotNull(property);
+        Assert.True(property.SetMethod is { IsPublic: true });
+        Assert.False(family.AutoExamApplication);
+
+        family.AutoExamApplication = true;
+        Assert.True(family.AutoExamApplication);
+        family.AutoExamApplication = false;
+        Assert.False(family.AutoExamApplication);
+
+        // 与仕身份互不影响。
+        Assert.False(family.HasShiStatus);
+    }
+
     // ---------------------------------------------------------------- 辈分与家主专项（research R-15）
 
     [Fact]
