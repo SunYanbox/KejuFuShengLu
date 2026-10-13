@@ -4,6 +4,7 @@ using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
 using KFL.Rules.Career;
 using KFL.Rules.Config;
+using KFL.Rules.Exam;
 
 namespace KFL.Rules.Settlement;
 
@@ -12,7 +13,7 @@ namespace KFL.Rules.Settlement;
 /// </summary>
 /// <remarks>
 /// <para>
-/// **唯一的编排入口**（FR-020）：按契约三 §1（003 后为契约七 §2 的七步）执行一次，**就地**推进传入的
+/// **唯一的编排入口**（FR-020）：按契约三 §1（003 后为契约七 §2 的七步；005 后为契约十三 §1.1 的八步）执行一次，**就地**推进传入的
 /// <see cref="GameState"/> 与 <see cref="GameState.CurrentDate"/>，并返回可断言的快照。
 /// </para>
 /// <list type="number">
@@ -22,11 +23,17 @@ namespace KFL.Rules.Settlement;
 /// <item><description>收入：1 月 roll 当年储蓄利率、12 月计息并入本金 + 工出身 bonus，再按 §6 各来源入账（俸禄按三态）。</description></item>
 /// <item><description>生活费：足额或部分支付 + 饥馑四阶段状态机（先解除、后升级；R-12）。</description></item>
 /// <item><description>贷款：**先计息、后划扣**（E-05；US2 已接入）。</description></item>
+/// <item><description>科举季（005 新增；<c>ExamSeasonRunner.Run</c>，按 <c>PersonId</c> 升序）：自动报名 → 路费与弃考 → 免解 → 录取 / 进甲判定 → 及第入仕 → 特奏名询问。</description></item>
 /// <item><description><see cref="GameState.AdvanceMonth"/> 并返回快照。</description></item>
 /// </list>
 /// <para>
 /// **MUST NOT 存在**的步骤（各属其他阶段）：随机事件、属性成长 / 衰老 / 疾病 / 死亡判定、
-/// 科举季触发、绝嗣判定、存档写入（契约三 §1 的「MUST NOT 存在」清单）。
+/// 绝嗣判定、存档写入（契约三 §1 的「MUST NOT 存在」清单）。
+/// </para>
+/// <para>
+/// **随机消费次序**（契约七 §2、契约十三 §1.3，单测逐次断言）：米价（②）→ 考课掷骰（③-d，逐人升序）
+/// → 储蓄利率（仅 1 月，④）→ 贷款计息利率（⑥）→ 科举判定（⑦，逐人：1 次录取 / 进甲，
+/// 进甲者紧接 1 次名次）→ 及第入仕待阙（⑦，1 次 <c>Next(6, 25)</c>，按 <c>PersonId</c> 升序）。
 /// </para>
 /// <para>
 /// 随机与「现在」都只能来自构造函数注入的接缝（章程原则 II、契约二）：
@@ -182,7 +189,11 @@ public sealed class MonthlySettlementEngine
 
         var famineAfter = new FamineState(economy.Famine);
 
-        // ⑦ 推进时间并返回快照。
+        // ⑦ 科举季（**必须在推进时间之前**，故判定用的是考试当月的日期与当月值）：
+        //    本步 MUST NOT 调用 AdvanceMonth、MUST NOT 修改 CurrentDate（契约十三 §1.1）。
+        var examSeason = ExamSeasonRunner.Run(state, _randomService);
+
+        // ⑧ 推进时间并返回快照。
         state.AdvanceMonth();
 
         return new SettlementResult
@@ -205,6 +216,7 @@ public sealed class MonthlySettlementEngine
             TreasuryPoolBefore = poolBefore,
             TreasuryPoolAfter = economy.TreasuryPool,
             Career = career,
+            ExamSeason = examSeason,
         };
     }
 
