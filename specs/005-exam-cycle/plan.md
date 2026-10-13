@@ -95,7 +95,7 @@ ExamSeasonTests,ExamSpecialTributeTests}.cs`（5 个），并同步 `Rules/SpecA
   `Config/ExamPolicy.cs`）、**改 3** 个（`Settlement/SettlementResult.cs`、
   `Settlement/MonthlySettlementEngine.cs`、`Config/GameConfig.cs`）。
 - `KFL.Infrastructure`：**增 0** 个文件（无新依赖）、**改 5** 个
-  （`Save/Serialization/{SaveStateValueDtos,MessagePackSaveFormat,SaveStateMapper,SaveStateValidator}.cs`、
+  （`Save/Serialization/{SaveStateDto,MessagePackSaveFormat,SaveStateMapper,SaveStateValidator}.cs`、
   `Save/SaveFileFormat.cs`）。
 - `KFL.Presentation` / `KFL.App`：**0** 个界面功能、**0** 行界面代码。
 - 测试：**增 5** 个文件、**改 ≥6** 个既有文件（断言物同步）。
@@ -165,7 +165,7 @@ ExamSeasonTests,ExamSpecialTributeTests}.cs`（5 个），并同步 `Rules/SpecA
 | 11 | `src/KFL.Rules/Settlement/MonthlySettlementEngine.cs` 类文档 | 七步 → 八步；`MUST NOT 存在` 清单**移除**「科举季触发（阶段 ⑤）」；随机消费次序补入「科举判定 → 及第入仕待阙」 | FR-019、FR-028③ |
 | 12 | `src/KFL.Core/Enums/LedgerCategory.cs` + `LedgerCategoryMetadata.cs` | 类别计数 **19 → 20**：枚举类文档与两处 `default:` 异常文案（「共 19 个取值」→「共 20 个取值」） | FR-021、FR-028⑦ |
 | 13 | 断言物（同提交，**不是**历史工件） | `tests/KFL.Tests/Architecture/ConfigLiteralTests.cs` 的 `RegisteredValues` **+4 项小数**（`0.01m` / `0.05m` / `0.012m` / `0.899999m`）；`Core/` 的类别计数断言（19 → 20）；`Infrastructure/{SaveFixtures,SaveStateComparer,SaveFormatContractTests,SaveFailureTests}.cs`（键表、成员数常量、版本闸门用例、夹具非默认值、比较器、校验口径） | FR-014、FR-024、SC-008、SC-009 |
-| 14 | `src/KFL.Infrastructure/Save/SaveFileFormat.cs` + `Save/Serialization/{MessagePackSaveFormat,SaveStateMapper,SaveStateValidator,SaveStateValueDtos}.cs` | `Version` 1 → 2；`PersonMemberCount` 22 → 25 及 walker 的 Skip 计数；`FamilyMemberCount` 6 → 7；双向映射；第 ⑩ 条校验（`appliedExam ∈ { JieShi, ShengShi }` 且两个失败数 `>= 0`） | FR-024 |
+| 14 | `src/KFL.Infrastructure/Save/SaveFileFormat.cs` + `Save/Serialization/{MessagePackSaveFormat,SaveStateMapper,SaveStateValidator,SaveStateDto}.cs` | `Version` 1 → 2；`PersonMemberCount` 22 → 25 及 walker 的 Skip 计数；`FamilyMemberCount` 6 → 7；双向映射；第 ⑩ 条校验（`appliedExam ∈ { JieShi, ShengShi }` 且两个失败数 `>= 0`） | FR-024 |
 | 15 | `specs/005-exam-cycle/tasks.md` | 登记上述回写范围（同步了哪些文件、同步到哪里），供后续审计核对 | AGENTS.md 铁律第 3 条 |
 
 > **不改的**：`tasks.md`（001~004 的既有条目）、`implementation-notes.md`、既有 `checklists/` 属
@@ -219,7 +219,7 @@ src/
 │   └── Save/
 │       ├── SaveFileFormat.cs            # 【改】Version 1 → 2
 │       └── Serialization/
-│           ├── SaveStateValueDtos.cs    # 【改】PersonDto +3 键（22..24）、FamilyDto +1 键（6）
+│           ├── SaveStateDto.cs          # 【改】PersonDto +3 键（22..24）、FamilyDto +1 键（6）
 │           ├── MessagePackSaveFormat.cs # 【改】PersonMemberCount 22→25、FamilyMemberCount 6→7 与 walker
 │           ├── SaveStateMapper.cs       # 【改】双向映射（复原次序沿用 004 data-model §3.11）
 │           └── SaveStateValidator.cs    # 【改】+1 条（appliedExam 取值域、两个失败数非负）

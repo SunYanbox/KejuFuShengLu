@@ -5,7 +5,7 @@
 本契约定义「**什么时候**存、**存哪一份**」：回合数的定义、`TurnRunner` 的编排次序、自动保存的
 开关与退出保存的复用。它是 FR-010、FR-011、FR-012、FR-018 与 SC-003 的可执行形式。
 
-> **本契约不改契约三**：月度结算的七步序列（[契约三 §1](../../002-monthly-settlement-economy/contracts/monthly-settlement.md)）
+> **本契约不改契约三**：月度结算的八步序列（[契约三 §1](../../002-monthly-settlement-economy/contracts/monthly-settlement.md)）
 > **一字不动**——它的「**MUST NOT 存在**的步骤」清单里明列「存档写入」，本契约因此把落盘放在
 > 结算**之外**的一层（R-17）。故本特性**没有**对任何上游步骤序列做插入式形状变更。
 

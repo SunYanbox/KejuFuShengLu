@@ -267,6 +267,7 @@ public class LedgerInvariantTests
             LedgerCategory.LoanPrincipalRepaid,
             LedgerCategory.LoanInterestRepaid,
             LedgerCategory.AssetPurchase,
+            LedgerCategory.ExamTravelCost,   // 005：省试路费恒为负（I-5）
         ];
 
         foreach (var category in alwaysNegative)

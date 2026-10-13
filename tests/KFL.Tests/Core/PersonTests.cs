@@ -192,6 +192,101 @@ public class PersonTests
             $"{propertyName} 是 Person 自持的可写属性，应有公开 setter。");
     }
 
+    // ------------------------------------------------------------------ 科举进度（T054，I-1/I-2/I-3）
+
+    /// <summary>
+    /// FR-005 / Q2 / I-2：报名标记的两条写入通道的语义——同级别重复报名是**幂等**的
+    /// （不抛、不改任何字段），已有标记时改报其它级别被拒。
+    /// </summary>
+    [Fact]
+    public void 报名同一级别幂等且不改任何字段()
+    {
+        var person = FamilyFixtures.NewPerson(705, "考生", Gender.Male, 1, 1, generation: 0);
+
+        Assert.Null(person.AppliedExam);
+
+        person.ApplyForExam(ExamLevel.JieShi);
+        Assert.Equal(ExamLevel.JieShi, person.AppliedExam);
+
+        var degreeCount = person.DegreeHistory.Count;
+
+        // 同级别重复报名：幂等 —— 不抛、标记不变、计数与功名史不动。
+        person.ApplyForExam(ExamLevel.JieShi);
+
+        Assert.Equal(ExamLevel.JieShi, person.AppliedExam);
+        Assert.Equal(0, person.JieShiFailureCount);
+        Assert.Equal(0, person.ShengShiFailureCount);
+        Assert.Equal(degreeCount, person.DegreeHistory.Count);
+
+        // 已有标记时**改报**另一级别被拒，且原标记一字不动（MUST 先显式清除）。
+        Assert.Throws<InvalidOperationException>(() => person.ApplyForExam(ExamLevel.ShengShi));
+        Assert.Equal(ExamLevel.JieShi, person.AppliedExam);
+    }
+
+    /// <summary>
+    /// FR-005 / FR-009 / EX-13 / I-2：殿试既不是报名态、也不可能落第——两条通道都显式拒绝，
+    /// 且拒绝路径 MUST NOT 改动任何字段。
+    /// </summary>
+    [Fact]
+    public void 报名殿试与记录殿试落第均被拒且不改字段()
+    {
+        var person = FamilyFixtures.NewPerson(706, "考生", Gender.Male, 1, 1, generation: 0);
+
+        Assert.Throws<InvalidOperationException>(() => person.ApplyForExam(ExamLevel.DianShi));
+        Assert.Throws<InvalidOperationException>(() => person.RecordExamFailure(ExamLevel.DianShi));
+
+        Assert.Null(person.AppliedExam);
+        Assert.Equal(0, person.JieShiFailureCount);
+        Assert.Equal(0, person.ShengShiFailureCount);
+        Assert.Empty(person.DegreeHistory);
+    }
+
+    /// <summary>I-2 / FR-005：<see cref="Person.ClearExamApplication"/> 对 <c>null</c> 是 no-op。</summary>
+    [Fact]
+    public void 清除空报名标记是幂等空操作()
+    {
+        var person = FamilyFixtures.NewPerson(707, "考生", Gender.Male, 1, 1, generation: 0);
+
+        person.ClearExamApplication();
+        person.ClearExamApplication();
+
+        Assert.Null(person.AppliedExam);
+
+        person.ApplyForExam(ExamLevel.ShengShi);
+        person.ClearExamApplication();
+
+        Assert.Null(person.AppliedExam);
+        Assert.Equal(0, person.JieShiFailureCount);
+        Assert.Equal(0, person.ShengShiFailureCount);
+    }
+
+    /// <summary>
+    /// FR-023 / I-1：<see cref="Person.RecordExamFailure"/> 只 `+1` **对应**级别的计数、
+    /// 不触碰另一计数、不写功名史，且累加无上限（解试 3 败免解、省试 6 败特奏名只用其单调性）。
+    /// </summary>
+    [Fact]
+    public void 记录落第只增加对应级别的计数且无上限()
+    {
+        var person = FamilyFixtures.NewPerson(708, "考生", Gender.Male, 1, 1, generation: 0);
+
+        person.RecordExamFailure(ExamLevel.JieShi);
+        person.RecordExamFailure(ExamLevel.JieShi);
+        person.RecordExamFailure(ExamLevel.ShengShi);
+
+        Assert.Equal(2, person.JieShiFailureCount);
+        Assert.Equal(1, person.ShengShiFailureCount);
+        Assert.Null(person.AppliedExam);
+        Assert.Empty(person.DegreeHistory);
+
+        for (var i = 0; i < 10; i++)
+        {
+            person.RecordExamFailure(ExamLevel.JieShi);
+        }
+
+        Assert.Equal(12, person.JieShiFailureCount);
+        Assert.Equal(1, person.ShengShiFailureCount);
+    }
+
     [Fact]
     public void 年龄由出生年月派生且没有裸年龄字段()
     {
