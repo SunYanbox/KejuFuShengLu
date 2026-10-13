@@ -203,6 +203,59 @@ public class SpecAnchorTests
         Assert.Equal(0.70m, GameConfig.Career.PromotionChance(200));    // arch-guard:allow 锚点即被验证对象
     }
 
+    /// <summary>
+    /// SC-002/SC-004/SC-006/SC-007（005）：科举体系的全部规则数值等于规格书 §6 / §7.1 / §7.2。
+    /// </summary>
+    [Fact]
+    public void 科举体系数值等于规格书()
+    {
+        // 报考年龄下限 14 岁、免解阈值 3 败（§6）。
+        Assert.Equal(14, GameConfig.Exam.MinimumAge);
+        Assert.Equal(3, GameConfig.Exam.JieShiExemptionFailureThreshold);
+
+        // 三级基础率：解试 1%、省试 10%、殿试进甲 5%（§6）。
+        Assert.Equal(0.01m, GameConfig.Exam.JieShiBaseRate);   // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.10m, GameConfig.Exam.ShengShiBaseRate); // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.05m, GameConfig.Exam.ImperialPromotionBaseRate); // arch-guard:allow 锚点即被验证对象
+
+        // 学业系数 0.4 + 0.012 × 学业（§6）：0 → 0.4、50 → 1.0、100 → 1.6。
+        Assert.Equal(0.4m, GameConfig.Exam.StudyFactorBase);       // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.012m, GameConfig.Exam.StudyFactorPerPoint); // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.4m, GameConfig.Exam.StudyFactor(0));        // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.0m, GameConfig.Exam.StudyFactor(50));       // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.6m, GameConfig.Exam.StudyFactor(100));      // arch-guard:allow 锚点即被验证对象
+
+        // 仕天赋除数 400、仕族加成 ×1.1、未进甲的二甲学业线 50（§6）。
+        Assert.Equal(400, GameConfig.Exam.OfficialdomDivisor);
+        Assert.Equal(1.1m, GameConfig.Exam.ShiStatusAdmissionBonus); // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(50, GameConfig.Exam.SecondClassStudyThreshold);
+
+        // 需掷骰概率的封顶 89.9999%（§7.1）；本轮贿赂乘数 k⁰ = 1.0。
+        Assert.Equal(0.899999m, GameConfig.Exam.DiceRateCap);          // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.0m, GameConfig.Exam.NeutralBribeMultiplier);    // arch-guard:allow 锚点即被验证对象
+
+        // 特奏名两门槛：50 岁、省试累计 6 败（§7.2）。
+        Assert.Equal(50, GameConfig.Exam.SpecialTributeMinimumAge);
+        Assert.Equal(6, GameConfig.Exam.SpecialTributeFailureThreshold);
+
+        // 省试路费四档 10 / 20 / 40 / 80 贯（§6）——**不乘**难度支出系数。
+        Assert.Equal(10, GameConfig.Exam.ExamTravelCostGuan(Difficulty.Easy));
+        Assert.Equal(20, GameConfig.Exam.ExamTravelCostGuan(Difficulty.Normal));
+        Assert.Equal(40, GameConfig.Exam.ExamTravelCostGuan(Difficulty.Hard));
+        Assert.Equal(80, GameConfig.Exam.ExamTravelCostGuan(Difficulty.Hell));
+
+        // 路费与难度支出系数**同档不同义**：路费只按难度换档，MUST NOT 再乘支出系数。
+        // 「普通」档支出系数恰为 1.0，二者同值属预期，故只对系数 ≠ 1 的三档作证（契约十三 §3.1）。
+        foreach (var difficulty in new[] { Difficulty.Easy, Difficulty.Hard, Difficulty.Hell })
+        {
+            var guan = (decimal)GameConfig.Exam.ExamTravelCostGuan(difficulty);
+            var expenseFactor = GameConfig.DifficultyRate.ExpenseFactor(difficulty);
+
+            Assert.NotEqual(1.0m, expenseFactor);
+            Assert.NotEqual(guan, guan * expenseFactor);
+        }
+    }
+
     /// <summary>计数随机替身：统计 <see cref="IRandomService.NextDouble"/> 的调用次数，取值恒定。</summary>
     private sealed class CountingRandomService : IRandomService
     {

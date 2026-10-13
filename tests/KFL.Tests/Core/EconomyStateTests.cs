@@ -103,12 +103,12 @@ public class EconomyStateTests
         var treasury = new Treasury();
 
         // 先利率后年份 MUST 被拒（否则会出现「有利率无年份」的中间态）。
-        Assert.Throws<ArgumentException>(() => treasury.SavingsRate = 0.01m);
+        Assert.Throws<ArgumentException>(() => treasury.SavingsRate = 0.01m); // arch-guard:allow 储蓄利率夹具值
 
         treasury.SavingsRateYear = 3;
-        treasury.SavingsRate = 0.01m;
+        treasury.SavingsRate = 0.01m; // arch-guard:allow 储蓄利率夹具值
 
-        Assert.Equal(0.01m, treasury.SavingsRate.GetValueOrDefault());
+        Assert.Equal(0.01m, treasury.SavingsRate.GetValueOrDefault()); // arch-guard:allow 储蓄利率夹具值
         Assert.Equal(3, treasury.SavingsRateYear.GetValueOrDefault());
 
         // 清空次序相反：年份先清 MUST 被拒。

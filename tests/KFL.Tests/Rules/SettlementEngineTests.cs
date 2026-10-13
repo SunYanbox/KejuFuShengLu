@@ -215,7 +215,7 @@ public class SettlementEngineTests
             Origin.Artisan,
             FamineStage.None).Payable;
 
-        var partial = RulesHarness.Guan(0.05m);
+        var partial = RulesHarness.Guan(0.05m); // arch-guard:allow 夹具金额
 
         Assert.True(partial < payable);
 
