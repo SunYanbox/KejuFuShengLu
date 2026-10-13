@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Rules.Career;
+using KFL.Rules.Exam;
 
 namespace KFL.Rules.Settlement;
 
@@ -103,4 +104,10 @@ public sealed record SettlementResult
     /// 它是增量、不是第二真源（契约七 §9）。
     /// </summary>
     public required CareerAdvanceResult Career { get; init; }
+
+    /// <summary>
+    /// 本次结算**第⑦步（科举季）**的增量快照（自动报名 / 弃考 / 免解 / 判定 / 及第入仕 / 特奏名询问）。
+    /// 它是增量、不是第二真源（契约十三 §9）。
+    /// </summary>
+    public required ExamSeasonSnapshot ExamSeason { get; init; }
 }
