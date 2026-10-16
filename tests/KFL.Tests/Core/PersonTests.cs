@@ -13,7 +13,7 @@ namespace KFL.Tests.Core;
 /// </summary>
 public class PersonTests
 {
-    /// <summary>data-model §2.1 不变量 2 的**完整清单**（16 个），不是抽样。</summary>
+    /// <summary>data-model §2.1 不变量 2 的**完整清单**（19 个），不是抽样。</summary>
     public static TheoryData<string> MembersWithoutWriteChannel => new()
     {
         "Id",
@@ -31,6 +31,9 @@ public class PersonTests
         "CurrentPlacement",
         "JieShiFailureCount",
         "ShengShiFailureCount",
+        "JieShiBribeCount",
+        "ShengShiBribeCount",
+        "DianShiBribeCount",
         "AppliedExam",
     };
 

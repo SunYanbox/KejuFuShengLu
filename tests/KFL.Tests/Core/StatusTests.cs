@@ -141,6 +141,60 @@ public class StatusTests
     }
 
     [Fact]
+    public void 服刑禁考禁升的建立与清除次序同款交叉校验()
+    {
+        var person = FamilyFixtures.NewPerson(807, "受罚者", Gender.Male, 1, 1, generation: 0);
+
+        // 位为假时三个计时 MUST 为空（服刑 / 禁考 / 禁升，与待阙同款）。
+        Assert.Throws<ArgumentException>(() => person.Timers = new StatusTimers(sentenceRemainingMonths: 60));
+        Assert.Throws<ArgumentException>(() => person.Timers = new StatusTimers(examBanRemainingMonths: 36));
+        Assert.Throws<ArgumentException>(() => person.Timers = new StatusTimers(promotionBanRemainingMonths: 36));
+
+        // 建立：先置状态位、后写计时（与契约十六 §1.2 的字面相反，见 tasks.md T073 登记的口径裁定）。
+        person.Status = StatusFlag.ServingSentence | StatusFlag.ExamBanned | StatusFlag.PromotionBanned;
+        person.Timers = new StatusTimers(
+            sentenceRemainingMonths: 60,
+            examBanRemainingMonths: 36,
+            promotionBanRemainingMonths: 36);
+
+        Assert.Equal(60, person.Timers.SentenceRemainingMonths.GetValueOrDefault(-1));
+        Assert.Equal(36, person.Timers.ExamBanRemainingMonths.GetValueOrDefault(-1));
+        Assert.Equal(36, person.Timers.PromotionBanRemainingMonths.GetValueOrDefault(-1));
+
+        // 清除：先清计时（写 null）、后清状态位；任一位被清而其余计时仍在 ⇒ 拒。
+        Assert.Throws<ArgumentException>(() => person.Status = StatusFlag.None);
+        Assert.Throws<ArgumentException>(() => person.Status = StatusFlag.ServingSentence);
+
+        person.Timers = default;
+        person.Status = StatusFlag.None;
+
+        Assert.Equal(StatusFlag.None, person.Status);
+        Assert.Null(person.Timers.SentenceRemainingMonths);
+        Assert.Null(person.Timers.ExamBanRemainingMonths);
+        Assert.Null(person.Timers.PromotionBanRemainingMonths);
+    }
+
+    [Fact]
+    public void 剩余月数为零也算非空因而仍须先清计时再清位()
+    {
+        var person = FamilyFixtures.NewPerson(808, "期满者", Gender.Male, 1, 1, generation: 0);
+
+        // 0 也算非空：位为假时 0 值计时同样被拒。
+        Assert.Throws<ArgumentException>(() => person.Timers = new StatusTimers(examBanRemainingMonths: 0));
+
+        person.Status = StatusFlag.ExamBanned;
+        person.Timers = new StatusTimers(examBanRemainingMonths: 0);
+
+        Assert.Equal(0, person.Timers.ExamBanRemainingMonths.GetValueOrDefault(-1));
+        Assert.Throws<ArgumentException>(() => person.Status = StatusFlag.None);
+
+        person.Timers = default;
+        person.Status = StatusFlag.None;
+
+        Assert.Null(person.Timers.ExamBanRemainingMonths);
+    }
+
+    [Fact]
     public void 已亡与外嫁决定归档归类()
     {
         var fixture = FamilyFixtures.MultiGeneration();

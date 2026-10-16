@@ -63,6 +63,12 @@ public sealed class Family
     /// <summary>全部成员（含已归档），按加入顺序。</summary>
     public IReadOnlyCollection<Person> Members => _membersView;
 
+    /// <summary>
+    /// **当月事实缓冲**：贿赂与惩罚已发生、尚未被某次结算报告的事实（FR-028、FR-030；
+    /// data-model §2.3）。家族级唯一实例、只追加，是 <c>SettlementResult.Punishment</c> 的唯一来源。
+    /// </summary>
+    public PunishmentJournal PunishmentJournal { get; } = new();
+
     /// <summary>**在册**成员 = 非「已亡」且非「外嫁」（规格书 §12.1、§15）。</summary>
     public IReadOnlyCollection<Person> RegisteredMembers =>
         _members.Where(IsRegistered).ToList().AsReadOnly();

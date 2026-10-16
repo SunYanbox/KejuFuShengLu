@@ -76,6 +76,8 @@ public class LedgerInvariantTests
     [InlineData(LedgerCategory.FamineSevereEntered, LedgerEntryKind.Event, null)]
     [InlineData(LedgerCategory.FamineResolved, LedgerEntryKind.Event, null)]
     [InlineData(LedgerCategory.ExamTravelCost, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.BribeExpense, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.Fine, LedgerEntryKind.Treasury, null)]
     public void 类别元数据逐行一致(
         LedgerCategory category, LedgerEntryKind kind, LedgerCreditTarget? creditTarget)
     {
@@ -84,14 +86,14 @@ public class LedgerInvariantTests
     }
 
     [Fact]
-    public void 类别全集恰为二十个取值且无买人口聘礼贿赂()
+    public void 类别全集恰为二十二个取值且无买人口聘礼贿赂()
     {
         string[] expected =
         [
-            "ArtisanBonus", "AssetPurchase", "AssetSale", "CraftingIncome",
+            "ArtisanBonus", "AssetPurchase", "AssetSale", "BribeExpense", "CraftingIncome",
             "ExamTravelCost",
             "FamineEntered", "FamineReliefEntered", "FamineResolved", "FamineSevereEntered",
-            "FarmingWageIncome", "LandRentIncome", "LivingCost",
+            "FarmingWageIncome", "Fine", "LandRentIncome", "LivingCost",
             "LoanInterestAccrued", "LoanInterestRepaid", "LoanPrincipalRepaid",
             "OfficialSalary", "SavingsInterest", "SelfFarmingIncome", "ShopRentIncome",
             "TradeIncome",
@@ -103,13 +105,19 @@ public class LedgerInvariantTests
 
         Assert.Equal(expected, actual);
 
-        // FR-028：本阶段 MUST NOT 存在「买人口 / 聘礼 / 贿赂」一类的类别（以「无该类别」断言）。
-        string[] forbiddenFragments = ["Buy", "Slave", "Bride", "Dowry", "Betroth", "Bribe"];
+        // FR-028：本阶段 MUST NOT 存在「买人口 / 聘礼」一类的类别（以「无该类别」断言）。
+        string[] forbiddenFragments = ["Buy", "Slave", "Bride", "Dowry", "Betroth"];
 
         foreach (var fragment in forbiddenFragments)
         {
             Assert.DoesNotContain(actual, name => name.Contains(fragment, StringComparison.OrdinalIgnoreCase));
         }
+
+        // 006 起「贿赂」相关类别**只允许**这两个：行贿支出与被抓罚金（FR-027）。
+        string[] bribeRelated = [.. actual.Where(
+            name => name.Contains("Bribe", StringComparison.OrdinalIgnoreCase))];
+
+        Assert.Equal(["BribeExpense"], bribeRelated);
     }
 
     [Fact]
@@ -133,7 +141,7 @@ public class LedgerInvariantTests
 
         Assert.Equal(expectedEvents.OrderBy(category => category), events);
 
-        // 全覆盖无遗漏：20 个取值逐个可求值（未登记的取值会抛，见下一条）。
+        // 全覆盖无遗漏：22 个取值逐个可求值（未登记的取值会抛，见下一条）。
         foreach (var category in categories)
         {
             var kind = LedgerCategoryMetadata.KindOf(category);
@@ -142,7 +150,7 @@ public class LedgerInvariantTests
             _ = LedgerCategoryMetadata.CreditTargetOf(category);
         }
 
-        // 无正额入账目标 = 5 个恒负支出类 + 5 个事件类。
+        // 无正额入账目标 = 7 个恒负支出类 + 5 个事件类。
         LedgerCategory[] expectedWithoutCreditTarget =
         [
             LedgerCategory.LivingCost,
@@ -150,6 +158,8 @@ public class LedgerInvariantTests
             LedgerCategory.LoanInterestRepaid,
             LedgerCategory.AssetPurchase,
             LedgerCategory.ExamTravelCost,
+            LedgerCategory.BribeExpense,
+            LedgerCategory.Fine,
             LedgerCategory.LoanInterestAccrued,
             LedgerCategory.FamineEntered,
             LedgerCategory.FamineReliefEntered,
@@ -268,6 +278,8 @@ public class LedgerInvariantTests
             LedgerCategory.LoanInterestRepaid,
             LedgerCategory.AssetPurchase,
             LedgerCategory.ExamTravelCost,   // 005：省试路费恒为负（I-5）
+            LedgerCategory.BribeExpense,     // 006：行贿支出恒为负（FR-027）
+            LedgerCategory.Fine,             // 006：罚金恒为负（FR-027）
         ];
 
         foreach (var category in alwaysNegative)
