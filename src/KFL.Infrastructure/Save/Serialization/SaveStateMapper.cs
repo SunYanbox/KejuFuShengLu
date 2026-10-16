@@ -59,6 +59,7 @@ public static class SaveStateMapper
                 SettledOutsiders = [.. bookkeeping.Settled.Select(id => id.Value)],
                 MarriageAlignedOutsiders = [.. bookkeeping.MarriageAligned.Select(id => id.Value)],
                 AutoExamApplication = family.AutoExamApplication,
+                PunishmentJournal = ToDto(family.PunishmentJournal),
             },
             Economy = ToDto(state.Economy),
         };
@@ -149,6 +150,12 @@ public static class SaveStateMapper
                 memberDto.JieShiFailureCount,
                 memberDto.ShengShiFailureCount,
                 memberDto.AppliedExam);
+
+            // 行贿计数（006）：唯一写入通道是 internal 的 RestoreBribeCounts，它校验三者 >= 0。
+            person.RestoreBribeCounts(
+                memberDto.JieShiBribeCount,
+                memberDto.ShengShiBribeCount,
+                memberDto.DianShiBribeCount);
         }
 
         // ③ 状态位 MUST 先于计时与入仕途径：Person.Status 的 setter 会拒绝「清掉某位而其计时仍在」，
@@ -215,6 +222,47 @@ public static class SaveStateMapper
         family.RestoreOutsiderBookkeeping(new OutsiderBookkeeping(
             [.. Required(familyDto.SettledOutsiders, "settledOutsiders").Select(id => new PersonId(id))],
             [.. Required(familyDto.MarriageAlignedOutsiders, "marriageAlignedOutsiders").Select(id => new PersonId(id))]));
+
+        // ⑦′ 惩罚日志（006-bribery-punishment）：只追加的当月事实缓冲，独立一步复原，
+        //     与 Rank / Status / Timers / 功名履历的次序不耦合（契约十六 §5、data-model §7.1）。
+        var journalDto = Required(familyDto.PunishmentJournal, "punishmentJournal");
+        family.PunishmentJournal.Restore(
+            journalDto.FamilyBanDeclared,
+            [.. Required(journalDto.Bribes, "bribes").Select(fact => new BribeFact(
+                ToDate(fact.Date),
+                new PersonId(fact.Examinee),
+                fact.Level,
+                fact.Nth,
+                Money.FromWen(fact.AmountWen),
+                fact.Caught,
+                fact.CapReached))],
+            [.. Required(journalDto.Sentences, "sentences").Select(fact => new SentenceFact(
+                ToDate(fact.Date),
+                new PersonId(fact.Subject),
+                fact.Months))],
+            [.. Required(journalDto.Fines, "fines").Select(fact => new FineFact(
+                ToDate(fact.Date),
+                new PersonId(fact.Subject),
+                Money.FromWen(fact.AmountWen),
+                Money.FromWen(fact.PaidFromTreasuryWen),
+                Money.FromWen(fact.ToLoanWen)))],
+            [.. Required(journalDto.RelativeBans, "relativeBans").Select(fact => new RelativeBanFact(
+                ToDate(fact.Date),
+                new PersonId(fact.Subject),
+                new PersonId(fact.Relative),
+                fact.ExamBanMonths,
+                fact.PromotionBanMonths))],
+            [.. Required(journalDto.CollectivePunishments, "collectivePunishments").Select(fact => new CollectivePunishmentFact(
+                ToDate(fact.Date),
+                new PersonId(fact.Subject),
+                fact.Outcome,
+                new PersonId(fact.Relative),
+                fact.DegreeBefore,
+                fact.DegreeAfter))],
+            [.. Required(journalDto.Releases, "releases").Select(fact => new ReleaseFact(
+                ToDate(fact.Date),
+                new PersonId(fact.Subject),
+                fact.NewRankLevel))]);
 
         // ⑧⑨ 经济聚合与存档级字段。
         var economyDto = Required(dto.Economy, nameof(dto.Economy));
@@ -363,7 +411,97 @@ public static class SaveStateMapper
         JieShiFailureCount = person.JieShiFailureCount,
         ShengShiFailureCount = person.ShengShiFailureCount,
         AppliedExam = person.AppliedExam,
+        JieShiBribeCount = person.JieShiBribeCount,
+        ShengShiBribeCount = person.ShengShiBribeCount,
+        DianShiBribeCount = person.DianShiBribeCount,
     };
+
+    /// <summary>把惩罚日志映射成瞬态 DTO（006-bribery-punishment；契约十六 §5、data-model §7.1）。</summary>
+    /// <param name="journal">惩罚日志。</param>
+    /// <returns>瞬态 DTO。</returns>
+    private static PunishmentJournalDto ToDto(PunishmentJournal journal) => new()
+    {
+        FamilyBanDeclared = journal.FamilyBanDeclared,
+        Bribes =
+        [
+            .. journal.Bribes.Select(fact => new BribeFactDto
+            {
+                Date = ToDto(fact.Date),
+                Examinee = fact.Examinee.Value,
+                Level = fact.Level,
+                Nth = fact.Nth,
+                AmountWen = fact.Amount.Wen,
+                Caught = fact.Caught,
+                CapReached = fact.CapReached,
+            }),
+        ],
+        Sentences =
+        [
+            .. journal.Sentences.Select(fact => new SentenceFactDto
+            {
+                Date = ToDto(fact.Date),
+                Subject = fact.Subject.Value,
+                Months = fact.Months,
+            }),
+        ],
+        Fines =
+        [
+            .. journal.Fines.Select(fact => new FineFactDto
+            {
+                Date = ToDto(fact.Date),
+                Subject = fact.Subject.Value,
+                AmountWen = fact.Amount.Wen,
+                PaidFromTreasuryWen = fact.PaidFromTreasury.Wen,
+                ToLoanWen = fact.ToLoan.Wen,
+            }),
+        ],
+        RelativeBans =
+        [
+            .. journal.RelativeBans.Select(fact => new RelativeBanFactDto
+            {
+                Date = ToDto(fact.Date),
+                Subject = fact.Subject.Value,
+                Relative = fact.Relative.Value,
+                ExamBanMonths = fact.ExamBanMonths,
+                PromotionBanMonths = fact.PromotionBanMonths,
+            }),
+        ],
+        CollectivePunishments =
+        [
+            .. journal.CollectivePunishments.Select(fact => new CollectivePunishmentFactDto
+            {
+                Date = ToDto(fact.Date),
+                Subject = fact.Subject.Value,
+                Outcome = fact.Outcome,
+                Relative = fact.Relative.Value,
+                DegreeBefore = fact.DegreeBefore,
+                DegreeAfter = fact.DegreeAfter,
+            }),
+        ],
+        Releases =
+        [
+            .. journal.Releases.Select(fact => new ReleaseFactDto
+            {
+                Date = ToDto(fact.Date),
+                Subject = fact.Subject.Value,
+                NewRankLevel = fact.NewRankLevel,
+            }),
+        ],
+    };
+
+    /// <summary>年月 ↔ 瞬态 DTO。</summary>
+    /// <param name="date">年月。</param>
+    /// <returns>瞬态 DTO。</returns>
+    private static GameDateDto ToDto(GameDate date) => new()
+    {
+        Year = date.Year,
+        Month = date.Month,
+    };
+
+    /// <summary>瞬态 DTO 的年月 ↔ 年月。</summary>
+    /// <param name="dto">瞬态 DTO。</param>
+    /// <returns>年月（接受 <see cref="GameDate"/> 的自校验）。</returns>
+    private static GameDate ToDate(GameDateDto dto) => new(dto.Year, dto.Month);
 
     private static FamilyEconomyDto ToDto(FamilyEconomy economy) => new()
     {

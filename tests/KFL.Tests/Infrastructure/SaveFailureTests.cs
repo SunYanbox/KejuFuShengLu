@@ -20,7 +20,7 @@ namespace KFL.Tests.Infrastructure;
 /// <remarks>
 /// <para>
 /// 四类输入对应契约十 §6 的八个判定步：不存在 ⇒ <c>Missing</c>；头之后字节损坏 ⇒ <c>Malformed</c>；
-/// 剩余字节不足头声明 ⇒ <c>Truncated</c>；版本不是 2 ⇒ <c>UnsupportedVersion</c>；
+/// 剩余字节不足头声明 ⇒ <c>Truncated</c>；版本不是 3 ⇒ <c>UnsupportedVersion</c>；
 /// 主体可解析但成员缺失或违反一致性 ⇒ <c>InvalidStructure</c>。
 /// </para>
 /// <para>
@@ -141,15 +141,15 @@ public sealed class SaveFailureTests
         AssertFailurePreserves(path, corrupted, held, reference);
     }
 
-    /// <summary>FR-015：头记录版本不为 2（旧版 1 与更新版 3 同样拒）⇒ <c>UnsupportedVersion</c>。</summary>
+    /// <summary>FR-015：头记录版本不为 3（旧版 2 与更新版 4 同样拒）⇒ <c>UnsupportedVersion</c>。</summary>
     /// <param name="format">格式。</param>
     /// <param name="version">写进头里的非本版本版本号。</param>
     [Theory]
-    [InlineData(SaveFormat.Binary, 1)]
-    [InlineData(SaveFormat.Json, 1)]
-    [InlineData(SaveFormat.Binary, 3)]
-    [InlineData(SaveFormat.Json, 3)]
-    public void 头版本不为二时报UnsupportedVersion(SaveFormat format, int version)
+    [InlineData(SaveFormat.Binary, 2)]
+    [InlineData(SaveFormat.Json, 2)]
+    [InlineData(SaveFormat.Binary, 4)]
+    [InlineData(SaveFormat.Json, 4)]
+    public void 头版本不为三时报UnsupportedVersion(SaveFormat format, int version)
     {
         using var sandbox = new SaveTestSandbox();
         var service = sandbox.CreateService();
@@ -170,10 +170,10 @@ public sealed class SaveFailureTests
     /// <param name="format">格式。</param>
     /// <param name="version">写进头里的非本版本版本号。</param>
     [Theory]
-    [InlineData(SaveFormat.Binary, 1)]
-    [InlineData(SaveFormat.Json, 1)]
-    [InlineData(SaveFormat.Binary, 3)]
-    [InlineData(SaveFormat.Json, 3)]
+    [InlineData(SaveFormat.Binary, 2)]
+    [InlineData(SaveFormat.Json, 2)]
+    [InlineData(SaveFormat.Binary, 4)]
+    [InlineData(SaveFormat.Json, 4)]
     public void 版本闸门早于主体解析(SaveFormat format, int version)
     {
         using var sandbox = new SaveTestSandbox();

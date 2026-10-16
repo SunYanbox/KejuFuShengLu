@@ -44,10 +44,10 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     private const int SaveStateMemberCount = 8;
 
     /// <summary>嵌套 DTO 的成员数（契约十 §4 键表；全部按 <c>[Key(0..n-1)]</c> 连续编号）。</summary>
-    private const int FamilyMemberCount = 7;
+    private const int FamilyMemberCount = 8;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
-    private const int PersonMemberCount = 25;
+    private const int PersonMemberCount = 28;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
     private const int TalentMemberCount = 4;
@@ -75,6 +75,27 @@ public sealed class MessagePackSaveFormat : ISaveFormat
 
     /// <inheritdoc cref="FamilyMemberCount"/>
     private const int FamineMemberCount = 2;
+
+    /// <summary>惩罚日志的成员数（006-bribery-punishment；契约十六 §5、data-model §7.1）。</summary>
+    private const int PunishmentJournalMemberCount = 7;
+
+    /// <inheritdoc cref="PunishmentJournalMemberCount"/>
+    private const int BribeFactMemberCount = 7;
+
+    /// <inheritdoc cref="PunishmentJournalMemberCount"/>
+    private const int SentenceFactMemberCount = 3;
+
+    /// <inheritdoc cref="PunishmentJournalMemberCount"/>
+    private const int FineFactMemberCount = 5;
+
+    /// <inheritdoc cref="PunishmentJournalMemberCount"/>
+    private const int RelativeBanFactMemberCount = 5;
+
+    /// <inheritdoc cref="PunishmentJournalMemberCount"/>
+    private const int CollectivePunishmentFactMemberCount = 6;
+
+    /// <inheritdoc cref="PunishmentJournalMemberCount"/>
+    private const int ReleaseFactMemberCount = 3;
 
     /// <inheritdoc />
     public SaveFormat Format => SaveFormat.Binary;
@@ -224,6 +245,40 @@ public sealed class MessagePackSaveFormat : ISaveFormat
         SkipGuidList(ref reader);                   // 4 已落籍旁系
         SkipGuidList(ref reader);                   // 5 外嫁对齐旁系
         Skip(ref reader, 1);                        // 6 自动报名（005）
+
+        EnsureJournalShape(ref reader, $"{path}.PunishmentJournal");   // 7 惩罚日志（006）
+    }
+
+    /// <summary>
+    /// 核对惩罚日志与六类事实行的成员数（006-bribery-punishment；data-model §7.1）。
+    /// </summary>
+    /// <param name="reader">读取器。</param>
+    /// <param name="path">诊断用路径。</param>
+    private static void EnsureJournalShape(ref MessagePackReader reader, string path)
+    {
+        EnsureArrayHeader(ref reader, PunishmentJournalMemberCount, path);
+        Skip(ref reader, 1);                        // 0 家族禁令标志
+
+        SkipFactList(ref reader, BribeFactMemberCount, $"{path}.Bribes");                               // 1
+        SkipFactList(ref reader, SentenceFactMemberCount, $"{path}.Sentences");                         // 2
+        SkipFactList(ref reader, FineFactMemberCount, $"{path}.Fines");                                 // 3
+        SkipFactList(ref reader, RelativeBanFactMemberCount, $"{path}.RelativeBans");                   // 4
+        SkipFactList(ref reader, CollectivePunishmentFactMemberCount, $"{path}.CollectivePunishments"); // 5
+        SkipFactList(ref reader, ReleaseFactMemberCount, $"{path}.Releases");                           // 6
+    }
+
+    /// <summary>核对一串事实行各自的成员数，并把它们整体跳过。</summary>
+    /// <param name="reader">读取器。</param>
+    /// <param name="memberCount">每个事实行的成员数。</param>
+    /// <param name="path">诊断用路径。</param>
+    private static void SkipFactList(ref MessagePackReader reader, int memberCount, string path)
+    {
+        var count = reader.ReadArrayHeader();
+        for (var index = 0; index < count; index++)
+        {
+            EnsureArrayHeader(ref reader, memberCount, $"{path}[{index}]");
+            Skip(ref reader, memberCount);
+        }
     }
 
     private static void EnsurePersonShape(ref MessagePackReader reader, string path)
@@ -251,7 +306,7 @@ public sealed class MessagePackSaveFormat : ISaveFormat
             Skip(ref reader, DegreeRecordMemberCount);
         }
 
-        Skip(ref reader, 3);                        // 22..24 解试失败数/省试失败数/报名级别（005）
+        Skip(ref reader, 6);                        // 22..27 解试失败数/省试失败数/报名级别（005）/三个行贿计数（006）
     }
 
     private static void EnsureEconomyShape(ref MessagePackReader reader, string path)

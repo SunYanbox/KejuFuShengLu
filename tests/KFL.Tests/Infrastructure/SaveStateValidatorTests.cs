@@ -10,11 +10,12 @@ using Xunit;
 namespace KFL.Tests.Infrastructure;
 
 /// <summary>
-/// 第 ⑩ 步「九条一致性校验」的验收测试（004-save-system；契约十 §6 第 ⑧ 步、001 R-04）。
+/// 第 ⑩ 步「十一条一致性校验」的验收测试（004-save-system；契约十 §6 第 ⑧ 步、001 R-04；
+/// 006-bribery-punishment 追加第 11、12 条）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 这九条此前**零直接覆盖**：把 <c>SaveService.Load</c> 里 <c>ValidateIdentity</c> / <c>Validate</c>
+/// 这些条款此前**零直接覆盖**：把 <c>SaveService.Load</c> 里 <c>ValidateIdentity</c> / <c>Validate</c>
 /// 那两行注释掉，门禁依然全绿（审核 2.4，变异探针）。本文件逐条从**真实读档路径**
 /// （<c>SaveService.Load</c>）走一遍：手工构造违反某条不变量的主体、拼出合法信封，
 /// 断言失败分类恒为 <see cref="SaveFileErrorKind.InvalidStructure"/>。
@@ -136,6 +137,42 @@ public sealed class SaveStateValidatorTests
             Category = LedgerCategory.LivingCost,
             AmountWen = 0m,
         });
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 11 条：三个行贿计数 MUST <c>&gt;= 0</c>（006-bribery-punishment）。</summary>
+    /// <remarks>
+    /// Core 侧的 <c>RestoreBribeCounts</c> 也会拒绝负值，故本条在脚本层就已被拦下；
+    /// 用例把「无论走哪条路径，失败形态恒为 InvalidStructure」钉死。
+    /// </remarks>
+    [Fact]
+    public void 行贿计数为负时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Members[0].DianShiBribeCount = -1;
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 12 条：日志每一行的 <c>PersonId</c> MUST 存在于 <c>Family.Members</c>（含归档者）。</summary>
+    /// <remarks>
+    /// 核心承重的一条：<c>PunishmentJournal.Restore</c> 只做追加、不校验成员归属，
+    /// 故「日志指向一个不存在的成员」是校验器**唯一**的守门人——把它摘掉这条用例必然失败。
+    /// </remarks>
+    [Fact]
+    public void 日志指向家族外成员时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.PunishmentJournal.Releases =
+        [
+            new ReleaseFactDto
+            {
+                Date = new GameDateDto { Year = 1, Month = 1 },
+                Subject = ForeignId,
+                NewRankLevel = 7,
+            },
+        ];
 
         AssertInvalidStructure(dto, dto.Id);
     }
