@@ -82,6 +82,12 @@
 > 005 `data-model.md` §2.2）。005 之前的产品写入路径（开局 `Initial` 记录、存档复原）
 > 从未同时置起这两个成员。
 
+> **引用注（006 惩罚）**：006 是 `DegreeChangeCause.PunishmentDemotion` 的**首个产品生产者**——
+> §7.4 的连坐降级经既有 `Person.AppendDegree`（`Cause = PunishmentDemotion`）追加一条降一级的
+> 功名记录（进士→贡士→举人→白身；由举人再降则追加一条 `Level = BaiShen` 的合法历史条目），
+> **MUST NOT 改写或删除既有记录**（不变量 7）。006 之前该原因值只由枚举声明与存档复原触及，
+> 无任何产品路径产生它（006 FR-020；[契约十六 §1](../006-bribery-punishment/contracts/punishment.md)）。
+
 **为什么必须带日期与原因**：§4.1 要求功名以「变迁历史」呈现，而 §7.4 的连坐会
 **降一级功名**（进士→贡士→举人→白身）。若只记录「考试考成功的功名」，被降级者的历史
 末条会一直写着「进士」，与其真实功名矛盾——历史本身就成了假的。带 `Cause` 后，一次中式
@@ -114,8 +120,12 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 
 **不变量**：四个字段各自仅在对应状态位为真时可非空；非空值 MUST `>= 0`。
 待阙项与 `Person.EntryTrack` **同生同灭**（见 §2.1 不变量 4），且 MUST NOT 以「0 + 状态位为真」的形态存续。
-**明确不含**：计时递减逻辑——服刑/禁考/禁升属逻辑轨 ⑥，待阙的递减与「递减到 0 的当月授官」
-属逻辑轨 ③（`OfficialCareerAdvance`），其 6~24 区间属 `OfficialCareerPolicy`。
+**明确不含**：待阙的递减逻辑——「递减到 0 的当月授官」属逻辑轨 ③
+（`OfficialCareerAdvance`），其 6~24 区间属 `OfficialCareerPolicy`。
+**服刑/禁考/禁升三项已由 006（逻辑轨 ⑥）建立与递减**（原列于本「明确不含」）——计时非空 ⟺
+对应状态位（`ServingSentence` / `ExamBanned` / `PromotionBanned`）为真；递减发生在月末结算**第③步**
+`PunishmentAdvance.Run(state)`，服刑递减到 0 即释放（清状态位与计时，`Rank is not null` 则官阶 +1）；
+服刑期间待阙计时/在职计时/政绩**暂停**（006 FR-020；[契约十六 §1](../006-bribery-punishment/contracts/punishment.md)）。
 
 > **引用注（005 科举周期）**：005 是**待阙计时与其状态位配对的首个产品生产者**——
 > 殿试及第当月经 003 的 `AppointmentEntry.BeginForImperialGraduate` 置入
@@ -156,6 +166,9 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `JieShiFailureCount` | `int`（>= 0） | 是 | **005 新增**：解试累计失败数（单调递增）；**只读、无公开 setter**（写入通道见不变量 2）——005 FR-023；契约十二 §2 |
 | `ShengShiFailureCount` | `int`（>= 0） | 是 | **005 新增**：省试累计失败数（单调递增）；**只读、无公开 setter**（写入通道见不变量 2）——005 FR-023；契约十二 §2 |
 | `AppliedExam` | `ExamLevel?` | 是 | **005 新增**：报名标记，`null` 或 ∈ {`JieShi`, `ShengShi`}；**殿试不是合法报名态**；**当月态**，结算结束后必为 `null`；**只读、无公开 setter**（写入通道见不变量 2）——005 FR-005、FR-023；契约十二 §2 |
+| `JieShiBribeCount` | `int`（>= 0） | 是 | **006 新增**（逻辑轨 ⑥）：解试行贿累计次数；**跨科年累积、单调递增**；**只读、无公开 setter**（写入通道见不变量 2）；**连坐降级 MUST NOT 清空**——见 [契约十六](../006-bribery-punishment/contracts/punishment.md) |
+| `ShengShiBribeCount` | `int`（>= 0） | 是 | **006 新增**（逻辑轨 ⑥）：省试行贿累计次数；**跨科年累积、单调递增**；**只读、无公开 setter**（写入通道见不变量 2）；**连坐降级 MUST NOT 清空**——见 [契约十六](../006-bribery-punishment/contracts/punishment.md) |
+| `DianShiBribeCount` | `int`（>= 0） | 是 | **006 新增**（逻辑轨 ⑥）：殿试行贿累计次数；**跨科年累积、单调递增**；**只读、无公开 setter**（写入通道见不变量 2）；**连坐降级 MUST NOT 清空**——见 [契约十六](../006-bribery-punishment/contracts/punishment.md) |
 
 > **「可变」列的含义**：指该字段的**值**会随推演时间改变，**不表示 `Person` 暴露公开
 > setter**。写入通道只有两类，见不变量 2 与 §2.2 不变量 4：跨实体引用（配偶、父母、
@@ -176,8 +189,9 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    `Talents`、`Lifespan`、`Generation`、`FatherId`、`MotherId`、`SpouseId`、
    `FormerSpouseIds`、`DegreeHistory`、`CurrentDegree`、`CurrentPlacement`、
    `JieShiFailureCount`（005 新增）、`ShengShiFailureCount`（005 新增）、
-   `AppliedExam`（005 新增）——均为只读属性，**不存在公开 setter**
-   （FR-005、FR-007、FR-008、§4.4；005 FR-023）。
+   `AppliedExam`（005 新增）、`JieShiBribeCount`（006 新增）、`ShengShiBribeCount`（006 新增）、
+   `DianShiBribeCount`（006 新增）——均为只读属性，**不存在公开 setter**
+   （FR-005、FR-007、FR-008、§4.4；005 FR-023；006 契约十六）。
    **`Person` 自持的可写属性**只有十个：`Name`、`Study`、`Health`、`Rank`、`Merit`、
    `Status`、`Timers`、`Occupation`、`MonthsInOffice`（003 新增）、`EntryTrack`（003 新增）。
    分界依据：凡「出生即定」或「跨实体一致性」的字段一律只读——前者如 `Gender` /
@@ -190,6 +204,12 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    `internal RestoreExamProgress(int, int, ExamLevel?)`——与 `SetGeneration` / `SetSpouse` /
    `AddFormerSpouse` 同款，唯一程序集面为 `InternalsVisibleTo("KFL.Infrastructure")`。
    除这三者与复原通道外 MUST NOT 新增公开 setter（005 FR-023；契约十二 §2）。
+   **006 的三个只读成员另有受控写入通道（公开面唯一）**：`RecordBribe(ExamLevel)`
+   （对应计数 +1；非法级别抛异常）、`ResetBribeCounts(ExamLevel?)`（**科年**边界重置；传 `null` 即三项全清）；
+   复原走 `internal RestoreBribeCounts(int, int, int)`——与 005 的 `RestoreExamProgress` 同款，
+   唯一程序集面为 `InternalsVisibleTo("KFL.Infrastructure")`。**连坐降级（`PunishmentDemotion`）
+   MUST NOT 清空**这三个计数（它们记录的是行贿**历史次数**，而非当科状态）
+   （006 [契约十六](../006-bribery-punishment/contracts/punishment.md)）。
 3. `FatherId != Id`、`MotherId != Id`、`SpouseId != Id`；`FormerSpouseIds` 不含 `SpouseId` 且不重复。
 4. `Timers` 与 `Status` 一致（见 1.7）；003 新增的 `EntryTrack` 同向一致
    （非空 ⇒ `AwaitingPost` 位为真；清除该位前 MUST 先置 `null`——`Timers` 的
@@ -198,6 +218,11 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    `AwaitingPost` 三个状态位，MUST NOT 递减或新建本结构的任何计时（005 契约十二 §3.2）；
    005 新增的 `AppliedExam` 是**当月态**、与状态位无关，本月结算结束后必为 `null`
    （005 FR-005；契约十三 §1.2）。
+   **006 引用注**：006 是**服刑/禁考/禁升三项计时与其状态位的首个产品生产者与递减者**——
+   `PunishmentAdvance.Run(state)`（月末结算第③步）逐人递减三计时，并在计时归零时清掉对应状态位
+   （服刑释放另按 `Rank is not null` 官阶 +1）；「计时非空 ⟺ 状态位为真」这一一致式由 006
+   首次在产品路径上双向兑现；服刑期间待阙计时/在职计时/政绩**暂停**（006 FR-020；
+   [契约十六 §1](../006-bribery-punishment/contracts/punishment.md)）。
 5. **年龄不落裸字段**：`AgeAt(GameDate)` = `BirthDate.AgeInYearsAt(at)`（R-07）。
 6. 出生时辰与「已亡」时间不落字段：§4.1 未列，且 §12.1 的归档排序属界面轨 U2。
 7. `DegreeHistory` 按 `ChangedAt` **非降序**（追加式）；既有记录 MUST NOT 被改写或删除。
@@ -376,8 +401,13 @@ FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 to
 
 ## 5. 状态转移
 
-**本阶段不实现任何状态转移**。001 只保证档案能**表达**状态，不推进状态：服刑计时递减
-（阶段⑥）、患病与饥馑流转（阶段②/逻辑轨 ⑦）、待阙转授官（逻辑轨 ③）、致仕（逻辑轨 ③）、
+**本阶段不实现任何状态转移**。001 只保证档案能**表达**状态，不推进状态：患病与饥馑流转
+（阶段②/逻辑轨 ⑦）、待阙转授官（逻辑轨 ③）、致仕（逻辑轨 ③）、
 已亡归档判定（阶段②/逻辑轨 ⑧）、外嫁归档（界面轨 U2/逻辑轨 ⑦）全部属后续阶段，且各自带自己的验收门禁。
+
+> **006 后记（2026-10-13）**：原列于本句的**「服刑计时递减」（阶段⑥ / 逻辑轨 ⑥）已由 006 交付**——
+> `PunishmentAdvance.Run(state)` 在月末结算**第③步**逐月递减服刑/禁考/禁升计时，并在计时归零时
+> 清掉对应状态位（服刑释放另按 `Rank is not null` 官阶 +1）；006 是这些计时的首个产品生产者与
+> 递减者，见 [契约十六 §1](../006-bribery-punishment/contracts/punishment.md) 与 006 FR-020。
 
 唯一在本阶段成立的「转移」是构造期校验失败即拒绝——不产生非法档案，而不是先建再修。

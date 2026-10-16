@@ -241,8 +241,14 @@ public sealed record ExamSeasonSnapshot
 FR-014 全部数值的单点声明处，逐项见 [契约十四 §1](./contracts/config-registry.md#1-科举数值登记)：
 `MinimumAge`、`JieShiBaseRate`、`ShengShiBaseRate`、`ImperialPromotionBaseRate`、`StudyFactorBase`、
 `StudyFactorPerPoint`、`OfficialdomDivisor`、`ShiStatusAdmissionBonus`、`SecondClassStudyThreshold`、
-`DiceRateCap`、`NeutralBribeMultiplier`、`JieShiExemptionFailureThreshold`、
+`DiceRateCap`、`JieShiExemptionFailureThreshold`、
 `SpecialTributeMinimumAge`、`SpecialTributeFailureThreshold`、`ExamTravelCostGuan(Difficulty)`。
+
+> **006 后记（2026-10-13）**：本清单原有 `NeutralBribeMultiplier` 一项，已在
+> `006-bribery-punishment` 落地时**删除**（占位作废）——行贿乘数改由
+> `BribeRules.MultiplierOf(ExamLevel, Person)` 派生（`kⁿ`，`k⁰` 由 `BribePolicy.UnitMultiplier = 1m`
+> 唯一给出）。`ExamAdmission.AdmissionRate` / `ImperialPromotionRate` 的
+> `bribeMultiplier` 形参**逐字未变**，只是一律接收实际乘数而非占位常量。
 
 `GameConfig` 只增一个转发视图（形如既有的 `GameConfig.Career`），**MUST NOT 自带任何数值字面量**。
 
@@ -424,7 +430,7 @@ JieShi | ShengShi --本月结算的科举季步（消费后清除）--> (null)
 | FR-013 免解 | `ExamSeasonRunner` ③ + `ExamPolicy.JieShiExemptionFailureThreshold` |
 | FR-014 数值集中 | `ExamPolicy` + `GameConfig.Exam` |
 | FR-015 封顶口径 | `ExamPolicy.DiceRateCap` + 两个 rate 方法内部 clamp |
-| FR-016 贿赂乘数接缝 | `AdmissionRate` / `ImperialPromotionRate` 的 `bribeMultiplier` 形参 + `ExamPolicy.NeutralBribeMultiplier` |
+| FR-016 贿赂乘数接缝 | `AdmissionRate` / `ImperialPromotionRate` 的 `bribeMultiplier` 形参（006 起实际值由 `BribeRules.MultiplierOf` 给出，占位常量已删除） |
 | FR-017 持续报考 | `Family.AutoExamApplication` + `ExamSeasonRunner` ① |
 | FR-018 查询面 | `ExamCalendar.LevelOf` / `NextExamMonth` + `ExamRegistration.EligibleUnapplied` |
 | FR-019 步骤位置与次序 | §4.2 + [契约十三 §1~§2](./contracts/exam-session.md#1-步骤位置与内部次序) |
@@ -443,8 +449,8 @@ JieShi | ShengShi --本月结算的科举季步（消费后清除）--> (null)
 
 ## 9. 明确不包含
 
-- 贿赂的累进金额、被抓概率、惩罚矩阵、连坐、服刑（逻辑轨 ⑥；本特性只经 `bribeMultiplier` 形参
-  预留同入口，本轮恒 `NeutralBribeMultiplier`）。
+- 贿赂的累进金额、被抓概率、惩罚矩阵、连坐、服刑（逻辑轨 ⑥；005 当时只经 `bribeMultiplier` 形参
+  预留同入口，占位常量 `ExamPolicy.NeutralBribeMultiplier` 现已被 006 删除、改传实际乘数）。
 - 成员成长 / 衰老 / 疾病 / 死亡（逻辑轨 ⑦；将来插在本步**之前**）。
 - 成就解锁与绝嗣判定（逻辑轨 ⑧；本特性只产出事件流与计数）。
 - 买功名婚姻、婚育、买人口（逻辑轨 ⑦）。

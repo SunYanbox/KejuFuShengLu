@@ -152,7 +152,7 @@
 | 1 | 学业与仕天赋取**考试月当月值**（`Person.Study` / `Person.Talents.Officialdom`） |
 | 2 | 仕族加成（×1.1）**只作用于录取率**（解试/省试）；进甲率在 `HasShiStatus` 真/假时结果 MUST 完全相同（差异项 = 0） |
 | 3 | 封顶只作用于**需掷骰的概率**：解试录取率、省试录取率、殿试进甲率三处；MUST NOT 作用于「殿试必中」 |
-| 4 | 贿赂乘数本轮恒为 `ExamPolicy.NeutralBribeMultiplier`（k⁰ = 1.0）；公式 MUST 经**同一入口**的形参接收（FR-016） |
+| 4 | 贿赂乘数经**同一入口**的形参 `bribeMultiplier` 接收实际值（FR-016）：005 的 `ExamPolicy.NeutralBribeMultiplier` **占位已作废（006 落地后删除）**——006 已落地派生 `BribeRules.MultiplierOf(ExamLevel, Person)`（`kⁿ`，`k = BribePolicy.EffectMultiplierK(level)`：解试 1.6 / 省试 1.3 / 殿试 1.1；`k⁰` 由 `BribePolicy.UnitMultiplier = 1m` 唯一给出）。`AdmissionRate` / `ImperialPromotionRate` 的**签名、公式与 clamp 一字未动** |
 | 5 | 规则层 MUST NOT 提供按调用方分支的绕过路径；「无限制」能力（U4）MUST 经装配期显式注入的配置或策略提供（FR-015、章程原则 VI） |
 | 6 | 各乘区 MUST 可独立断言：基础率、学业系数、仕天赋项、仕族加成、贿赂乘数、封顶逐项各有单测锚点 |
 | 7 | 概率计算与掷骰 MUST 分离：`AdmissionRate` / `ImperialPromotionRate` 只算概率；掷骰由本步用 `IRandomService` 执行 |
@@ -179,7 +179,7 @@
 | 5 | 免解**不跨级**：省试仍须在报名月报名（契约十二 §4）并付路费（§3） |
 | 6 | 免解行使 MUST 记入快照：`Exemptions`（`PersonId` 列表）与该人的 `ExamOutcomeLine.Exempted = true` |
 | 7 | 门槛判定用**进入本步之前**的失败数（免解当月不因免解而 +1） |
-| 8 | 若免解者后续因**连坐降级**回到举人以下，且失败数仍 >= 3 ⇒ 再次解试时**仍然**免掷骰（计数不因降级清零，也 MUST NOT 因调试改写清零） |
+| 8 | 若免解者后续因**连坐降级**回到举人以下，且失败数仍 >= 3 ⇒ 再次解试时**仍然**免掷骰（计数不因降级清零，也 MUST NOT 因调试改写清零）。连坐降级的施加者是**逻辑轨 ⑥**（[006 契约四](../../006-bribery-punishment/contracts/punishment.md)），本特性只被动消费其降级结果 |
 
 ---
 
@@ -252,7 +252,7 @@
 | 5 | 非考试月 ⇒ `Level == null` 且全部集合为空、`HasShiStatusBecomesTrue == false` |
 | 6 | 3 月省试与 4 月殿试 MUST 各自产生独立快照，MUST NOT 合并 |
 | 7 | 事件流供逻辑轨 ⑧ 消费（FR-027）：中第/落第/免解/特奏名询问与接受/一甲名次，含成员、级别、年月、甲第、名次 |
-| 8 | 可读计数：`ExamOutcomeLine.FailureCountAfter` 给出两个累计失败数的变化后值；「清白传家」的行贿计数由逻辑轨 ⑥ 维护，本特性 MUST NOT 自建 |
+| 8 | 可读计数：`ExamOutcomeLine.FailureCountAfter` 给出两个累计失败数的变化后值；「清白传家」的行贿计数**已由逻辑轨 ⑥ 交付**——查询面 `PunishmentQueries.WasBribeFreeAtImperialPass(Person)`（读 `Person` 的三个行贿计数），本特性 MUST NOT 自建。成就本身的**解锁**仍未由 ⑥ 交付（逻辑轨 ⑧） |
 
 ---
 
@@ -260,12 +260,16 @@
 
 | # | 项 | 归属 |
 | --- | --- | --- |
-| 1 | 贿赂的累进金额、被抓概率、惩罚矩阵、连坐、服刑 | 逻辑轨 ⑥ |
-| 2 | 成员成长 / 衰老 / 疾病 / 死亡（将来插在本步**之前**） | 逻辑轨 ⑦ |
-| 3 | 成就解锁与绝嗣判定（本步只产出事件流与计数） | 逻辑轨 ⑧ |
-| 4 | 快进循环、「下月」按钮、调试控制台、卡片与统计 | 界面轨 U1/U2/U3/U4 |
-| 5 | 存档迁移与向下兼容 | 契约十 §8 |
-| 6 | 官名表；跨 .NET 版本的随机数稳定性 | 规格书未定义 |
+| 1 | 成员成长 / 衰老 / 疾病 / 死亡（将来插在本步**之前**） | 逻辑轨 ⑦ |
+| 2 | 成就解锁与绝嗣判定（本步只产出事件流与计数） | 逻辑轨 ⑧ |
+| 3 | 快进循环、「下月」按钮、调试控制台、卡片与统计 | 界面轨 U1/U2/U3/U4 |
+| 4 | 存档迁移与向下兼容 | 契约十 §8 |
+| 5 | 官名表；跨 .NET 版本的随机数稳定性 | 规格书未定义 |
+
+> **006 后记（2026-10-13）**：上表原先的第 1 行「贿赂的累进金额、被抓概率、惩罚矩阵、连坐、服刑」已由
+> `006-bribery-punishment`（逻辑轨 ⑥）交付（`BribePolicy` / `PunishmentPolicy` 与月度结算第 ③ 步
+> `PunishmentAdvance.Run(state)`），故从本清单移除；本契约只经**同一入口**的 `bribeMultiplier` 形参
+> 消费其派生乘数（§4.3 条款 4），并被动消费连坐降级的结果（§5 条款 8）。
 
 本契约**不含**任何数值字面量；`SettlementResult` 的两条既有不变量（`Entries` 逐条相同、
 `TreasuryPool` 差 = 资金类条目和）在本步仍然成立。

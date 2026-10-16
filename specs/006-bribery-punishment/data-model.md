@@ -58,7 +58,8 @@ public readonly record struct BribeFact(
 
 public readonly record struct SentenceFact(GameDate Date, PersonId Subject, int Months);
 
-public readonly record struct FineFact(GameDate Date, PersonId Subject, Money Amount, PaymentResult? Paid);
+public readonly record struct FineFact(
+    GameDate Date, PersonId Subject, Money Amount, Money PaidFromTreasury, Money ToLoan);
 
 public readonly record struct RelativeBanFact(
     GameDate Date, PersonId Subject, PersonId Relative, int ExamBanMonths, int? PromotionBanMonths);
@@ -91,7 +92,7 @@ public sealed class PunishmentJournal
 
     public void Append(BribeFact fact);             // 与其余五个同款重载
     public void MarkFamilyBanDeclared();
-    internal void Clear();                          // 仅结算第③步调用
+    public void Clear();                            // 仅结算第③步调用（PunishmentAdvance.Run，位于 KFL.Rules）
     internal void Restore(…);                       // 仅 SaveStateMapper 调用
 }
 ```
@@ -223,14 +224,17 @@ public static Money Of(Treasury treasury, Holdings holdings);
 
 ### 3.9 两个数值类（`src/KFL.Rules/Config/`）
 
-`BribePolicy`：`BribeWindowDays`（= 前 1 个月，用「按月」表达）、`ProgressionStep = 0.2m`、
+`BribePolicy`：`WindowPreviousMonths`（int，= 1）、`ProgressionStep = 0.2m`、
 `BaseAmountGuan(ExamLevel)`（100 / 500 / 2000）、`BaseCaughtRate(ExamLevel)`（`0.05m` / `0.15m` /
 `0.35m`）、`EffectMultiplierK(ExamLevel)`（`1.6m` / `1.3m` / `1.1m`）、`CaughtProbabilityCap = 1.0m`、
 `UnitMultiplier = 1m`（乘法循环的恒等初值——**k⁰ 的唯一来源**）。
 
-`PunishmentPolicy`：`CellOf(Difficulty, ExamLevel)`（12 格表）、`RatioFineCapGuan = 50000`、
-`FamilyWideBanMonths = 48`、`ReleaseDemotionLevels = 1`、`RelativeBanMonthsOf`（36 / 24 / 48）与
-`DifficultyExpenseFactor`（**复用** `DifficultyRates.ExpenseFactor`，MUST NOT 复制）。
+`PunishmentPolicy`：`CellOf(Difficulty, ExamLevel)`（12 格表，`PunishmentCell` 读出全部九个成员）、
+`RatioFineCapGuan = 50000`、`FamilyWideBanMonths = 48`、`ReleaseDemotionLevels = 1`、
+`MonthsPerYear`（**复用** `IncomeRateTable.MonthsPerYear`）。**注意**：`PunishmentCell` 已逐格承载
+「亲属禁考月数（36 / 24 / 48）」与「支出系数（**复用** `DifficultyRates.ExpenseFactor`，MUST NOT 复制）」，
+故本特性 **MUST NOT** 另建 `RelativeBanMonthsOf` / `DifficultyExpenseFactor` 之类的第二访问器
+（登记为「计划阶段勘误 #5」，见 [plan.md](./plan.md)「勘误登记」）。
 
 `GameConfig` 只加两个**转发视图**（`GameConfig.Bribe` / `GameConfig.Punishment`）与
 `GameConfig.Assets.TotalAssets`，**MUST NOT 自带数值字面量**（SC-008）。
@@ -322,7 +326,7 @@ public static PaymentResult Pay(
 | I-2 | 乘数是**派生值**：任何时刻 `MultiplierOf(level, p) == k^(计数)`，且 `计数 == 0 ⇒ 乘数 == 1.0` | 逐级别断言；存档往返后差异项 = 0 |
 | I-3 | 行贿窗口外、已触顶、级别与功名不符、非在册的调用 **MUST NOT** 改动任何字段、**MUST NOT** 消费随机 | 调用前后逐字段比对 + `FixedRandomService` 调用计数 = 0 |
 | I-4 | 被抓**不清零**计数与乘数、**不落**退款或补偿条目 | 第 2 次被抓后 `计数 == 2`、`乘数 == k²`、无退款条目 |
-| I-5 | 「计时非空 ⟺ 状态位为真」（001 的既有不变量）：置位次序**先计时后状态位**，清除时**相反** | `Status` / `Timers` 的交叉校验 setter；`SaveStateValidator` 第 ⑤ 条 |
+| I-5 | 「计时非空 ⟺ 状态位为真」（001 的既有不变量）：置位次序**先状态位后计时**，清除时**先清计时后清状态位**（001 既有交叉校验 setter 强制；契约十六与此处原写作「先计时后状态位」，已按实现修正，登记为计划勘误 #5） | `Status` / `Timers` 的交叉校验 setter；`SaveStateValidator` 第 ⑤ 条 |
 | I-6 | 服刑 / 禁考 / 禁升**三计时各自独立、并行递减**；禁考或禁升 MUST NOT 使现任官员失去官职或俸禄 | 同月跑 60 次：三条计时各自的归零月份互不影响 |
 | I-7 | 服刑期间待阙/在职计时与政绩**逐月不变**（不推进、不重置）；释放次月起恢复 | 60 次结算全程逐月比对差异项 = 0 |
 | I-8 | 释放降级恰发生 **1 次**，且 `Level >= 18` 时**维持不变**；功名记录条数不变 | `ReleaseFact.NewRankLevel`；`DegreeHistory` 条数比对 |
@@ -351,12 +355,18 @@ public static PaymentResult Pay(
 | `PunishmentJournalDto`（新） | — | **7**（0~6） | 0 `familyBanDeclared`(`bool`)、1 `bribes`(`BribeFactDto[]`)、2 `sentences`、3 `fines`、4 `relativeBans`、5 `collectivePunishments`、6 `releases` |
 
 事实行 DTO 的键（均自 0 连续，与 `KFL.Core` 的记录成员**逐一对应**）：
-`BribeFactDto` 7、`SentenceFactDto` 3、`FineFactDto` 5、`RelativeBanFactDto` 6、
-`CollectivePunishmentFactDto` 7、`ReleaseFactDto` 3。
+`GameDateDto` 2、`BribeFactDto` 7、`SentenceFactDto` 3、`FineFactDto` 5、`RelativeBanFactDto` 5、
+`CollectivePunishmentFactDto` 6、`ReleaseFactDto` 3。
+（本段原写 `FineFactDto` 5 / `RelativeBanFactDto` 6 / `CollectivePunishmentFactDto` 7，与上表「逐一对应」
+自相矛盾；按「逐一对应」裁定为 5 / 5 / 6，并把 `FineFact` 的 `PaymentResult? Paid` 换成
+`Money PaidFromTreasury, Money ToLoan`——`PaymentResult` 属 `KFL.Rules`，`KFL.Core` 引用它违反 G-05。
+登记为计划勘误 #5。）
 
 **键一律追加在末尾**，既有键的序号与键名一字不动。`MessagePackSaveFormat` 的成员数常量与 walker 的
 Skip 代数同步（`PersonMemberCount` 25 → 28、`FamilyMemberCount` 7 → 8、
-`PunishmentJournalMemberCount` 新增为 7，其余不改）。
+`PunishmentJournalMemberCount` 新增为 7、六类事实行各新增常量
+`BribeFactMemberCount` 7 / `SentenceFactMemberCount` 3 / `FineFactMemberCount` 5 /
+`RelativeBanFactMemberCount` 5 / `CollectivePunishmentFactMemberCount` 6 / `ReleaseFactMemberCount` 3）。
 
 ### 7.2 版本闸门
 

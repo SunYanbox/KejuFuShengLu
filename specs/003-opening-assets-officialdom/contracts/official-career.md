@@ -5,7 +5,8 @@
 本契约固定 §8.2 全部条目的**状态机、月内次序、三态俸禄与拒绝矩阵**。它是 US2~US4 与
 SC-003~SC-007 的可验收边界。字段与不变量见 [data-model.md](../data-model.md) §2/§3，
 数值出处见 [contracts/config-registry.md](./config-registry.md)。
-**本契约只消费** `PromotionBanned` / `ServingSentence` 状态位与计时，MUST NOT 建立或递减它们（逻辑轨 ⑥）。
+**本契约只消费** `PromotionBanned` / `ServingSentence` 状态位与计时；两者的**建立与递减**已由
+`006-bribery-punishment`（逻辑轨 ⑥）落地，本契约 MUST NOT 建立或递减它们（006 后记见文末）。
 
 ## 1. 参与状态
 
@@ -79,10 +80,11 @@ spec Edge Case）；服刑者仍在集合内、按下一条**显式暂停**。
 | 3 | 在职月数 MUST 每月 +1（授官当月记 1），`>= AppraisalPeriodMonths`（36）的当月开展考课判定；判定条件 MUST 同时含 `AgeAt(month) < RetirementAge`，使「满 70 岁当月不参与考课」在 ③-c 落地前后都成立（与 §2 条款 3 的 ③-c 构成冗余双闸） |
 | 4 | 考课概率 MUST = `min(PromotionBaseChance + merit × PromotionChancePerMerit, PromotionChanceCap)`；判定 MUST 恰好消耗 1 次 `NextDouble()` |
 | 5 | 判定成功 ⇒ 官阶级数 **−1**（数值更小 = 更高品）；失败 ⇒ 不变；`Level == HighestLevel` 时成功 MUST 维持 L1，MUST NOT 越界 |
-| 6 | 判定结束后（成功、失败、或**因禁升被跳过**）在职月数 MUST 重置为 0；**服刑者不构成该情形**——服刑是**暂停**（不推进、不重置），MUST NOT 记成「跳过」 |
-| 7 | **禁升**（`PromotionBanned`）期内到期的判定 MUST 被**跳过**——既不掷骰（MUST NOT 消耗随机）也不升迁，且 MUST NOT 补判；「跳过」（禁升，重置计时）与「暂停」（服刑，不重置）是**两种语义**，快照里 MUST 分别记为 `AppraisalSkipped` 与 `AppraisalPaused` |
-| 8 | 本特性 MUST NOT 递减、新建或清除 `PromotionBanRemainingMonths` |
+| 6 | 判定结束后（成功、失败、或**因禁升被跳过**）在职月数 MUST 重置为 0；**服刑者不构成该情形**——服刑是**暂停**（不推进、不重置），MUST NOT 记成「跳过」。服刑状态的建立与递减已由 006 落地（[006 契约·贿赂与惩罚](../../006-bribery-punishment/contracts/punishment.md)） |
+| 7 | **禁升**（`PromotionBanned`）期内到期的判定 MUST 被**跳过**——既不掷骰（MUST NOT 消耗随机）也不升迁，且 MUST NOT 补判；「跳过」（禁升，重置计时）与「暂停」（服刑，不重置）是**两种语义**，快照里 MUST 分别记为 `AppraisalSkipped` 与 `AppraisalPaused`。两种状态的建立与递减由 006 负责，本契约只读（[006 契约·贿赂与惩罚](../../006-bribery-punishment/contracts/punishment.md)） |
+| 8 | 本特性 MUST NOT 递减、新建或清除 `PromotionBanRemainingMonths`；它已由 006 建立并逐月递减（`PunishmentAdvance.Run(state)`），本契约只消费 |
 | 9 | 「第 35 个在职月 MUST NOT 判定、第 36 个在职月判定」两个方向都必须有断言 |
+| 10 | **释放降 1 级官阶**（006 的独立路径，**不是**条款 5 的考课晋升 `−1`）：服刑期满释放时，若 `Rank is not null` 则官阶级数 MUST **`Rank.Level + 1`**（数值更大 = 品级更低）；已是 `SalaryTable.LowestLevel`（18）则维持 18，MUST NOT 越界。判据是「**释放时** `Rank` 非 null」，MUST NOT 新增「曾为官」标记 |
 
 ## 5. 俸禄三态
 
@@ -165,6 +167,24 @@ spec Edge Case）；服刑者仍在集合内、按下一条**显式暂停**。
 > 完成入仕（005 spec FR-011；[契约十三 §7](../../005-exam-cycle/contracts/exam-session.md#7-及第入仕与-hasstatusfr-011fr-020)）。
 > 其余排除项不变，仍列于下。
 
-贿赂、惩罚矩阵、连坐、死刑、服刑与禁考/禁升计时的建立与递减、释放降级（逻辑轨 ⑥）；疾病、
+贿赂、惩罚矩阵、连坐、死刑（逻辑轨 ⑥）；疾病、
 寿命与死亡判定、家主继任（逻辑轨 ⑦）；存档落盘与成就（逻辑轨 ④/⑧）；界面（界面轨 U1~U5）；
 官名表（规格书未定义）。
+
+---
+
+> **006 后记（2026-10-13，`006-bribery-punishment` 同步注）**：本契约原标注「**只消费**、不建立、不递减」的
+> `PromotionBanned` / `ServingSentence` 状态位与计时，其**建立与递减**已由 `006-bribery-punishment`
+> （逻辑轨 ⑥）落地——月度结算由八步变九步，在 ③ 位置新增 `PunishmentAdvance.Run(state)`（消费随机
+> 0 次）；§1 的行人口径与 §4 条款 6/7 的「暂停 vs 跳过」判定口径**不变**，本契约对这两者的关系
+> 仍是「**只消费**」。同步点：
+>
+> - §4 条款 6/7：补 006 的交叉引用（两种状态由 006 建立与递减）；
+> - §4 条款 8：明确 `PromotionBanRemainingMonths` 由 006 建立并逐月递减；
+> - §4 **新增条款 10「释放降 1 级官阶」**：服刑期满释放时 `Rank` 非 null ⇒ `Rank.Level + 1`
+>   （已是 `SalaryTable.LowestLevel` = 18 则维持），这是**独立于**考课晋升（`−1`）的另一条官阶
+>   变动路径，MUST 单列条款；
+> - §10：从「本契约明确不包含」清单中移除「服刑与禁考/禁升计时的建立与递减、释放降级」（已交付）。
+>
+> 逻辑轨 ⑥ 的数值与契约见 [006 契约·贿赂与惩罚](../../006-bribery-punishment/contracts/punishment.md)
+> 与 [006 契约·配置登记](../../006-bribery-punishment/contracts/config-registry.md)。

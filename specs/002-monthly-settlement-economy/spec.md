@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-06
 
-**Status**: Completed（002 已交付：T001~T065 全部完成；两条收敛轮 T066~T086 亦已收口。实现说明与门禁实测见 [implementation-notes.md](./implementation-notes.md)）；月度结算的步骤序列以 [contracts/monthly-settlement.md](./contracts/monthly-settlement.md) 的**八步**为准（第③步由 003 追加；第⑦步「科举季」由 005 追加，见 005 FR-019 与 [契约十三 §1.1](../005-exam-cycle/contracts/exam-session.md)，`SettlementResult` 随之新增必填子段 `ExamSeason`）
+**Status**: Completed（002 已交付：T001~T065 全部完成；两条收敛轮 T066~T086 亦已收口。实现说明与门禁实测见 [implementation-notes.md](./implementation-notes.md)）；月度结算的步骤序列以 [contracts/monthly-settlement.md](./contracts/monthly-settlement.md) 的**九步**为准（第③步「惩罚推进」由 006 追加，第④步由 003 追加；第⑧步「科举季」由 005 追加，见 005 FR-019 与 [契约十三 §1.1](../005-exam-cycle/contracts/exam-session.md)；`SettlementResult` 随之新增必填子段 `ExamSeason` 与 `Punishment`——后者由 006 的第③步产生，见 [契约十六 §9](../006-bribery-punishment/contracts/punishment.md)）
 
 **Input**: User description: "按规格书 §16 是进入阶段②（月度结算与经济）"
 
@@ -289,8 +289,13 @@
 - **FR-016**: 贷款 MUST 每满 12 个月按**当时剩余本金**独立 roll 一次 0.5%~2.4% 的利率，
   利息累入欠息；本金清零后划扣 MUST 转向欠息；本金与欠息皆清即结清；系统 MUST 支持任意
   金额的手动提前还款（规格书 §5.4）。
-- **FR-017**: 系统 MUST 提供「现金 → 储蓄 → 余额转贷款」的支付原语，供罚金等未来调用方
-  使用；本阶段 MUST NOT 实现罚金金额、惩罚矩阵或其触发入口（规格书 §5.4、§7.5；阶段⑥）。
+- **FR-017**: 系统 MUST 提供「现金 → 储蓄 → 余额转贷款」的支付原语，其签名 MUST 为
+  `PaymentPrimitive.Pay(FamilyEconomy economy, LedgerCategory category, GameDate date, Money amount, PersonId? personId = null)`
+  ——可选的 `PersonId?` 形参由 006 追加，默认 `null` 使既有调用行为逐位不变（规格书 §5.4）。
+  **同步注（006 交付后，2026-10-13）**：原句「供罚金等未来调用方使用；本阶段 MUST NOT 实现
+  罚金金额、惩罚矩阵或其触发入口」**已失效**——罚金、12 格惩罚矩阵与行贿触发入口均已由 006
+  交付，且 006 是本支付原语的**首个产品调用方**（行贿支出 `BribeExpense`、罚金 `Fine`），
+  见 [契约十六 §4.3](../006-bribery-punishment/contracts/punishment.md)。
 - **FR-018**: 系统 MUST 在**收入已入账之后**判定「当月现金 + 可及储蓄 < 当月应付生活费」
   （扣付顺序为先现金、后储蓄，见 Assumptions 的「可及储蓄」口径；结算顺序见 FR-020 与
   裁决 E-04），并在成立时推进规格书 §5.4 的饥馑时间线：
@@ -304,16 +309,19 @@
 - **FR-019**: 饥馑与救济阶段 MUST 可被读取（当前阶段 + 剩余月数），供界面显示与后续阶段消费。
   体质下降、每人每月 5% 死亡判定与"体质不清零"的生命体征后果属逻辑轨 ⑦，本阶段 MUST NOT 实现。
 - **FR-020**: 月末结算 MUST 按规格书 §3（2026-10-06 裁决 E-04 已回写）的固定顺序执行本阶段
-  负责的五步：①提升待生效的难度与生活费档位 → ②米价系数游走并 clamp → ③**收入**
-  （含 12 月的储蓄利息与工出身 bonus）→ ④**生活费** → ⑤贷款**先计息、后划扣**，随后推进
-  一个月；随机事件、属性成长/衰老/疾病/死亡、科举季触发与绝嗣判定
-  MUST NOT 在本阶段实现（规格书 §3；阶段⑤、逻辑轨 ⑦、⑧）。
-  **同步注（003/005 交付后，2026-10-12）**：上句的「科举季触发」**已由 005 落成结算的固定新步骤 ⑦**
-  （位于 ⑥ 贷款之后、⑧ 推进时间之前；MUST NOT 调用 `AdvanceMonth`、MUST NOT 修改 `CurrentDate`），
-  ③ 的「官吏推进」由 003 插入，全月结算现为**八步**：①提升 → ②米价 → ③官吏推进 → ④收入 →
-  ⑤生活费 → ⑥贷款 → **⑦科举季** → ⑧推进时间（005 FR-019；[契约十三 §1.1](../005-exam-cycle/contracts/exam-session.md)）。
-  `SettlementResult` 同步新增**必填成员** `ExamSeason`（`KFL.Rules.Exam.ExamSeasonSnapshot`）：
-  **增量、只读、按 `PersonId` 升序**的当月科举季快照，非考试月为空快照（`Level == null`）。
+  负责的步骤：①提升待生效的难度与生活费档位 → ②米价系数游走并 clamp → ③**惩罚推进**
+  （006 追加）→ ④官吏推进（003 追加）→ ⑤**收入**（含 12 月的储蓄利息与工出身 bonus）→
+  ⑥**生活费** → ⑦贷款**先计息、后划扣** → ⑧**科举季**（005 追加），随后 ⑨推进一个月；
+  随机事件、属性成长/衰老/疾病/死亡、绝嗣判定 MUST NOT 在本阶段实现（规格书 §3；逻辑轨 ⑦、⑧）。
+  **同步注（006 交付后，2026-10-13）**：全月结算现为**九步**：①提升 → ②米价 → **③惩罚推进** →
+  ④官吏推进 → ⑤收入 → ⑥生活费 → ⑦贷款 → ⑧科举季 → ⑨推进时间。「科举季触发」已由 005 落成
+  原第 ⑦ 步（今为第 ⑧ 步，位于 ⑦ 贷款之后、⑨ 推进时间之前；MUST NOT 调用 `AdvanceMonth`、
+  MUST NOT 修改 `CurrentDate`）。第③步「惩罚推进」由 006 插入在 ② 米价之后、④ 官吏推进之前
+  （`PunishmentAdvance.Run(state)`；MUST NOT 调用 `AdvanceMonth`、MUST NOT 修改 `CurrentDate`；
+  **消费随机恰好 0 次**），见 [契约十六 §1.1](../006-bribery-punishment/contracts/punishment.md)。
+  `SettlementResult` 同步新增**必填成员** `ExamSeason`（`KFL.Rules.Exam.ExamSeasonSnapshot`，
+  由第⑧步产生）与 `Punishment`（`KFL.Rules.Punishment.PunishmentSnapshot`，由第③步产生）：
+  二者皆为**增量、只读、按 `PersonId` 升序**的当月快照，非考试月/无惩罚月的集合为空快照。
 - **FR-021**: 系统 MUST 维护家族级追加式流水账，每条 = 年月 / 归属角色（可空） / 类别 / 金额；
   条目 MUST 分**资金类**（参与 SC-005 求和）与**事件类**（不涉及资金的阶段与负债事件，如
   「进入饥馑」与「贷款计息入欠息」）两类；一切资金流动 MUST 落条目；
@@ -393,16 +401,19 @@
   逻辑轨 ⑦）：本阶段只推进饥馑的**阶段状态**与账面上的支出 −20%。
 - 科举周期、省试路费、贿赂金额与乘数、罚金金额与 12 格惩罚矩阵、连坐、服刑与禁考计时推进
   （阶段⑤、⑥）：**002 交付时**本阶段只提供「现金 → 储蓄 → 余额转贷款」这一条支付原语。
-  **现状（005 交付后）**：科举周期（考试日历与报名、科举季结算步）与省试路费**已由 005（逻辑轨 ⑤）
-  交付**，作为月度结算的固定新步骤 ⑦「科举季」插入（005 FR-019），见
-  [契约十三](../005-exam-cycle/contracts/exam-session.md) 与
-  [契约三 §1](./contracts/monthly-settlement.md) 的八步表；本规格 FR-020 与 Assumptions 已同步该步
-  与 `SettlementResult.ExamSeason`。贿赂金额与乘数、罚金矩阵、连坐与服刑/禁考计时推进仍不在范围内。
+  **现状（006 交付后，2026-10-13）**：该条列出的**全部**能力均已交付——科举周期（考试日历与报名、
+  科举季结算步）与省试路费由 005（逻辑轨 ⑤）交付，作为固定步骤第 ⑧ 步「科举季」插入（005 FR-019）；
+  贿赂金额与乘数、罚金金额与 12 格惩罚矩阵、连坐、服刑与禁考计时推进由 006（逻辑轨 ⑥）交付，
+  作为固定步骤第 ③ 步「惩罚推进」插入（006 FR-020）。见
+  [契约十三](../005-exam-cycle/contracts/exam-session.md)、
+  [契约十六](../006-bribery-punishment/contracts/punishment.md) 与
+  [契约三 §1](./contracts/monthly-settlement.md) 的**九步**表；本规格 FR-020 与 Assumptions 已同步
+  两步与 `SettlementResult.ExamSeason` / `SettlementResult.Punishment`。
 - 官职的待阙、授官、考课晋升、政绩、致仕与半俸（规格书 §8.2；逻辑轨 ③）：**002 交付时**本阶段
   只做俸禄表的取值与月摊发放，不产生任何授官路径。**现状（003 交付后）**：待阙/授官/考课/致仕
-  **已由 003（逻辑轨 ③）交付**，作为月度结算的第③步插入（003 FR-019），见
+  **已由 003（逻辑轨 ③）交付**，作为月度结算的第④步插入（003 FR-019），见
   [契约七](../../003-opening-assets-officialdom/contracts/official-career.md) 与
-  [契约三 §1](./contracts/monthly-settlement.md) 的**八步**表；半俸亦随三态俸禄一并交付。
+  [契约三 §1](./contracts/monthly-settlement.md) 的**九步**表；半俸亦随三态俸禄一并交付。
 - 婚育、聘礼/嫁妆、买功名婚姻与买人口（规格书 §9.2~§9.5；逻辑轨 ⑦）：**已裁决**（2026-10-06，
   §17）买人口的购买入口与递增计价归逻辑轨 ⑦，本阶段 MUST NOT 实现（见 FR-028）。
 - 四项出身的开局初始资产发放（规格书 §10.1；逻辑轨 ③）：**002 交付时**本阶段只消费已经存在的
@@ -446,6 +457,12 @@
   （⑥ 贷款之后、⑧ 推进时间之前；005 FR-019），`SettlementResult` 新增必填成员 `ExamSeason`
   （增量、只读、按 `PersonId` 升序）；本规格的 FR-020、Out of Scope 与
   [契约三 §1](./contracts/monthly-settlement.md) 的步骤表均已同步为**八步**。
+- **006 同步（2026-10-13）**：逻辑轨 ⑥「惩罚推进」已由 006 落成月末结算的固定新步骤 **③**
+  （② 米价之后、④ 官吏推进之前；006 FR-020；`PunishmentAdvance.Run(state)`，消费随机恰好 0 次），
+  `SettlementResult` 新增必填成员 `Punishment`（`KFL.Rules.Punishment.PunishmentSnapshot`，
+  增量、只读、按 `PersonId` 升序）；原步骤 ③~⑧ 顺移为 ④~⑨，全月结算由八步变**九步**，
+  本规格的 FR-017、FR-020、Out of Scope 与
+  [契约三 §1](./contracts/monthly-settlement.md) 的步骤表均已同步为**九步**。
 - **官俸纳入本阶段**：§16 阶段② 的括注含「收入」，而 §5.2 收入表的最后一行即官俸，且 §16
   必测清单含「俸禄表 18 级锚点」。因此本阶段交付俸禄表取值与月摊发放；授官、待阙、考课与
   致仕仍属逻辑轨 ③，本阶段没有任何产生官阶的路径。
@@ -453,8 +470,13 @@
   流转」，故四阶段判定与救济期的支出 −20% 属本阶段；体质 −10/月、每人每月 5% 死亡判定与
   「体质不清零」的表述属体质与死亡规则，按 §16 归逻辑轨 ⑦。
 - **支付原语先于罚金**：§5.4 规定「不存在主动借贷」，贷款只能由付不起罚金产生，而罚金属
-  阶段⑥。为使贷款机制在本阶段可测，本阶段交付支付原语与贷款结构本身，但 MUST NOT 实现
-  任何罚金金额、触发入口或惩罚矩阵。
+  阶段⑥。为使贷款机制在本阶段可测，本阶段交付支付原语与贷款结构本身。
+  **006 同步（2026-10-13）**：该「先于」已被 006 兑现——006 交付了罚金金额、触发入口与
+  12 格惩罚矩阵，并成为 `PaymentPrimitive.Pay` 的**首个产品调用方**；原「MUST NOT 实现任何
+  罚金金额、触发入口或惩罚矩阵」一句**已失效**。支付原语签名同步为
+  `PaymentPrimitive.Pay(FamilyEconomy economy, LedgerCategory category, GameDate date, Money amount, PersonId? personId = null)`
+  ——新增可选 `PersonId?` 形参，默认 `null` 使既有行为逐位不变（见 FR-017 与
+  [契约十六 §4.3](../006-bribery-punishment/contracts/punishment.md)）。
 - **现金与储蓄的自动划付口径**：§5.4 的饥馑判定写作「当月现金（**+可及储蓄**）付不起生活费」，
   本规格按 §17 的「最直观解释」采用：储蓄全额可及，扣付先现金、后储蓄，与 §7.5 罚金的支付
   顺序一致；储蓄不足时才进入饥馑。现金与储蓄互转仍然无损且随时可用。

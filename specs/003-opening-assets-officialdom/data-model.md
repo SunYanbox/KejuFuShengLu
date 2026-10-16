@@ -28,9 +28,9 @@
 
 | 字段 | 类型 | 对应的状态位 | 说明 |
 | --- | --- | --- | --- |
-| `SentenceRemainingMonths` | `int?` | `ServingSentence` | 既有 |
-| `ExamBanRemainingMonths` | `int?` | `ExamBanned` | 既有 |
-| `PromotionBanRemainingMonths` | `int?` | `PromotionBanned` | 既有；本特性**只消费**，不递减（逻辑轨 ⑥） |
+| `SentenceRemainingMonths` | `int?` | `ServingSentence` | 既有；**由 006 建立与递减**（逻辑轨 ⑥ 已落地），本特性只消费 |
+| `ExamBanRemainingMonths` | `int?` | `ExamBanned` | 既有；**由 006 建立与递减**（逻辑轨 ⑥ 已落地），本特性只消费 |
+| `PromotionBanRemainingMonths` | `int?` | `PromotionBanned` | 既有；**由 006 建立与递减**（逻辑轨 ⑥ 已落地），本特性只消费 |
 | `AwaitingPostRemainingMonths` | `int?` | `AwaitingPost` | **【新】** 待阙剩余月数；递减到 **0** 的当月授官，且 MUST NOT 以「0 + 状态位为真」的形态存续（FR-013） |
 
 **不变量**：① 四个字段非空时 MUST `>= 0`；② 仅在对应状态位为真时可非空
@@ -179,7 +179,8 @@ MUST NOT 同时置 `Family.HasShiStatus`（§10.2、FR-008）。
 | `RetirementSalaryRatio` | 0.50 | §8.2、FR-020 |
 | `PromotionChance(int merit)` | `min(0.25 + merit × 0.003, 0.70)` 的纯函数 | §8.2 |
 
-**明确不含**：禁升计时的递减与建立（逻辑轨 ⑥）、官名、考课的事件文本。
+**明确不含**：禁升/禁考/服刑计时的递减与建立（已由 006 的 `PunishmentPolicy` / `PunishmentAdvance`
+落地，见 [006 契约·贿赂与惩罚](../../006-bribery-punishment/contracts/punishment.md)）、官名、考课的事件文本。
 
 ### 3.4 `Config/GameConfig`——【改】新增三组**只转发**的视图
 
@@ -458,7 +459,12 @@ public interface INameGenerator                       // Abstractions/
 
 ### 6.5 本特性**不建立**的状态转移
 
-随机事件、属性成长/衰老/疾病/死亡（逻辑轨 ⑦）、科举季与功名推进（逻辑轨 ⑤）、
-贿赂与惩罚矩阵、服刑与禁考的建立与递减、释放降级、连坐（逻辑轨 ⑥）、婚育与买人口、
+随机事件、属性成长/衰老/疾病/死亡（逻辑轨 ⑦）、科举季与功名推进（逻辑轨 ⑤）、婚育与买人口、
 家主继任（逻辑轨 ⑦）、存档读写与成就（逻辑轨 ④/⑧）、任何界面状态（界面轨 U1~U5）、
 `Family.HasShiStatus` 的任何写入（R-14）。
+
+> **006 后记（2026-10-13，逻辑轨 ⑥ 已落地）**：原列于本节的**贿赂与惩罚矩阵、服刑与禁考/禁升计时的建立与
+> 递减、释放降级、连坐**已由 `006-bribery-punishment` 交付——月度结算新增第 ③ 步惩罚推进
+> （`PunishmentAdvance.Run(state)`），`StatusTimers` 的三个计时由 006 建立与递减，释放降级为
+> `Rank.Level + 1` 的独立路径。本特性对它们的口径仍是「不建立」，只消费「暂停 vs 跳过」的结果。
+> 详见 [006 契约·贿赂与惩罚](../../006-bribery-punishment/contracts/punishment.md)。

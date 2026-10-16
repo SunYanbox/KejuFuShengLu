@@ -105,9 +105,20 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 > MUST 只**引用**，MUST NOT 复制这些字面量（FR-014、SC-008）。逐项登记见
 > [`specs/005-exam-cycle/contracts/config-registry.md`](../../005-exam-cycle/contracts/config-registry.md) §1。
 
+> 追加（2026-10-13，`006-bribery-punishment`）：**贿赂与惩罚数值只指向不复制**——§7.5 的行贿金额、
+> 被抓率与效果乘数（`BribePolicy.BaseAmountGuan` / `BaseCaughtRate` / `EffectMultiplierK` /
+> `UnitMultiplier`）与 12 格惩罚矩阵、连坐与服刑/禁考计时月数（`PunishmentPolicy`），唯一出处是
+> 《科举浮生录 规格书》§7.5，由 006 的 `src/KFL.Rules/Config/BribePolicy.cs` 与
+> `PunishmentPolicy.cs`（`public const`）单点声明，并只经数值总表入口 `GameConfig` 的对应转发成员
+> 暴露（该视图自带零数值字面量）；本表及其它文档 MUST 只**引用**，MUST NOT 复制这些字面量（SC-008）。
+> 另：`ExamPolicy.NeutralBribeMultiplier` 已删除，被判被罚乘数改由
+> `BribeRules.MultiplierOf(ExamLevel, Person) = BribePolicy.EffectMultiplierK(level) ^ bribeCount` 推导，
+> `UnitMultiplier = 1m` 即 k⁰ 单位元。逐项登记见
+> [`specs/006-bribery-punishment/contracts/config-registry.md`](../../006-bribery-punishment/contracts/config-registry.md) §1。
+
 ## 7. 本契约明确不包含
 
-§7 贿赂的全部数值（阶段⑥）、§9 婚育与买人口数值（逻辑轨 ⑦）、
+§9 婚育与买人口数值（逻辑轨 ⑦）、
 §13 调试控制台上限（界面轨 U4）、§14 成就与存档（阶段④/逻辑轨 ⑧）。
 
 > 后记（2026-10-08）：本表**原有**的两项排除内容——§8.2 的考课/政绩/致仕数值与 §10.1 的
@@ -119,3 +130,10 @@ SC-008 要求「§5.1、§5.2、§5.3、§5.4、§8.1、§11 中与本阶段相�
 > （[`specs/005-exam-cycle/contracts/config-registry.md`](../../005-exam-cycle/contracts/config-registry.md)）
 > 登记指向（立案源 = 契约十四）：数值单点声明于 `src/KFL.Rules/Config/ExamPolicy.cs`，
 > 经 `GameConfig.Exam` 只转发、不复制。本节余下的排除项不变。
+
+> 后记（2026-10-13）：本表原有排除项中的**「§7 贿赂的全部数值」（阶段⑥ / 逻辑轨 ⑥）**
+> **已由 `006-bribery-punishment` 交付**，故自本节移出，改由该特性的**契约十七**
+> （[`specs/006-bribery-punishment/contracts/config-registry.md`](../../006-bribery-punishment/contracts/config-registry.md)）
+> 登记指向（立案源 = 契约十七）：数值单点声明于 `src/KFL.Rules/Config/BribePolicy.cs` 与
+> `PunishmentPolicy.cs`，经 `GameConfig` 只转发、不复制（见 §6 的 006 追加）。本节余下的排除项
+> （§9 婚育与买人口、§13 调试控制台、§14 成就与存档）不变。
