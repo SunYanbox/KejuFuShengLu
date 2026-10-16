@@ -3,6 +3,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Economy;
 
 namespace KFL.Rules.Config;
 
@@ -20,9 +21,9 @@ namespace KFL.Rules.Config;
 /// 遮蔽 <c>KFL.Core.Enums</c> 里的 <c>AgeBracket</c> / <c>Difficulty</c> 同名类型。
 /// </para>
 /// <para>
-/// **明确不含**：阶段⑤及以后才有的数值（科举录取率、贿赂与惩罚矩阵、买人口递增计价、考课与政绩等，
-/// 契约五 §6）。<c>DifficultyRates</c> 里已存在的 <c>BriberyRiskFactor</c> / <c>NegativeEventFactor</c>
-/// 属阶段⑤/⑥口径，故不在此处转发。
+/// **明确不含**：尚未落地的阶段的数值（买人口递增计价、成长衰老疾病死亡的年龄线与概率、
+/// 成就与绝嗣阈值等）。<c>DifficultyRates</c> 里已存在的 <c>NegativeEventFactor</c>
+/// 属阶段⑧口径，故不在此处转发。
 /// </para>
 /// </remarks>
 public static class GameConfig
@@ -174,6 +175,13 @@ public static class GameConfig
 
         /// <summary>田宅铺市值（贯；**不含商本池**）。</summary>
         public static Money MarketValue(Holdings holdings) => AssetPriceTable.MarketValue(holdings);
+
+        /// <summary>总资产（现金 + 储蓄 + 田宅铺市值 − 贷款本金 − 欠息；为负或 0 ⇒ 0）。</summary>
+        public static Money TotalAssets(FamilyEconomy economy) => TotalAssetsCalculator.Of(economy);
+
+        /// <summary>总资产（同上，按「国库 + 资产」两段取）。</summary>
+        public static Money TotalAssets(Treasury treasury, Holdings holdings) =>
+            TotalAssetsCalculator.Of(treasury, holdings);
     }
 
     /// <summary>储蓄与贷款利率表（§5.4；R-08/R-11）：区间与计息周期。</summary>
@@ -430,9 +438,6 @@ public static class GameConfig
         /// <summary>需掷骰概率的封顶。</summary>
         public static decimal DiceRateCap => ExamPolicy.DiceRateCap;
 
-        /// <summary>本轮贿赂乘数。</summary>
-        public static decimal NeutralBribeMultiplier => ExamPolicy.NeutralBribeMultiplier;
-
         /// <summary>免解的解试累计失败数阈值。</summary>
         public static int JieShiExemptionFailureThreshold => ExamPolicy.JieShiExemptionFailureThreshold;
 
@@ -450,6 +455,51 @@ public static class GameConfig
 
         /// <summary>学业系数。</summary>
         public static decimal StudyFactor(int study) => ExamPolicy.StudyFactor(study);
+    }
+
+    /// <summary>贿赂政策（§7.1；006）：窗口、递增步长、基础金额、基础被抓率与效果乘数 k（只转发）。</summary>
+    public static class Bribe
+    {
+        /// <summary>贿赂窗口覆盖的考前月数。</summary>
+        public static int WindowPreviousMonths => BribePolicy.WindowPreviousMonths;
+
+        /// <summary>每次行贿的递进步长（金额与被抓率的共用步长）。</summary>
+        public static decimal ProgressionStep => BribePolicy.ProgressionStep;
+
+        /// <summary>被抓概率封顶。</summary>
+        public static decimal CaughtProbabilityCap => BribePolicy.CaughtProbabilityCap;
+
+        /// <summary>k⁰ 的单位乘数。</summary>
+        public static decimal UnitMultiplier => BribePolicy.UnitMultiplier;
+
+        /// <summary>基础贿赂金额（贯）。</summary>
+        public static int BaseAmountGuan(ExamLevel level) => BribePolicy.BaseAmountGuan(level);
+
+        /// <summary>基础被抓率。</summary>
+        public static decimal BaseCaughtRate(ExamLevel level) => BribePolicy.BaseCaughtRate(level);
+
+        /// <summary>效果乘数底数 k。</summary>
+        public static decimal EffectMultiplierK(ExamLevel level) => BribePolicy.EffectMultiplierK(level);
+    }
+
+    /// <summary>惩罚政策（§7.4；006）：12 格矩阵与罚金 / 亲属禁考 / 全族禁考口径（只转发）。</summary>
+    public static class Punishment
+    {
+        /// <summary>比例罚金的上限（贯）。</summary>
+        public static int RatioFineCapGuan => PunishmentPolicy.RatioFineCapGuan;
+
+        /// <summary>全族禁考禁升的月数。</summary>
+        public static int FamilyWideBanMonths => PunishmentPolicy.FamilyWideBanMonths;
+
+        /// <summary>释放时官职提升的级数。</summary>
+        public static int ReleaseDemotionLevels => PunishmentPolicy.ReleaseDemotionLevels;
+
+        /// <summary>一年的月数（复用收入表）。</summary>
+        public static int MonthsPerYear => PunishmentPolicy.MonthsPerYear;
+
+        /// <summary>取难度 × 被抓级别的处罚格。</summary>
+        public static PunishmentCell CellOf(Difficulty difficulty, ExamLevel level) =>
+            PunishmentPolicy.CellOf(difficulty, level);
     }
 
     /// <summary>官吏政策（§8.2；003）：待阙、授官、政绩、考课、致仕与半俸（只转发）。</summary>

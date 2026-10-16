@@ -75,14 +75,14 @@ public class ExamAdmissionTests
         var expected = GameConfig.Exam.JieShiBaseRate
             * GameConfig.Exam.StudyFactor(person.Study)
             * (decimal.One + (person.Talents.Officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
-            * GameConfig.Exam.NeutralBribeMultiplier;
+            * GameConfig.Bribe.UnitMultiplier;
 
         // arch-guard:allow 锚点即被验证对象：spec US1 AS1 的勘误后示例值（非规则数值副本）
         Assert.Equal(0.01288m, expected);
         Assert.Equal(
             expected,
             ExamAdmission.AdmissionRate(
-                ExamLevel.JieShi, person, hasShiStatus: false, bribeMultiplier: GameConfig.Exam.NeutralBribeMultiplier));
+                ExamLevel.JieShi, person, hasShiStatus: false, bribeMultiplier: GameConfig.Bribe.UnitMultiplier));
     }
 
     /// <summary>省试录取率与解试同形，只把基础率换成 <c>ShengShiBaseRate</c>。</summary>
@@ -117,9 +117,9 @@ public class ExamAdmissionTests
         var officialdom = person.Talents.Officialdom;
 
         var withoutShi = ExamAdmission.AdmissionRate(
-            ExamLevel.JieShi, person, hasShiStatus: false, bribeMultiplier: GameConfig.Exam.NeutralBribeMultiplier);
+            ExamLevel.JieShi, person, hasShiStatus: false, bribeMultiplier: GameConfig.Bribe.UnitMultiplier);
         var withShi = ExamAdmission.AdmissionRate(
-            ExamLevel.JieShi, person, hasShiStatus: true, bribeMultiplier: GameConfig.Exam.NeutralBribeMultiplier);
+            ExamLevel.JieShi, person, hasShiStatus: true, bribeMultiplier: GameConfig.Bribe.UnitMultiplier);
 
         Assert.NotEqual(withoutShi, withShi);
         Assert.Equal(withoutShi * GameConfig.Exam.ShiStatusAdmissionBonus, withShi);
@@ -128,11 +128,11 @@ public class ExamAdmissionTests
         var promotionExpected = GameConfig.Exam.ImperialPromotionBaseRate
             * GameConfig.Exam.StudyFactor(person.Study)
             * (decimal.One + (officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
-            * GameConfig.Exam.NeutralBribeMultiplier;
+            * GameConfig.Bribe.UnitMultiplier;
 
         Assert.Equal(
             promotionExpected,
-            ExamAdmission.ImperialPromotionRate(person, GameConfig.Exam.NeutralBribeMultiplier));
+            ExamAdmission.ImperialPromotionRate(person, GameConfig.Bribe.UnitMultiplier));
     }
 
     /// <summary>殿试走进甲率入口，录取率入口对殿试显式拒绝。</summary>
@@ -143,11 +143,11 @@ public class ExamAdmissionTests
         person.Study = 70;
 
         Assert.Throws<ArgumentOutOfRangeException>(() => ExamAdmission.AdmissionRate(
-            ExamLevel.DianShi, person, hasShiStatus: false, bribeMultiplier: GameConfig.Exam.NeutralBribeMultiplier));
+            ExamLevel.DianShi, person, hasShiStatus: false, bribeMultiplier: GameConfig.Bribe.UnitMultiplier));
 
         // 对照：同一个人走殿试进甲率入口是合法的。
         Assert.InRange(
-            ExamAdmission.ImperialPromotionRate(person, GameConfig.Exam.NeutralBribeMultiplier),
+            ExamAdmission.ImperialPromotionRate(person, GameConfig.Bribe.UnitMultiplier),
             decimal.Zero,
             GameConfig.Exam.DiceRateCap);
     }
@@ -169,7 +169,7 @@ public class ExamAdmissionTests
 
         var multipliers = new[]
         {
-            GameConfig.Exam.NeutralBribeMultiplier,
+            GameConfig.Bribe.UnitMultiplier,
             BribeMultiplier,
             HugeBribeMultiplier,
         };

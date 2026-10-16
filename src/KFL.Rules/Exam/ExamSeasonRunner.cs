@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Bribery;
 using KFL.Rules.Career;
 using KFL.Rules.Config;
 
@@ -294,7 +295,7 @@ public static class ExamSeasonRunner
             case ExamLevel.ShengShi:
             {
                 var rate = ExamAdmission.AdmissionRate(
-                    level, person, hasShiStatus, ExamPolicy.NeutralBribeMultiplier);
+                    level, person, hasShiStatus, BribeRules.MultiplierOf(level, person));
                 var passed = (decimal)random.NextDouble() < rate;
                 var target = level == ExamLevel.JieShi ? DegreeLevel.JuRen : DegreeLevel.GongShi;
 
@@ -320,7 +321,7 @@ public static class ExamSeasonRunner
             {
                 // 殿试录取不掷骰：进殿试者 100% 成为进士（Q1 裁决），只掷进甲一次。
                 var promoted = (decimal)random.NextDouble() < ExamAdmission.ImperialPromotionRate(
-                    person, ExamPolicy.NeutralBribeMultiplier);
+                    person, BribeRules.MultiplierOf(ExamLevel.DianShi, person));
                 var imperialClass = ExamAdmission.ImperialClassFor(person, promoted);
                 ImperialPlacement? placement = promoted ? ExamAdmission.RollPlacement(random) : null;
 

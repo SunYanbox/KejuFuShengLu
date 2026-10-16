@@ -54,14 +54,6 @@ public static class ExamPolicy
     /// <summary>需掷骰概率的封顶 89.9999%（规格书 §7.1）。</summary>
     public const decimal DiceRateCap = 0.899999m;
 
-    /// <summary>
-    /// 本轮贿赂乘数（规格书 §7.1 的 <c>k⁰</c>）。
-    /// </summary>
-    /// <remarks>
-    /// 逻辑轨 ⑥ 落地后同一入口改传实际值；本特性 MUST NOT 引入累进金额或被抓概率。
-    /// </remarks>
-    public const decimal NeutralBribeMultiplier = 1.0m;
-
     /// <summary>解试累计失败数达 3 ⇒ 此后免掷骰中第（规格书 §6「免解」）。</summary>
     public const int JieShiExemptionFailureThreshold = 3;
 

@@ -32,8 +32,9 @@ public readonly record struct PaymentResult(Money FromCash, Money FromSavings, M
 /// <remarks>
 /// <para>
 /// **唯一用途是「付不起的支出」**：规格书 §5.4 规定「不存在主动借贷」，贷款只能由付不起的支出
-/// 产生，而这类支出（罚金）属阶段⑥。故本阶段本类**没有产品调用方**，只有单测直接验证三步语义
-/// （`LoanTests`）；它同时是 <c>Loan.Principal</c> 在本阶段**唯一**的产生路径（data-model §3.2 的注）。
+/// 产生。002 阶段首写时这类支出（罚金）尚不存在，故当时本类只有单测（`LoanTests`）；
+/// 006 起它有了**产品调用方**——行贿支出与罚金（契约十五 §2 段③、契约十六 §4.2 条款 3）。
+/// 它同时是 <c>Loan.Principal</c> 的唯一产生路径（data-model §3.2 的注）。
 /// </para>
 /// <para>
 /// **资产买卖与生活费 MUST NOT 走这条路径**：前者按 `AssetMarket` 买卖，后者按 E-06 做部分支付
@@ -56,9 +57,13 @@ public static class PaymentPrimitive
     /// 金额为 0 时**无任何副作用**、也不落条目（资金类条目的金额 MUST 非 0）。
     /// </remarks>
     /// <param name="economy">家族经济聚合（池内付出经 <see cref="FamilyEconomy.Apply"/> 写入并留痕）。</param>
-    /// <param name="category">本次支付的账本类别（阶段⑥ 传入罚金类别）。</param>
+    /// <param name="category">本次支付的账本类别（行贿传 `BribeExpense`、罚金传 `Fine`）。</param>
     /// <param name="date">归属年月。</param>
     /// <param name="amount">支付额，MUST <c>&gt;= 0</c>。</param>
+    /// <param name="personId">
+    /// 本次支付的归属人；<c>null</c>（默认）表示不归属到具体成员——既有调用方的行为**逐位不变**。
+    /// 006 的行贿与罚金传入当事人 <c>Id</c>，使账本的角色级聚合能正确归属「谁把家败了」。
+    /// </param>
     /// <returns>三段的拆分结果。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="economy"/> 为 <c>null</c>。</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="amount"/> 为负。</exception>
@@ -66,7 +71,7 @@ public static class PaymentPrimitive
     /// <paramref name="category"/> 恒为负的支出类之外收到正额入账目标时（由 <see cref="FamilyEconomy.Apply"/> 抛出）。
     /// </exception>
     public static PaymentResult Pay(
-        FamilyEconomy economy, LedgerCategory category, GameDate date, Money amount)
+        FamilyEconomy economy, LedgerCategory category, GameDate date, Money amount, PersonId? personId = null)
     {
         ArgumentNullException.ThrowIfNull(economy);
 
@@ -92,7 +97,7 @@ public static class PaymentPrimitive
         if (fromTreasury.IsPositive)
         {
             // 池内付出必落条目（FR-021）；Apply 内部即按「现金 → 储蓄」扣付。
-            economy.Apply(category, null, -fromTreasury, date);
+            economy.Apply(category, personId, -fromTreasury, date);
         }
 
         if (toLoan.IsPositive)
