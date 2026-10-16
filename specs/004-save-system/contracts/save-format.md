@@ -29,7 +29,7 @@
 | 3 | `SaveId` | `Guid` | `Write(string)`（`D` 格式，36 字符） | `"SaveId"` 字符串成员 |
 
 二进制头的完整形状 = `fixarray(3)` 起手（`0x93`）后跟三个成员；JSON 头的完整形状 =
-`{"FormatVersion":2,"PayloadLength":N,"SaveId":"…","State":<主体>}`（`State` 之前恰有这三个成员，
+`{"FormatVersion":3,"PayloadLength":N,"SaveId":"…","State":<主体>}`（`State` 之前恰有这三个成员，
 次序固定）。
 
 **不变量**
@@ -74,11 +74,19 @@
 
 | DTO | Key → 键名 |
 | --- | --- |
-| `FamilyDto` | 0 `name`(string)、1 `hasShiStatus`(bool)、2 `headId`(Guid?)、3 `members`(PersonDto[])、4 `settledOutsiders`(Guid[])、5 `marriageAlignedOutsiders`(Guid[])、6 `autoExamApplication`(bool) |
-| `PersonDto` | 0 `id`(Guid)、1 `name`(string)、2 `gender`、3 `birthYear`(int)、4 `birthMonth`(int)、5 `generation`(int)、6 `talents`(TalentDto)、7 `study`(int)、8 `health`(int)、9 `lifespan`(int)、10 `rankLevel`(int?)、11 `merit`(int)、12 `status`(StatusFlag)、13 `timers`(StatusTimersDto)、14 `occupation`、15 `monthsInOffice`(int)、16 `entryTrack`(AppointmentTrack?)、17 `fatherId`(Guid?)、18 `motherId`(Guid?)、19 `spouseId`(Guid?)、20 `formerSpouseIds`(Guid[])、21 `degreeHistory`(DegreeRecordDto[])、22 `jieShiFailureCount`(int)、23 `shengShiFailureCount`(int)、24 `appliedExam`(`ExamLevel?`) |
+| `FamilyDto` | 0 `name`(string)、1 `hasShiStatus`(bool)、2 `headId`(Guid?)、3 `members`(PersonDto[])、4 `settledOutsiders`(Guid[])、5 `marriageAlignedOutsiders`(Guid[])、6 `autoExamApplication`(bool)、7 `punishmentJournal`(PunishmentJournalDto) |
+| `PersonDto` | 0 `id`(Guid)、1 `name`(string)、2 `gender`、3 `birthYear`(int)、4 `birthMonth`(int)、5 `generation`(int)、6 `talents`(TalentDto)、7 `study`(int)、8 `health`(int)、9 `lifespan`(int)、10 `rankLevel`(int?)、11 `merit`(int)、12 `status`(StatusFlag)、13 `timers`(StatusTimersDto)、14 `occupation`、15 `monthsInOffice`(int)、16 `entryTrack`(AppointmentTrack?)、17 `fatherId`(Guid?)、18 `motherId`(Guid?)、19 `spouseId`(Guid?)、20 `formerSpouseIds`(Guid[])、21 `degreeHistory`(DegreeRecordDto[])、22 `jieShiFailureCount`(int)、23 `shengShiFailureCount`(int)、24 `appliedExam`(`ExamLevel?`)、25 `jieShiBribeCount`(int)、26 `shengShiBribeCount`(int)、27 `dianShiBribeCount`(int) |
 | `TalentDto` | 0 `agriculture`、1 `commerce`、2 `officialdom`、3 `craft`（皆 `int`） |
 | `StatusTimersDto` | 0 `sentenceRemainingMonths`(int?)、1 `examBanRemainingMonths`(int?)、2 `promotionBanRemainingMonths`(int?)、3 `awaitingPostRemainingMonths`(int?) |
 | `DegreeRecordDto` | 0 `level`、1 `placement`、2 `changedYear`(int)、3 `changedMonth`(int)、4 `cause`、5 `imperialClass` |
+| `GameDateDto` | 0 `year`(int)、1 `month`(int) |
+| `PunishmentJournalDto` | 0 `familyBanDeclared`(bool)、1 `bribes`(BribeFactDto[])、2 `sentences`(SentenceFactDto[])、3 `fines`(FineFactDto[])、4 `relativeBans`(RelativeBanFactDto[])、5 `collectivePunishments`(CollectivePunishmentFactDto[])、6 `releases`(ReleaseFactDto[]) |
+| `BribeFactDto` | 0 `date`(GameDateDto)、1 `examinee`(Guid)、2 `level`(`ExamLevel`)、3 `nth`(int)、4 `amountWen`(decimal)、5 `caught`(bool)、6 `capReached`(bool) |
+| `SentenceFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `months`(int) |
+| `FineFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `amountWen`(decimal)、3 `paidFromTreasuryWen`(decimal)、4 `toLoanWen`(decimal) |
+| `RelativeBanFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `relative`(Guid)、3 `examBanMonths`(int)、4 `promotionBanMonths`(int?) |
+| `CollectivePunishmentFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `outcome`(`CollectiveOutcome`)、3 `relative`(Guid)、4 `degreeBefore`(`DegreeLevel?`)、5 `degreeAfter`(`DegreeLevel?`) |
+| `ReleaseFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `newRankLevel`(int?) |
 
 ### 4.3 `FamilyEconomyDto` 及其子 DTO
 
@@ -90,6 +98,11 @@
 | `HoldingsDto` | 0 `farmlandMu`、1 `ruralHouses`、2 `urbanHouses`、3 `shops`（皆 `int`） |
 | `LedgerEntryDto` | 0 `year`(int)、1 `month`(int)、2 `personId`(Guid?)、3 `category`、4 `amountWen`(decimal) |
 | `FamineDto` | 0 `stage`、1 `elapsedMonths`(int) |
+
+**事实行 DTO 的键数 MUST 等于对应 `KFL.Core` 记录的成员数（逐一对应）**：`GameDateDto` 用 2 键
+收进单个 `date`，使 `BribeFactDto` / `SentenceFactDto` / `FineFactDto` / `RelativeBanFactDto` /
+`CollectivePunishmentFactDto` / `ReleaseFactDto` 的键序与 Core 事实记录成员的声明序一一对齐
+（006；data-model §7.1）。
 
 **金额一律以「文」为单位的 `decimal`**（章程「技术栈与工程约束」）；**`SalaryMode`、`TreasuryPool`
 等派生量 MUST NOT 出现在任一键表里**。
@@ -112,7 +125,7 @@
 ① 文件存在？           否 ⇒ Missing
 ② 头记录可读？         否 ⇒ Malformed
 ③ 剩余字节 ≥ PayloadLength？ 否 ⇒ Truncated
-④ FormatVersion == 2？ 否 ⇒ UnsupportedVersion（> 2 = 更新版本写出；< 2 = 旧版本，无迁移路径）
+④ FormatVersion == 3？ 否 ⇒ UnsupportedVersion（≠ 3 = 更新或旧版本写出，一律拒绝，无迁移路径）
 ⑤ 主体可解析？         否 ⇒ Malformed
 ⑥ 必需成员齐备？       否 ⇒ InvalidStructure
 ⑦ 逐字段复原（Core 校验）？ 否 ⇒ InvalidStructure
@@ -121,8 +134,8 @@
 
 | 条款 | 要求 |
 | --- | --- |
-| 1 | 版本闸门（④）MUST 在任何主体解析之前；接受的**唯一**谓词是 `FormatVersion == 2`——`> 2` 与 `< 2` MUST 一律拒绝（FR-015 的正面用例），MUST NOT 静默误读 |
-| 2 | 本版本 MUST NOT 提供任何迁移/兼容路径（Out of Scope）；`< 2`（含旧版 `1`）同样拒绝 |
+| 1 | 版本闸门（④）MUST 在任何主体解析之前；接受的**唯一**谓词是 `FormatVersion == 3`——**任何 ≠ 3 的值**（`> 3` 与旧版 `2` / `1`）MUST 一律拒绝（FR-015 的正面用例），MUST NOT 静默误读 |
+| 2 | 本版本 MUST NOT 提供任何迁移/兼容路径（Out of Scope）；`≠ 3`（含旧版 `2` 与 `1`）同样拒绝 |
 | 3 | 失败分类的判据 MUST 与「SC-007 的四类输入」一一对应，MUST NOT 依赖异常消息文本（R-07 的备选 ② 已被否） |
 | 4 | 全部失败路径 MUST NOT 修改原文件、MUST NOT 返回默认或部分状态（FR-014；[契约九 §2](./save-service.md)） |
 | 5 | 读取 MUST 只读该文件本身；MUST NOT 依赖任何外部状态（无时钟、无环境变量、无网络） |
@@ -133,7 +146,10 @@
 
 | 常量 | 声明处 | 依据 | 断言锚点 |
 | --- | --- | --- | --- |
-| 文件格式版本 **2** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2` | 版本闸门的两条用例（`3` 拒绝、`1` 拒绝） |
+| 文件格式版本 **3** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2`，006 由 `2` 升为 `3` | 版本闸门的用例（`3` 及以上拒绝、`2` 拒绝、`1` 拒绝） |
+| `FamilyMemberCount` = **8**、`PersonMemberCount` = **28** | `MessagePackSaveFormat`（二进制 walker 的成员数常量） | 键表 §4.2；006 各 +1 / +3（`punishmentJournal` 与三个行贿计数） | `SaveFormatContractTests` 的键数断言 |
+| `PunishmentJournalMemberCount` = **7** | `MessagePackSaveFormat` | 键表 §4.2；`PunishmentJournalDto` 键数 7 | 同上 |
+| `BribeFactMemberCount` = **7**、`SentenceFactMemberCount` = **3**、`FineFactMemberCount` = **5**、`RelativeBanFactMemberCount` = **5**、`CollectivePunishmentFactMemberCount` = **6**、`ReleaseFactMemberCount` = **3** | `MessagePackSaveFormat` | 键表 §4.2；六类事实行 DTO 的键数 = 对应 `KFL.Core` 记录的成员数（逐一对应） | 同上 |
 | 扩展名 `.dat` / `.json` | `SaveFileFormat` | §14 | 未指定格式 ⇒ `.dat`；指定 JSON ⇒ `.json`（FR-005） |
 | 存档根默认 `saves/` | `SaveOptions`（`null` ⇒ `AppContext.BaseDirectory`） | §14；章程「运行时路径 MUST 可配置」 | 自定义根生效 / 默认根生效（各一条） |
 | 备份目录 `backups/` | `SaveFileFormat` | §14 的 Q1 裁决 | [契约十一 §4](./save-cadence.md) |
@@ -182,4 +198,25 @@
 
 三个新键的**语义、来源与复原入口**（`Person.RestoreExamProgress`）见 [data-model §3.2、§3.8、§3.11](../data-model.md)——
 本契约只固定**键与类型**，MUST NOT 另行维护语义副本。
+
+---
+
+## 006 后记（`006-bribery-punishment` 同步注，2026-10-13）
+
+本契约随 006 的**跨特性形状变更**同步（变更授权在 `specs/006-bribery-punishment/plan.md` 与
+`specs/006-bribery-punishment/contracts/punishment.md`）：
+
+| 同步点 | 变更 |
+| --- | --- |
+| §2、§4.2、§7 | 头记录 `FormatVersion` 与 `SaveFileFormat.Version` 由 `2` 升为 `3`；版本闸门的接受谓词改为 `FormatVersion == 3`（**任何 ≠ 3 的值**一律 `UnsupportedVersion`，**无迁移路径**） |
+| §4.2 | `FamilyDto` 7 → **8** 键（末尾追加 `7 punishmentJournal`(`PunishmentJournalDto`)）；`PersonDto` 25 → **28** 键（末尾追加 `25 jieShiBribeCount`(int)、`26 shengShiBribeCount`(int)、`27 dianShiBribeCount`(int)）；既有键的 `Key` 序号与键名**不变**，新键**只追加** |
+| §4.2 | 新增日志 DTO 行：`PunishmentJournalDto`（7 键）、`GameDateDto`（2 键）与六类事实行 DTO——`BribeFactDto` 7、`SentenceFactDto` 3、`FineFactDto` 5、`RelativeBanFactDto` 5、`CollectivePunishmentFactDto` 6、`ReleaseFactDto` 3。**事实行 DTO 的键数 MUST 等于对应 `KFL.Core` 记录的成员数（逐一对应）** |
+| §6 | 版本闸门（④）的接受谓词由 `== 2` 改为 `== 3`；`≠ 3`（含旧版 `2` 与 `1`）一律拒绝（条款 1/2） |
+| §7 | `SaveFileFormat.Version` **2 → 3**；登记二进制 walker 的成员数常量：`FamilyMemberCount` **8**、`PersonMemberCount` **28**、`PunishmentJournalMemberCount` **7**、`BribeFactMemberCount` **7**、`SentenceFactMemberCount` **3**、`FineFactMemberCount` **5**、`RelativeBanFactMemberCount` **5**、`CollectivePunishmentFactMemberCount` **6**、`ReleaseFactMemberCount` **3** |
+
+**边界**：006 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`≠ 3` 的旧档一律
+`UnsupportedVersion`）；日志与三个行贿计数属于 `Person` / `Family` 领域类型的**形状扩展**，其语义真源
+见 [006 data-model](../../006-bribery-punishment/data-model.md)，本文件只记录它们如何变成字节。
+`PunishmentJournal` 的复原入口（`PunishmentJournal.Restore`）与三个行贿计数的复原通道
+（`RestoreBribeCounts`）见 [data-model §3.2、§3.11](../data-model.md)。
 

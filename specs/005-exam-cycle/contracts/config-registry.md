@@ -29,7 +29,6 @@
 | `ShiStatusAdmissionBonus` | `1.1m` | `decimal` | 规格书 §6 | 仕族（`Family.HasShiStatus`）录取率加成 ×1.1 |
 | `SecondClassStudyThreshold` | `50` | `int` | 规格书 §6 | 未进甲者：学业 >= 50 ⇒ 二甲，否则三甲 |
 | `DiceRateCap` | `0.899999m` | `decimal` | 规格书 §7.1 | 需掷骰概率的封顶 89.9999% |
-| `NeutralBribeMultiplier` | `1.0m` | `decimal` | 规格书 §7.1（k⁰） | 本轮贿赂乘数；逻辑轨 ⑥ 落地后经同一入口传实际值 |
 | `JieShiExemptionFailureThreshold` | `3` | `int` | 规格书 §6（免解） | 解试累计失败数达 3 ⇒ 此后免掷骰中第 |
 | `SpecialTributeMinimumAge` | `50` | `int` | 规格书 §7.2（特奏名） | 特奏名年龄下限 |
 | `SpecialTributeFailureThreshold` | `6` | `int` | 规格书 §7.2（特奏名） | 特奏名省试累计失败数阈值 |
@@ -55,7 +54,7 @@
 | 条款 | 要求 |
 | --- | --- |
 | 1 | MUST NOT 引入规格书未定义的官名或官阶数 |
-| 2 | MUST NOT 引入贿赂的累进金额、被抓概率、惩罚矩阵、连坐系数（逻辑轨 ⑥） |
+| 2 | 贿赂的累进金额、被抓概率、惩罚矩阵、连坐系数**已由 ⑥ 在 `BribePolicy` / `PunishmentPolicy` 落地**（唯一声明处在 `src/KFL.Rules/Config/`），本特性 MUST NOT 另立第二处（逻辑轨 ⑥；[契约十七 §5](../../006-bribery-punishment/contracts/config-registry.md)） |
 | 3 | MUST NOT 引入成长/衰老/疾病/死亡的任何概率或年龄线（逻辑轨 ⑦） |
 | 4 | MUST NOT 引入成就/绝嗣判定的阈值（逻辑轨 ⑧） |
 | 5 | MUST NOT 为「无限制模式」在规则层引入任何按调用方分支的数值或开关（章程原则 VI） |
@@ -105,7 +104,7 @@
 
 `14` / `400` / `50` / `3` / `50` / `6` / `10` / `20` / `40` / `80`（年龄线、除数、阈值、路费档）
 **MUST NOT** 出现在 `RegisteredValues` 中（实测会与成员编号、夹具金额等产生大量撞车，
-口径见 `ConfigLiteralTests` 类注释 `:5-45`）。贿赂乘数 `1.0m` 是**整数值**小数，同样不入单。
+口径见 `ConfigLiteralTests` 类注释 `:5-45`）。006 的行贿乘数初元 `BribePolicy.UnitMultiplier = 1m` 是**整数值**小数，同样不入单（其登记见 [契约十七](../../006-bribery-punishment/contracts/config-registry.md)）；005 的占位 `ExamPolicy.NeutralBribeMultiplier` **已随 006 落地删除**（§1）。
 
 ### 3.4 路费金额的取值纪律（判据②）
 

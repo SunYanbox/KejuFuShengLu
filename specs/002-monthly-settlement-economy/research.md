@@ -331,7 +331,8 @@ MUST NOT 转贷款——§9.5/§5.4 的同一口径），落**资金类**条目�
 ## R-16 测试组织与夹具
 
 **Decision**: 新增 `tests/KFL.Tests/Rules/`，按收入来源与机制分文件：
-`LivingCostTests`、`IncomeTests`、`SettlementEngineTests`（引擎级：八步顺序、次月生效、米价
+`LivingCostTests`、`IncomeTests`、`SettlementEngineTests`（引擎级：**九步**顺序（006 起在第③步插入
+惩罚推进）、次月生效、米价
 clamp、条目与资金池同步）、`LoanTests`（含 §16 必测三项：先本后息 / 划扣 20/40/80 /
 12 月计息不滚本金）、`SavingsTests`、`FamineTimelineTests`（4 阶段流转）、
 `LedgerTests`（SC-005 的等式与两个聚合维度）、`SalaryTableTests`（18 级锚点 72/420/5100）、

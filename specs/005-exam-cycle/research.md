@@ -146,8 +146,13 @@ public static ImperialClass ImperialClassFor(Person person, bool promoted);
 public static ImperialPlacement RollPlacement(IRandomService random);   // Next(1, 4) → 状元/榜眼/探花
 ```
 
-`AdmissionRate` 只接受 解试/省试（传入 `DianShi` ⇒ `ArgumentOutOfRangeException`）。本轮全部调用方
+`AdmissionRate` 只接受 解试/省试（传入 `DianShi` ⇒ `ArgumentOutOfRangeException`）。005 当时全部调用方
 一律传 `ExamPolicy.NeutralBribeMultiplier`（= k⁰ = 1.0）。
+
+> **006 后记（2026-10-13）**：占位 `ExamPolicy.NeutralBribeMultiplier` 已随 006 落地**删除**；
+> 两处调用点（`ExamSeasonRunner` 的解试/省试与殿试分支）改为传
+> `BribeRules.MultiplierOf(level, person)`（`kⁿ`，`k⁰` 由 `BribePolicy.UnitMultiplier = 1m` 唯一给出）。
+> `AdmissionRate` / `ImperialPromotionRate` 的形参签名与 clamp **逐字未变**。
 
 **Rationale**: FR-016 要求逻辑轨 ⑥ 落地时经**同一入口**传入实际乘数——把它做成**显式形参**即可，
 公式内部 MUST NOT 读任何全局态。封顶在函数内部 clamp，调用方**没有分支可以绕过**（FR-015、
