@@ -3,6 +3,7 @@ using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Rules.Career;
 using KFL.Rules.Exam;
+using KFL.Rules.Punishment;
 
 namespace KFL.Rules.Settlement;
 
@@ -84,10 +85,10 @@ public sealed record SettlementResult
     /// <summary>工出身 bonus（只可能出现在 12 月，且需工出身、总资产为正；§5.2）。</summary>
     public required Money ArtisanBonus { get; init; }
 
-    /// <summary>结算第④步**之前**的饥馑状态快照。</summary>
+    /// <summary>结算第⑤步**之前**的饥馑状态快照。</summary>
     public required FamineState FamineBefore { get; init; }
 
-    /// <summary>结算第④步**之后**的饥馑状态快照。</summary>
+    /// <summary>结算第⑤步**之后**的饥馑状态快照。</summary>
     public required FamineState FamineAfter { get; init; }
 
     /// <summary>本次结算产生的**全部**条目（含事件类），与向 <c>Ledger</c> 追加的条目逐条相同。</summary>
@@ -100,13 +101,19 @@ public sealed record SettlementResult
     public required Money TreasuryPoolAfter { get; init; }
 
     /// <summary>
-    /// 本次结算**第③步（官吏推进）**的增量快照（授官 / 政绩 / 晋升 / 致仕 / 禁升跳过 / 服刑暂停 / 三态）。
+    /// 本次结算**第③步（惩罚推进）**的当月事实快照（行贿 / 服刑 / 罚金 / 亲属禁考 / 连坐 / 释放与在册服刑人数）。
+    /// 它是**当月事实的只读投影**、不是第二真源，也**不回写** <c>GameState</c>（契约十六 §9）。
+    /// </summary>
+    public required PunishmentSnapshot Punishment { get; init; }
+
+    /// <summary>
+    /// 本次结算**第④步（官吏推进）**的增量快照（授官 / 政绩 / 晋升 / 致仕 / 禁升跳过 / 服刑暂停 / 三态）。
     /// 它是增量、不是第二真源（契约七 §9）。
     /// </summary>
     public required CareerAdvanceResult Career { get; init; }
 
     /// <summary>
-    /// 本次结算**第⑦步（科举季）**的增量快照（自动报名 / 弃考 / 免解 / 判定 / 及第入仕 / 特奏名询问）。
+    /// 本次结算**第⑧步（科举季）**的增量快照（自动报名 / 弃考 / 免解 / 判定 / 及第入仕 / 特奏名询问）。
     /// 它是增量、不是第二真源（契约十三 §9）。
     /// </summary>
     public required ExamSeasonSnapshot ExamSeason { get; init; }

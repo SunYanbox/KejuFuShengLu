@@ -230,9 +230,9 @@ public class SpecAnchorTests
         Assert.Equal(1.1m, GameConfig.Exam.ShiStatusAdmissionBonus); // arch-guard:allow 锚点即被验证对象
         Assert.Equal(50, GameConfig.Exam.SecondClassStudyThreshold);
 
-        // 需掷骰概率的封顶 89.9999%（§7.1）；本轮贿赂乘数 k⁰ = 1.0。
+        // 需掷骰概率的封顶 89.9999%（§7.1）；行贿乘数 k⁰ 的恒等元 = 1.0（§7.1，006 起由 BribePolicy 唯一给出）。
         Assert.Equal(0.899999m, GameConfig.Exam.DiceRateCap);          // arch-guard:allow 锚点即被验证对象
-        Assert.Equal(1.0m, GameConfig.Exam.NeutralBribeMultiplier);    // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.0m, GameConfig.Bribe.UnitMultiplier);           // arch-guard:allow 锚点即被验证对象
 
         // 特奏名两门槛：50 岁、省试累计 6 败（§7.2）。
         Assert.Equal(50, GameConfig.Exam.SpecialTributeMinimumAge);
@@ -254,6 +254,93 @@ public class SpecAnchorTests
             Assert.NotEqual(1.0m, expenseFactor);
             Assert.NotEqual(guan, guan * expenseFactor);
         }
+    }
+
+    /// <summary>
+    /// SC-002/SC-003/SC-007（006）：贿赂与惩罚的规则数值等于规格书 §7.1 / §7.4 / §7.5。
+    /// </summary>
+    [Fact]
+    public void 贿赂与惩罚体系数值等于规格书()
+    {
+        // 窗口 = 本级别考试当月与**前一月**（§7.1）。
+        Assert.Equal(1, GameConfig.Bribe.WindowPreviousMonths);
+
+        // 行贿金额与被抓率的共用递进步长 20%；被抓概率封顶 100%；k⁰ = 1.0（§7.1）。
+        Assert.Equal(0.2m, GameConfig.Bribe.ProgressionStep);      // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.0m, GameConfig.Bribe.CaughtProbabilityCap); // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.0m, GameConfig.Bribe.UnitMultiplier);       // arch-guard:allow 锚点即被验证对象
+
+        // 基础金额：解试 100 / 省试 500 / 殿试 2000 贯（§7.1）。
+        Assert.Equal(100, GameConfig.Bribe.BaseAmountGuan(ExamLevel.JieShi));
+        Assert.Equal(500, GameConfig.Bribe.BaseAmountGuan(ExamLevel.ShengShi));
+        Assert.Equal(2000, GameConfig.Bribe.BaseAmountGuan(ExamLevel.DianShi));
+
+        // 基础被抓率：解试 5% / 省试 15% / 殿试 35%（§7.1）。
+        Assert.Equal(0.05m, GameConfig.Bribe.BaseCaughtRate(ExamLevel.JieShi));   // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.15m, GameConfig.Bribe.BaseCaughtRate(ExamLevel.ShengShi)); // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.35m, GameConfig.Bribe.BaseCaughtRate(ExamLevel.DianShi));  // arch-guard:allow 锚点即被验证对象
+
+        // 效果乘数底数 k：解试 1.6 / 省试 1.3 / 殿试 1.1（§7.1）。
+        Assert.Equal(1.6m, GameConfig.Bribe.EffectMultiplierK(ExamLevel.JieShi));   // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.3m, GameConfig.Bribe.EffectMultiplierK(ExamLevel.ShengShi)); // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(1.1m, GameConfig.Bribe.EffectMultiplierK(ExamLevel.DianShi));  // arch-guard:allow 锚点即被验证对象
+
+        // 通则：比例罚金封顶 50000 贯、全族禁考禁升 48 月、释放升 1 级（§7.4、§7.5）。
+        Assert.Equal(50000, GameConfig.Punishment.RatioFineCapGuan);
+        Assert.Equal(48, GameConfig.Punishment.FamilyWideBanMonths);
+        Assert.Equal(1, GameConfig.Punishment.ReleaseDemotionLevels);
+
+        // ---- 12 格矩阵：行 = 难度，列 = 殿试 / 省试 / 解试（§7.4）----
+
+        // 简单：60 月 / 比例 2%，36 月 / 比例 1%，12 月 / 无罚金；三格皆无禁考、无禁升。
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Easy, ExamLevel.DianShi), 60, ExecutionKind.None, false, FineKind.Ratio, 0.02m, 0, 0, false, false); // arch-guard:allow 锚点即被验证对象
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Easy, ExamLevel.ShengShi), 36, ExecutionKind.None, false, FineKind.Ratio, 0.01m, 0, 0, false, false); // arch-guard:allow 锚点即被验证对象
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Easy, ExamLevel.JieShi), 12, ExecutionKind.None, false, FineKind.None, 0m, 0, 0, false, false);
+
+        // 普通：180 月 / 比例 15% / 禁考 36 / 禁升；60 月 / 固定 200 贯 / 禁考 24 / 禁升；
+        //       36 月 / 固定 100 贯 / 无禁考。
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Normal, ExamLevel.DianShi), 180, ExecutionKind.None, false, FineKind.Ratio, 0.15m, 0, 36, true, false); // arch-guard:allow 锚点即被验证对象
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Normal, ExamLevel.ShengShi), 60, ExecutionKind.None, false, FineKind.Fixed, 0m, 200, 24, true, false);
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Normal, ExamLevel.JieShi), 36, ExecutionKind.None, false, FineKind.Fixed, 0m, 100, 0, false, false);
+
+        // 困难：殿试**死刑** / 比例 20% / 禁考 48 / 禁升；省试 240 月 / 比例 10% / **只**禁考 36；
+        //       解试 120 月 / 比例 5% / **只**禁考 36。
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Hard, ExamLevel.DianShi), 0, ExecutionKind.ImmediateSentence, false, FineKind.Ratio, 0.20m, 0, 48, true, false); // arch-guard:allow 锚点即被验证对象
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Hard, ExamLevel.ShengShi), 240, ExecutionKind.None, false, FineKind.Ratio, 0.10m, 0, 36, false, false); // arch-guard:allow 锚点即被验证对象
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Hard, ExamLevel.JieShi), 120, ExecutionKind.None, false, FineKind.Ratio, 0.05m, 0, 36, false, false); // arch-guard:allow 锚点即被验证对象
+
+        // 地狱：殿试**死刑 + 连坐** / 比例 20% / **全族**禁考禁升 48；省试与解试同困难档。
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Hell, ExamLevel.DianShi), 0, ExecutionKind.ImmediateSentence, true, FineKind.Ratio, 0.20m, 0, 48, true, true); // arch-guard:allow 锚点即被验证对象
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Hell, ExamLevel.ShengShi), 240, ExecutionKind.None, false, FineKind.Ratio, 0.10m, 0, 36, false, false); // arch-guard:allow 锚点即被验证对象
+        AssertCell(GameConfig.Punishment.CellOf(Difficulty.Hell, ExamLevel.JieShi), 120, ExecutionKind.None, false, FineKind.Ratio, 0.05m, 0, 36, false, false); // arch-guard:allow 锚点即被验证对象
+
+        // 死刑格的口径：服刑月数为 0 且执行方式非 None（契约十七 §3 条款 2）。
+        Assert.Equal(0, GameConfig.Punishment.CellOf(Difficulty.Hard, ExamLevel.DianShi).SentenceMonths);
+        Assert.NotEqual(ExecutionKind.None, GameConfig.Punishment.CellOf(Difficulty.Hard, ExamLevel.DianShi).Execution);
+    }
+
+    /// <summary>锚点辅助：逐格断言处罚格的九个字段。</summary>
+    private static void AssertCell(
+        PunishmentCell cell,
+        int sentenceMonths,
+        ExecutionKind execution,
+        bool collective,
+        FineKind fine,
+        decimal fineRatio,
+        int fineFixedGuan,
+        int relativeBanMonths,
+        bool relativePromotionBan,
+        bool familyWideBan)
+    {
+        Assert.Equal(sentenceMonths, cell.SentenceMonths);
+        Assert.Equal(execution, cell.Execution);
+        Assert.Equal(collective, cell.CollectivePunishment);
+        Assert.Equal(fine, cell.Fine);
+        Assert.Equal(fineRatio, cell.FineRatio);
+        Assert.Equal(Money.FromGuan(fineFixedGuan), cell.FineFixedGuan);
+        Assert.Equal(relativeBanMonths, cell.RelativeBanMonths);
+        Assert.Equal(relativePromotionBan, cell.RelativePromotionBan);
+        Assert.Equal(familyWideBan, cell.FamilyWideBan);
     }
 
     /// <summary>计数随机替身：统计 <see cref="IRandomService.NextDouble"/> 的调用次数，取值恒定。</summary>

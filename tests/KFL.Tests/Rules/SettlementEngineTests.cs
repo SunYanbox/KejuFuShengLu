@@ -303,8 +303,8 @@ public class SettlementEngineTests
     public void 引擎公开面只有唯一编排入口且快照字段恰为本阶段交付物()
     {
         // FR-020：随机事件、属性成长与衰老、疾病与死亡、绝嗣判定等越界步骤 MUST NOT 存在。
-        // 005 起科举季（ExamSeason）已正式成为第 ⑦ 步，故它是本快照的交付物之一。
-        // 以公开面作可证断言：多一个越界入口或越界字段就会红。
+        // 005 起科举季（ExamSeason）已正式成为第 ⑧ 步；006 起惩罚推进（Punishment）成为第 ③ 步，
+        // 两者都是本快照的交付物。以公开面作可证断言：多一个越界入口或越界字段就会红。
         var engineEntries = typeof(MonthlySettlementEngine)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(method => method.Name)
@@ -332,6 +332,7 @@ public class SettlementEngineTests
             nameof(SettlementResult.TreasuryPoolBefore),
             nameof(SettlementResult.TreasuryPoolAfter),
             nameof(SettlementResult.Career),
+            nameof(SettlementResult.Punishment),
             nameof(SettlementResult.ExamSeason),
         }.Order(StringComparer.Ordinal).ToArray();
 

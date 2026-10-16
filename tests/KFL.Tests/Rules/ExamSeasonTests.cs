@@ -387,18 +387,18 @@ public class ExamSeasonTests
         nobleFamily.HasShiStatus = true;
 
         var plainRate = ExamAdmission.AdmissionRate(
-            ExamLevel.JieShi, plain, false, GameConfig.Exam.NeutralBribeMultiplier);
+            ExamLevel.JieShi, plain, false, GameConfig.Bribe.UnitMultiplier);
         var nobleRate = ExamAdmission.AdmissionRate(
-            ExamLevel.JieShi, noble, true, GameConfig.Exam.NeutralBribeMultiplier);
+            ExamLevel.JieShi, noble, true, GameConfig.Bribe.UnitMultiplier);
 
         Assert.Equal(plainRate * GameConfig.Exam.ShiStatusAdmissionBonus, nobleRate);
 
         // 进甲率结构上不含仕族项：两次调用结果恒等（同一人同一乘数）。
-        var promotion = ExamAdmission.ImperialPromotionRate(plain, GameConfig.Exam.NeutralBribeMultiplier);
+        var promotion = ExamAdmission.ImperialPromotionRate(plain, GameConfig.Bribe.UnitMultiplier);
 
         Assert.Equal(
             promotion,
-            ExamAdmission.ImperialPromotionRate(plain, GameConfig.Exam.NeutralBribeMultiplier));
+            ExamAdmission.ImperialPromotionRate(plain, GameConfig.Bribe.UnitMultiplier));
     }
 
     // ------------------------------------------------------------------ 免解（SC-004）

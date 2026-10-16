@@ -4,7 +4,9 @@ using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
 using KFL.Rules.Career;
 using KFL.Rules.Config;
+using KFL.Rules.Economy;
 using KFL.Rules.Exam;
+using KFL.Rules.Punishment;
 
 namespace KFL.Rules.Settlement;
 
@@ -13,12 +15,14 @@ namespace KFL.Rules.Settlement;
 /// </summary>
 /// <remarks>
 /// <para>
-/// **唯一的编排入口**（FR-020）：按契约三 §1（003 后为契约七 §2 的七步；005 后为契约十三 §1.1 的八步）执行一次，**就地**推进传入的
+/// **唯一的编排入口**（FR-020）：按契约三 §1（003 后为契约七 §2 的七步；005 后为契约十三 §1.1 的八步；
+/// 006 后为契约十六 §1.1 的九步）执行一次，**就地**推进传入的
 /// <see cref="GameState"/> 与 <see cref="GameState.CurrentDate"/>，并返回可断言的快照。
 /// </para>
 /// <list type="number">
 /// <item><description>提升待生效的难度 / 生活费档位并清空待生效位（R-09）。</description></item>
 /// <item><description>米价系数游走并 clamp（消耗 1 次 <see cref="IRandomService.NextDouble"/>，当月生效）。</description></item>
+/// <item><description>惩罚推进（006 新增；<see cref="PunishmentAdvance.Run"/>，随机消费**恰好 0 次**）。</description></item>
 /// <item><description>官吏推进（003 新增；<c>OfficialCareerAdvance.Run</c>，按 <c>PersonId</c> 升序）。</description></item>
 /// <item><description>收入：1 月 roll 当年储蓄利率、12 月计息并入本金 + 工出身 bonus，再按 §6 各来源入账（俸禄按三态）。</description></item>
 /// <item><description>生活费：足额或部分支付 + 饥馑四阶段状态机（先解除、后升级；R-12）。</description></item>
@@ -31,9 +35,10 @@ namespace KFL.Rules.Settlement;
 /// 绝嗣判定、存档写入（契约三 §1 的「MUST NOT 存在」清单）。
 /// </para>
 /// <para>
-/// **随机消费次序**（契约七 §2、契约十三 §1.3，单测逐次断言）：米价（②）→ 考课掷骰（③-d，逐人升序）
-/// → 储蓄利率（仅 1 月，④）→ 贷款计息利率（⑥）→ 科举判定（⑦，逐人：1 次录取 / 进甲，
-/// 进甲者紧接 1 次名次）→ 及第入仕待阙（⑦，1 次 <c>Next(6, 25)</c>，按 <c>PersonId</c> 升序）。
+/// **随机消费次序**（契约七 §2、契约十三 §1.3、契约十六 §1.3，单测逐次断言）：米价（②）
+/// → 考课掷骰（④-d，逐人升序）→ 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）→ 科举判定（⑧，逐人：
+/// 1 次录取 / 进甲，进甲者紧接 1 次名次）→ 及第入仕待阙（⑧，1 次 <c>Next(6, 25)</c>，
+/// 按 <c>PersonId</c> 升序）。**第③步惩罚推进消费 0 次**。
 /// </para>
 /// <para>
 /// 随机与「现在」都只能来自构造函数注入的接缝（章程原则 II、契约二）：
@@ -85,12 +90,17 @@ public sealed class MonthlySettlementEngine
         var grainAfter = GrainPricePolicy.Walk(grainBefore, _randomService.NextDouble());
         economy.GrainPriceIndex = new GrainPriceIndex(grainAfter);
 
-        // ③ 官吏推进（**必须在收入之前**，FR-019）：当月授官者当月起领俸、当月满 70 岁者当月即按半俸计。
-        //    随机消费次序在此被钉住：米价（②）→ 考课掷骰（③-d，逐人升序）→ 储蓄利率（仅 1 月）→ 计息利率。
+        // ③ 惩罚推进（006 新增；契约十六 §1.1、§1.2）：投影并清空惩罚日志 → 逐人递减 → 归零处理 → 统计
+        //    当月在册服刑人数。**随机消费恰好 0 次**、MUST NOT 调 AdvanceMonth / MUST NOT 改 CurrentDate。
+        //    位置钉死在「② 米价之后、官吏推进之前」。
+        var punishment = PunishmentAdvance.Run(state);
+
+        // ④ 官吏推进（**必须在收入之前**，FR-019）：当月授官者当月起领俸、当月满 70 岁者当月即按半俸计。
+        //    随机消费次序在此被钉住：米价（②）→ 考课掷骰（④-d，逐人升序）→ 储蓄利率（仅 1 月）→ 计息利率。
         var career = OfficialCareerAdvance.Run(state.Family, month, _randomService);
 
-        // ④ 收入：先处理年度项（1 月的储蓄利率 roll），再按 §6 各来源入账。
-        //    随机消费次序在此被钉住：米价（②）→ 考课掷骰（③）→ 储蓄利率（仅 1 月，④）→ 贷款计息利率（⑥）。
+        // ⑤ 收入：先处理年度项（1 月的储蓄利率 roll），再按 §6 各来源入账。
+        //    随机消费次序在此被钉住：米价（②）→ 考课掷骰（④）→ 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）。
         if (month.Month == SavingsRollMonth)
         {
             var rolledRate = SavingsSettlement.RollRate(_randomService);
@@ -113,7 +123,7 @@ public sealed class MonthlySettlementEngine
         // 本月的年度收入合计（储蓄利息 + 工出身 bonus），计入净利润但不乘同一套系数。
         var annualIncome = Money.Zero;
 
-        // ④-a 12 月末：利息 = 当时储蓄本金 × 当年利率，**并入储蓄本金**（复利）。
+        // ⑤-a 12 月末：利息 = 当时储蓄本金 × 当年利率，**并入储蓄本金**（复利）。
         //      **MUST NOT** 乘难度收益系数（FR-012「储蓄利息除外」）。
         var savingsInterest = Money.Zero;
 
@@ -129,15 +139,14 @@ public sealed class MonthlySettlementEngine
             }
         }
 
-        // ④-b 12 月末工出身 bonus：基数 = 现金 + 储蓄 + 田宅铺市值 − 本金 − 欠息（**不含商本池**），
+        // ⑤-b 12 月末工出身 bonus：基数 = 现金 + 储蓄 + 田宅铺市值 − 本金 − 欠息（**不含商本池**），
         //      为**正**才发，且**乘**难度收益系数（§5.2「储蓄利息除外」的反面）。
+        //      总资产基数经 `TotalAssetsCalculator.Of`（FR-011 的唯一访问器，消除第二真源）。
         var artisanBonus = Money.Zero;
 
         if (month.Month == SavingsAccrualMonth && state.Origin == Origin.Artisan)
         {
-            var totalAssets = (economy.Treasury.Cash + economy.Treasury.Savings
-                    + AssetPriceTable.MarketValue(economy.Holdings))
-                - economy.Treasury.Loan.Principal - economy.Treasury.Loan.AccruedInterest;
+            var totalAssets = TotalAssetsCalculator.Of(economy);
 
             if (totalAssets.IsPositive)
             {
@@ -151,7 +160,7 @@ public sealed class MonthlySettlementEngine
             }
         }
 
-        // ⑤ 生活费 + 饥馑状态机：应付额按**月初**阶段算（转入当月的应付额已按饥馑阶段算出），
+        // ⑥ 生活费 + 饥馑状态机：应付额按**月初**阶段算（转入当月的应付额已按饥馑阶段算出），
         //    再交 FamineController 判定「先解除、后升级」（Tick 在足额判定之前，E-14）。
         //    可付额 = 现金 + 储蓄，MUST NOT 含商本（R-05）。
         var counted = CountedMembers.Counted(state.Family);
@@ -184,16 +193,16 @@ public sealed class MonthlySettlementEngine
         // （E-04 与契约三 §7 的口径；不含划扣本身、不含资产买卖的现金流）。
         var netProfit = income.Total + annualIncome - paid;
 
-        // ⑥ 贷款：**先计息、后划扣**（E-05）。
+        // ⑦ 贷款：**先计息、后划扣**（E-05）。
         var (interestAccrued, loanRepayment) = SettleLoan(economy, state, month, netProfit);
 
         var famineAfter = new FamineState(economy.Famine);
 
-        // ⑦ 科举季（**必须在推进时间之前**，故判定用的是考试当月的日期与当月值）：
+        // ⑧ 科举季（**必须在推进时间之前**，故判定用的是考试当月的日期与当月值）：
         //    本步 MUST NOT 调用 AdvanceMonth、MUST NOT 修改 CurrentDate（契约十三 §1.1）。
         var examSeason = ExamSeasonRunner.Run(state, _randomService);
 
-        // ⑧ 推进时间并返回快照。
+        // ⑨ 推进时间并返回快照。
         state.AdvanceMonth();
 
         return new SettlementResult
@@ -215,6 +224,7 @@ public sealed class MonthlySettlementEngine
             Entries = Slice(economy.Ledger.Entries, firstEntryIndex),
             TreasuryPoolBefore = poolBefore,
             TreasuryPoolAfter = economy.TreasuryPool,
+            Punishment = punishment,
             Career = career,
             ExamSeason = examSeason,
         };
@@ -236,7 +246,7 @@ public sealed class MonthlySettlementEngine
         }
     }
 
-    /// <summary>第⑥步：**先计息、后划扣**（E-05；契约三 §7）。</summary>
+    /// <summary>第⑦步：**先计息、后划扣**（E-05；契约三 §7）。</summary>
     /// <remarks>
     /// <para>
     /// **计时按自然月推进**：先 +1、再比阈值（与 E-14 的饥馑计时同口径），故新建贷款在

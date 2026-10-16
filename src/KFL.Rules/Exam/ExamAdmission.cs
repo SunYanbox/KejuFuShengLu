@@ -27,7 +27,7 @@ public static class ExamAdmission
     /// <param name="level">考试级别；只接受解试 / 省试。</param>
     /// <param name="person">考生（取**当月** <see cref="Person.Study"/> 与 <see cref="Person.Talents"/>）。</param>
     /// <param name="hasShiStatus">家族是否已是仕族（<c>Family.HasShiStatus</c>）。</param>
-    /// <param name="bribeMultiplier">贿赂乘数；本轮恒为 <see cref="ExamPolicy.NeutralBribeMultiplier"/>。</param>
+    /// <param name="bribeMultiplier">贿赂乘数；由 <c>BribeRules.MultiplierOf(level, person)</c> 给出（<c>k⁰ = 1.0</c>）。</param>
     /// <returns>已封顶的录取率。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="person"/> 为 <c>null</c>。</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="level"/> 不是解试或省试。</exception>
@@ -54,7 +54,7 @@ public static class ExamAdmission
     /// clamp 到 <c>[0, 89.9999%]</c>。
     /// </summary>
     /// <param name="person">考生（取**当月**值）。</param>
-    /// <param name="bribeMultiplier">贿赂乘数；本轮恒为 <see cref="ExamPolicy.NeutralBribeMultiplier"/>。</param>
+    /// <param name="bribeMultiplier">贿赂乘数；由 <c>BribeRules.MultiplierOf(ExamLevel.DianShi, person)</c> 给出（<c>k⁰ = 1.0</c>）。</param>
     /// <returns>已封顶的进甲率。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="person"/> 为 <c>null</c>。</exception>
     /// <remarks>
