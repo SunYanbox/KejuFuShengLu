@@ -1,7 +1,8 @@
 namespace KFL.Core.Enums;
 
 /// <summary>
-/// 家族流水账的类别全集（20 个取值；data-model §2.1，逐行取自规格书 §12.3 与 §5.1~§5.4）。
+/// 家族流水账的类别全集（22 个取值；data-model §2.1、§2.4，逐行取自规格书 §12.3 与 §5.1~§5.4、
+/// 006 的 §7.1 / §7.5）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -12,8 +13,10 @@ namespace KFL.Core.Enums;
 /// **明确不含**（§17 裁决）：
 /// ① **不**为 <see cref="Occupation"/> 新增「自耕」「务农」等取值——收入来源是**账本类别**，
 /// 不是职业（E-02）；
-/// ② **不**出现「买人口」「聘礼 / 嫁妆」「贿赂」等阶段⑤⑥⑧ 的类别（FR-028：本阶段 MUST NOT 存在该类型，
-/// 以「无该类别」断言）；005 只新增 <see cref="ExamTravelCost"/> 一项（FR-021）。
+/// ② **不**出现「买人口」「聘礼 / 嫁妆」等阶段⑤⑥⑧ 的类别（FR-028：本阶段 MUST NOT 存在该类型，
+/// 以「无该类别」断言）；005 新增 <see cref="ExamTravelCost"/>，
+/// 006 新增 <see cref="BribeExpense"/> 与 <see cref="Fine"/> 两项（FR-027）——「贿赂」自此**有**类别，
+/// 故 001 时期「无贿赂类别」的断言由 006 的类别名单等价替代。
 /// </para>
 /// </remarks>
 public enum LedgerCategory
@@ -77,4 +80,10 @@ public enum LedgerCategory
 
     /// <summary>省试路费（资金类，恒为负；规格书 §12.3 / 契约十三 §3.1）。</summary>
     ExamTravelCost,
+
+    /// <summary>行贿支出（资金类，恒为负；规格书 §7.1 / 契约十五 §2）。</summary>
+    BribeExpense,
+
+    /// <summary>罚金（资金类，恒为负；规格书 §7.5 / 契约十六 §4）。</summary>
+    Fine,
 }

@@ -39,6 +39,9 @@ public sealed class Person
     private int _monthsInOffice;
     private int _jieShiFailureCount;
     private int _shengShiFailureCount;
+    private int _jieShiBribeCount;
+    private int _shengShiBribeCount;
+    private int _dianShiBribeCount;
     private AppointmentTrack? _entryTrack;
     private ExamLevel? _appliedExam;
     private PersonId? _spouseId;
@@ -191,6 +194,23 @@ public sealed class Person
     public int ShengShiFailureCount => _shengShiFailureCount;
 
     /// <summary>
+    /// 解试**行贿累计次数**（<c>&gt;= 0</c>，无上限、无清零）。**无公开 setter**；
+    /// 唯一写入通道是 <see cref="RecordBribe"/> 与 <see cref="ResetBribeCounts"/>（FR-031）。
+    /// </summary>
+    /// <remarks>
+    /// 口径（规格书 §7.1；data-model §2.1）：同一考生 × 同一考试级别、**跨科年累计**，
+    /// 被抓**不清零**。它是行贿金额、被抓概率与效果乘数 <c>kⁿ</c> 的**唯一输入**；
+    /// 乘数本身是派生值，MUST NOT 落成与计数并存的第二真源。
+    /// </remarks>
+    public int JieShiBribeCount => _jieShiBribeCount;
+
+    /// <summary>省试**行贿累计次数**（<c>&gt;= 0</c>）。**无公开 setter**；写入通道同 <see cref="JieShiBribeCount"/>。</summary>
+    public int ShengShiBribeCount => _shengShiBribeCount;
+
+    /// <summary>殿试**行贿累计次数**（<c>&gt;= 0</c>）。**无公开 setter**；写入通道同 <see cref="JieShiBribeCount"/>。</summary>
+    public int DianShiBribeCount => _dianShiBribeCount;
+
+    /// <summary>
     /// **本月报名标记**：<c>null</c> = 未报名；非空只允许
     /// <see cref="ExamLevel.JieShi"/> 或 <see cref="ExamLevel.ShengShi"/>（殿试不是报名态）。
     /// **无公开 setter**，唯一写入通道是 <see cref="ApplyForExam"/> / <see cref="ClearExamApplication"/>。
@@ -258,6 +278,67 @@ public sealed class Person
             default:
                 throw new InvalidOperationException(
                     "殿试不掷录取骰（100% 中第），MUST NOT 记录殿试落第（FR-009）。");
+        }
+    }
+
+    /// <summary>
+    /// 记录一次 <paramref name="level"/> 的**行贿**：对应累计次数 <c>+1</c>（无上限、无清零）。
+    /// </summary>
+    /// <param name="level">行贿对应 / 涉及的考试级别；三个级别皆合法。</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="level"/> 不是已登记的考试级别。</exception>
+    /// <remarks>
+    /// **被抓不清零、不退贿款**（规格书 §7.1）：是否被抓由调用方决定，本方法只记计数。
+    /// 「连坐降级」（<see cref="DegreeChangeCause.PunishmentDemotion"/>）MUST NOT 清零三者。
+    /// </remarks>
+    public void RecordBribe(ExamLevel level)
+    {
+        switch (level)
+        {
+            case ExamLevel.JieShi:
+                _jieShiBribeCount++;
+                break;
+            case ExamLevel.ShengShi:
+                _shengShiBribeCount++;
+                break;
+            case ExamLevel.DianShi:
+                _dianShiBribeCount++;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(level), level, "行贿计数只有解试 / 省试 / 殿试三个维度（规格书 §7.1）。");
+        }
+    }
+
+    /// <summary>
+    /// 重置行贿计数（FR-031 的调试入口）。
+    /// </summary>
+    /// <param name="level">要重置的级别；<c>null</c> ⇒ **三级全清**。</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="level"/> 不是已登记的考试级别。</exception>
+    /// <remarks>
+    /// **只**改这三个计数，MUST NOT 触碰乘数以外的任何字段——乘数是计数的派生值，
+    /// 重置计数即重置乘数（U4「同行贿叠加」的既有口径）。
+    /// </remarks>
+    public void ResetBribeCounts(ExamLevel? level)
+    {
+        switch (level)
+        {
+            case null:
+                _jieShiBribeCount = 0;
+                _shengShiBribeCount = 0;
+                _dianShiBribeCount = 0;
+                break;
+            case ExamLevel.JieShi:
+                _jieShiBribeCount = 0;
+                break;
+            case ExamLevel.ShengShi:
+                _shengShiBribeCount = 0;
+                break;
+            case ExamLevel.DianShi:
+                _dianShiBribeCount = 0;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(level), level, "行贿计数只有解试 / 省试 / 殿试三个维度（规格书 §7.1）。");
         }
     }
 
@@ -448,6 +529,42 @@ public sealed class Person
         _jieShiFailureCount = jieShiFailureCount;
         _shengShiFailureCount = shengShiFailureCount;
         _appliedExam = appliedExam;
+    }
+
+    /// <summary>
+    /// 复原三个行贿计数（**仅供存档层调用**，data-model §7.3）。
+    /// </summary>
+    /// <param name="jieShiBribeCount">解试行贿累计次数；<c>&gt;= 0</c>。</param>
+    /// <param name="shengShiBribeCount">省试行贿累计次数；<c>&gt;= 0</c>。</param>
+    /// <param name="dianShiBribeCount">殿试行贿累计次数；<c>&gt;= 0</c>。</param>
+    /// <exception cref="ArgumentOutOfRangeException">任一计数为负。</exception>
+    /// <remarks>
+    /// 这是这三个成员**唯一**的非公开写入通道：它们没有公开 setter，且「落盘值 &gt; 0」
+    /// 不必然等于「刚行贿过」，故不走 <see cref="RecordBribe"/> 的语义校验（FR-032）。
+    /// </remarks>
+    internal void RestoreBribeCounts(int jieShiBribeCount, int shengShiBribeCount, int dianShiBribeCount)
+    {
+        if (jieShiBribeCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(jieShiBribeCount), jieShiBribeCount, "解试行贿累计次数 MUST >= 0（FR-032）。");
+        }
+
+        if (shengShiBribeCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(shengShiBribeCount), shengShiBribeCount, "省试行贿累计次数 MUST >= 0（FR-032）。");
+        }
+
+        if (dianShiBribeCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(dianShiBribeCount), dianShiBribeCount, "殿试行贿累计次数 MUST >= 0（FR-032）。");
+        }
+
+        _jieShiBribeCount = jieShiBribeCount;
+        _shengShiBribeCount = shengShiBribeCount;
+        _dianShiBribeCount = dianShiBribeCount;
     }
 
     /// <summary>设置辈分。**仅供 <see cref="Family"/> 调用**：血亲不可变更，外来者须尚无子女。</summary>

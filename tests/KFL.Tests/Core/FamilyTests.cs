@@ -343,6 +343,21 @@ public class FamilyTests
         Assert.False(family.HasShiStatus);
     }
 
+    [Fact]
+    public void 家族持有惩罚日志且默认无写入通道()
+    {
+        // 006 / T007：日志是家族级**只追加**缓冲——只读开放，写入通道在 PunishmentJournal 自身
+        // （Append / MarkFamilyBanDeclared / Clear / Restore），Family 上不得有公开 setter。
+        var family = new Family("测试");
+        var property = typeof(Family).GetProperty(nameof(Family.PunishmentJournal));
+
+        Assert.NotNull(property);
+        Assert.True(property.SetMethod is null || !property.SetMethod.IsPublic);
+        Assert.NotNull(family.PunishmentJournal);
+        Assert.True(family.PunishmentJournal.IsEmpty);
+        Assert.False(family.PunishmentJournal.FamilyBanDeclared);
+    }
+
     // ---------------------------------------------------------------- 辈分与家主专项（research R-15）
 
     [Fact]
