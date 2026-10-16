@@ -71,6 +71,8 @@ internal static class SaveStateComparer
 
         Assert.Equal(expected.RegisteredMembers.Count, actual.RegisteredMembers.Count);
         Assert.Equal(expected.ArchivedMembers.Count, actual.ArchivedMembers.Count);
+
+        AssertJournal(expected.PunishmentJournal, actual.PunishmentJournal);
     }
 
     private static void AssertPerson(Person expected, Person actual)
@@ -100,9 +102,100 @@ internal static class SaveStateComparer
         Assert.Equal(expected.ShengShiFailureCount, actual.ShengShiFailureCount);
         Assert.Equal(expected.AppliedExam, actual.AppliedExam);
 
+        // ㉑ 行贿计数（006-bribery-punishment）：三个计数各自点名比，漏存一个会在比对里暴露。
+        Assert.Equal(expected.JieShiBribeCount, actual.JieShiBribeCount);
+        Assert.Equal(expected.ShengShiBribeCount, actual.ShengShiBribeCount);
+        Assert.Equal(expected.DianShiBribeCount, actual.DianShiBribeCount);
+
         // 派生值也要一致（履历顺序错了，这里会先亮）。
         Assert.Equal(expected.CurrentDegree, actual.CurrentDegree);
         Assert.Equal(expected.CurrentPlacement, actual.CurrentPlacement);
+    }
+
+    /// <summary>㉒ 惩罚日志（006-bribery-punishment）：六类事实行逐字段比对（含可空字段与金额标度）。</summary>
+    /// <param name="expected">期望。</param>
+    /// <param name="actual">实际。</param>
+    private static void AssertJournal(PunishmentJournal expected, PunishmentJournal actual)
+    {
+        Assert.Equal(expected.IsEmpty, actual.IsEmpty);
+        Assert.Equal(expected.FamilyBanDeclared, actual.FamilyBanDeclared);
+
+        Assert.Equal(expected.Bribes.Count, actual.Bribes.Count);
+        for (var index = 0; index < expected.Bribes.Count; index++)
+        {
+            var left = expected.Bribes[index];
+            var right = actual.Bribes[index];
+
+            Assert.Equal(left.Date, right.Date);
+            Assert.Equal(left.Examinee, right.Examinee);
+            Assert.Equal(left.Level, right.Level);
+            Assert.Equal(left.Nth, right.Nth);
+            AssertBits(left.Amount.Wen, right.Amount.Wen);
+            Assert.Equal(left.Caught, right.Caught);
+            Assert.Equal(left.CapReached, right.CapReached);
+        }
+
+        Assert.Equal(expected.Sentences.Count, actual.Sentences.Count);
+        for (var index = 0; index < expected.Sentences.Count; index++)
+        {
+            var left = expected.Sentences[index];
+            var right = actual.Sentences[index];
+
+            Assert.Equal(left.Date, right.Date);
+            Assert.Equal(left.Subject, right.Subject);
+            Assert.Equal(left.Months, right.Months);
+        }
+
+        Assert.Equal(expected.Fines.Count, actual.Fines.Count);
+        for (var index = 0; index < expected.Fines.Count; index++)
+        {
+            var left = expected.Fines[index];
+            var right = actual.Fines[index];
+
+            Assert.Equal(left.Date, right.Date);
+            Assert.Equal(left.Subject, right.Subject);
+            AssertBits(left.Amount.Wen, right.Amount.Wen);
+            AssertBits(left.PaidFromTreasury.Wen, right.PaidFromTreasury.Wen);
+            AssertBits(left.ToLoan.Wen, right.ToLoan.Wen);
+        }
+
+        Assert.Equal(expected.RelativeBans.Count, actual.RelativeBans.Count);
+        for (var index = 0; index < expected.RelativeBans.Count; index++)
+        {
+            var left = expected.RelativeBans[index];
+            var right = actual.RelativeBans[index];
+
+            Assert.Equal(left.Date, right.Date);
+            Assert.Equal(left.Subject, right.Subject);
+            Assert.Equal(left.Relative, right.Relative);
+            Assert.Equal(left.ExamBanMonths, right.ExamBanMonths);
+            Assert.Equal(left.PromotionBanMonths, right.PromotionBanMonths);
+        }
+
+        Assert.Equal(expected.CollectivePunishments.Count, actual.CollectivePunishments.Count);
+        for (var index = 0; index < expected.CollectivePunishments.Count; index++)
+        {
+            var left = expected.CollectivePunishments[index];
+            var right = actual.CollectivePunishments[index];
+
+            Assert.Equal(left.Date, right.Date);
+            Assert.Equal(left.Subject, right.Subject);
+            Assert.Equal(left.Outcome, right.Outcome);
+            Assert.Equal(left.Relative, right.Relative);
+            Assert.Equal(left.DegreeBefore, right.DegreeBefore);
+            Assert.Equal(left.DegreeAfter, right.DegreeAfter);
+        }
+
+        Assert.Equal(expected.Releases.Count, actual.Releases.Count);
+        for (var index = 0; index < expected.Releases.Count; index++)
+        {
+            var left = expected.Releases[index];
+            var right = actual.Releases[index];
+
+            Assert.Equal(left.Date, right.Date);
+            Assert.Equal(left.Subject, right.Subject);
+            Assert.Equal(left.NewRankLevel, right.NewRankLevel);
+        }
     }
 
     private static void AssertEconomy(FamilyEconomy expected, FamilyEconomy actual)

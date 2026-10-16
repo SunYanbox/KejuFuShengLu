@@ -124,6 +124,12 @@ public sealed class FamilyDto
     [JsonPropertyName("autoExamApplication")]
     [JsonRequired]
     public bool AutoExamApplication { get; set; }
+
+    /// <summary>惩罚日志（当月事实缓冲；006-bribery-punishment；契约十六 §5、data-model §3.11）。</summary>
+    [Key(7)]
+    [JsonPropertyName("punishmentJournal")]
+    [JsonRequired]
+    public PunishmentJournalDto PunishmentJournal { get; set; } = new();
 }
 
 /// <summary>
@@ -289,4 +295,22 @@ public sealed class PersonDto
     [JsonPropertyName("appliedExam")]
     [JsonRequired]
     public ExamLevel? AppliedExam { get; set; }
+
+    /// <summary>解试行贿累计次数（<c>&gt;= 0</c>；跨科年累计；006-bribery-punishment）。</summary>
+    [Key(25)]
+    [JsonPropertyName("jieShiBribeCount")]
+    [JsonRequired]
+    public int JieShiBribeCount { get; set; }
+
+    /// <summary>省试行贿累计次数（<c>&gt;= 0</c>；跨科年累计；006-bribery-punishment）。</summary>
+    [Key(26)]
+    [JsonPropertyName("shengShiBribeCount")]
+    [JsonRequired]
+    public int ShengShiBribeCount { get; set; }
+
+    /// <summary>殿试行贿累计次数（<c>&gt;= 0</c>；跨科年累计；006-bribery-punishment）。</summary>
+    [Key(27)]
+    [JsonPropertyName("dianShiBribeCount")]
+    [JsonRequired]
+    public int DianShiBribeCount { get; set; }
 }

@@ -88,6 +88,45 @@ public static class SaveFixtures
         son.RecordExamFailure(ExamLevel.ShengShi);
         son.ApplyForExam(ExamLevel.ShengShi);
 
+        // ㉑ 行贿计数（006-bribery-punishment）：三个级别各取**非零且互不相同**的值
+        //     （1 / 2 / 3）——三者同值或全零都会让「漏存其中一个」的往返比对静默通过。
+        son.RecordBribe(ExamLevel.JieShi);
+        son.RecordBribe(ExamLevel.ShengShi);
+        son.RecordBribe(ExamLevel.ShengShi);
+        son.RecordBribe(ExamLevel.DianShi);
+        son.RecordBribe(ExamLevel.DianShi);
+        son.RecordBribe(ExamLevel.DianShi);
+
+        // ㉒ 惩罚日志（006-bribery-punishment）：六类事实行各取**非空**、禁令标志为真、
+        //     且三种「可空」字段各覆盖一次（PromotionBanMonths 取非空值、NewRankLevel 取非空值、
+        //     DegreeBefore/DegreeAfter 取非空值）——日志是 006 最容易「整块漏存」的部分。
+        var journal = family.PunishmentJournal;
+        journal.Append(new BribeFact(
+            ReferenceDate,
+            son.Id,
+            ExamLevel.DianShi,
+            Nth: 3,
+            Money.FromGuan(2400m),
+            Caught: true,
+            CapReached: false));
+        journal.Append(new SentenceFact(ReferenceDate, son.Id, Months: 180));
+        journal.Append(new FineFact(
+            ReferenceDate,
+            son.Id,
+            Money.FromGuan(120m),
+            Money.FromGuan(100m),
+            Money.FromGuan(20m)));
+        journal.Append(new RelativeBanFact(ReferenceDate, son.Id, multi.FatherId, 36, 36));
+        journal.Append(new CollectivePunishmentFact(
+            ReferenceDate,
+            son.Id,
+            CollectiveOutcome.DegreeDemoted,
+            multi.DaughterId,
+            DegreeLevel.JuRen,
+            DegreeLevel.BaiShen));
+        journal.Append(new ReleaseFact(ReferenceDate, multi.GrandsonId, NewRankLevel: 6));
+        journal.MarkFamilyBanDeclared();
+
         // ⑭ 前配偶：先娶一个外来者，再解除——两条 FormerSpouseIds 与「配偶已被清空」同时出现。
         var wife = family.AddOutsider(FamilyFixtures.NewPerson(
             11,

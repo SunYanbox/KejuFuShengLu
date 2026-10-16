@@ -5,7 +5,8 @@ using KFL.Core.ValueObjects;
 namespace KFL.Infrastructure.Save.Serialization;
 
 /// <summary>
-/// 存档级**一致性校验**十条（004-save-system；research R-04、data-model §3.11 第 ⑩ 步）。
+/// 存档级**一致性校验**十二条（004-save-system；research R-04、data-model §3.11 第 ⑩ 步；
+/// 006-bribery-punishment 追加第 11、12 条）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -14,14 +15,14 @@ namespace KFL.Infrastructure.Save.Serialization;
 /// <see cref="SaveFileException"/>（<see cref="SaveFileErrorKind.InvalidStructure"/>）。
 /// </para>
 /// <para>
-/// 第 1~7、9、10 条是**跨对象**的（单看一个对象的 setter 看不出「配偶是否互相指向」），
+/// 第 1~7、9~12 条是**跨对象**的（单看一个对象的 setter 看不出「配偶是否互相指向」），
 /// 故必须在整体复原之后才有意义；第 8 条是**同一份文件内**的自一致性检查
 /// （头是主体标识的 O(1) 探针副本），由 <see cref="ValidateIdentity"/> 承担。
 /// </para>
 /// </remarks>
 public static class SaveStateValidator
 {
-    /// <summary>校验复原后的状态（第 1~7、9、10 条）。</summary>
+    /// <summary>校验复原后的状态（第 1~7、9~12 条）。</summary>
     /// <param name="state">已完整复原的状态。</param>
     /// <exception cref="ArgumentNullException"><paramref name="state"/> 为 <c>null</c>。</exception>
     /// <exception cref="SaveFileException">任一不成立（分类恒为 <see cref="SaveFileErrorKind.InvalidStructure"/>）。</exception>
@@ -40,6 +41,8 @@ public static class SaveStateValidator
         EnsureFamineConsistency(state.Economy);
         EnsureLedgerAmountsNonZero(state.Economy);
         EnsureExamProgressInRange(members);
+        EnsureBribeCountsNonNegative(members);
+        EnsureJournalEntriesReferenceMembers(state.Family);
     }
 
     /// <summary>校验第 8 条：头记录的 <c>SaveId</c> MUST 等于主体的 <c>GameState.Id</c>。</summary>
@@ -242,8 +245,75 @@ public static class SaveStateValidator
         }
     }
 
-    private static void EnsureBacked(Person member, StatusFlag flag, int? timer, string what)
+    /// <summary>第 11 条：三个行贿计数 MUST <c>&gt;= 0</c>（006-bribery-punishment；data-model §6 I-1）。</summary>
+    /// <remarks>
+    /// 覆盖二进制侧的越界整数（JSON 侧为负数同样落在这里）；正数**无上限**——行贿次数
+    /// 本身没有封顶，唯一的「封顶」是触顶拒绝（契约十五 §4.2）。
+    /// </remarks>
+    private static void EnsureBribeCountsNonNegative(IReadOnlyCollection<Person> members)
     {
+        foreach (var member in members)
+        {
+            if (member.JieShiBribeCount < 0 || member.ShengShiBribeCount < 0 || member.DianShiBribeCount < 0)
+            {
+                throw Invalid(
+                    $"成员 {member.Id} 的行贿计数为负（解试 {member.JieShiBribeCount}、省试 {member.ShengShiBribeCount}、殿试 {member.DianShiBribeCount}，R-04 第 11 条）。");
+            }
+        }
+    }
+
+    /// <summary>第 12 条：日志的每一行 <c>PersonId</c> MUST 存在于 <c>Family.Members</c>（含归档者）。</summary>
+    /// <remarks>
+    /// 覆盖七个位置：行贿的考生、服刑/罚金/释放的当事人、亲属禁令与连坐的当事人及亲属
+    /// （006-bribery-punishment；data-model §6 I-15、契约十六 §5）。
+    /// </remarks>
+    private static void EnsureJournalEntriesReferenceMembers(Family family)
+    {
+        var members = family.Members;
+        var journal = family.PunishmentJournal;
+
+        foreach (var fact in journal.Bribes)
+        {
+            EnsureMember(fact.Examinee, "行贿的考生");
+        }
+
+        foreach (var fact in journal.Sentences)
+        {
+            EnsureMember(fact.Subject, "服刑的当事人");
+        }
+
+        foreach (var fact in journal.Fines)
+        {
+            EnsureMember(fact.Subject, "罚金的当事人");
+        }
+
+        foreach (var fact in journal.RelativeBans)
+        {
+            EnsureMember(fact.Subject, "亲属禁令的当事人");
+            EnsureMember(fact.Relative, "亲属禁令的亲属");
+        }
+
+        foreach (var fact in journal.CollectivePunishments)
+        {
+            EnsureMember(fact.Subject, "连坐的当事人");
+            EnsureMember(fact.Relative, "连坐的亲属");
+        }
+
+        foreach (var fact in journal.Releases)
+        {
+            EnsureMember(fact.Subject, "释放的当事人");
+        }
+
+        void EnsureMember(PersonId id, string what)
+        {
+            if (Find(members, id) is null)
+            {
+                throw Invalid($"{what} {id} 不是本家族成员（R-04 第 12 条）。");
+            }
+        }
+    }
+
+    private static void EnsureBacked(Person member, StatusFlag flag, int? timer, string what)    {
         if (timer is not null && !member.Status.HasFlag(flag))
         {
             throw Invalid($"成员 {member.Id} 的{what}计时非空但状态位为假（R-04 第 5 条）。");
