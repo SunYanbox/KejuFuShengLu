@@ -110,7 +110,7 @@ public static class PunishmentImposer
             foreach (var relative in relatives)
             {
                 var fact = Collective(
-                    journal, month, state.Family, subject, relative, banned);
+                    journal, month, state.Family, subject, relative, banned, relativeBans);
                 if (fact is { } punishment)
                 {
                     collective.Add(punishment);
@@ -344,12 +344,21 @@ public static class PunishmentImposer
         Family family,
         Person subject,
         Person relative,
-        HashSet<PersonId> banned)
+        HashSet<PersonId> banned,
+        List<RelativeBanFact> relativeBans)
     {
         // ③ 有官职 ⇒ 受全族禁考禁升 48 月覆盖（MUST NOT 另立「禁升 60 月」）。
         if (relative.Rank is not null)
         {
-            Ban(journal, month, relative, subject.Id, PunishmentPolicy.FamilyWideBanMonths, true, banned);
+            // 本分支的 `RelativeBanFact(48, 48)` 与 `CollectivePunishmentFact(FamilyWideBan)` 同属
+            // 本次施加的后果（契约十六 §6.2），MUST 一并进入快照——故回收 Ban 的返回行，
+            // 否则 Apply 的返回快照会漏掉该亲属的禁令行（日志仍已写入，只瞒了立即报告面）。
+            var ban = Ban(
+                journal, month, relative, subject.Id, PunishmentPolicy.FamilyWideBanMonths, true, banned);
+            if (ban is { } relativeBan)
+            {
+                relativeBans.Add(relativeBan);
+            }
 
             var familyWide = new CollectivePunishmentFact(
                 month, subject.Id, CollectiveOutcome.FamilyWideBan, relative.Id, null, null);
@@ -384,6 +393,10 @@ public static class PunishmentImposer
     }
 
     /// <summary>免死例外（契约十六 §6.3）：当事人的配偶有官职 ∧ 该孩子未成年。</summary>
+    /// <remarks>
+    /// 判据**只适用于孩子**（规格书 §7.4 与 §17 ③ 裁决回写：不适用于当事人本人、不扩展到配偶以外的亲属），
+    /// 故先核对 <paramref name="relative"/> 确为当事人的子女，再看其是否成年。
+    /// </remarks>
     private static bool IsExemptFromExecution(Family family, Person subject, Person relative, GameDate month)
     {
         var spouse = family.SpouseOf(subject.Id);
@@ -392,7 +405,26 @@ public static class PunishmentImposer
             return false;
         }
 
+        if (!IsChildOf(family, subject, relative))
+        {
+            return false;
+        }
+
         return !AgeBracketPolicy.IsAdult(relative.Gender, relative.AgeAt(month));
+    }
+
+    /// <summary>该成员是否为当事人的子女（与 <see cref="RelativesOf"/> 同口径：含已出嫁归档的女儿）。</summary>
+    private static bool IsChildOf(Family family, Person subject, Person relative)
+    {
+        foreach (var child in family.ChildrenOf(subject.Id))
+        {
+            if (child.Id == relative.Id)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>死刑立即执行：置已亡（归档与族谱归类由 <see cref="Family"/> 的状态位派生）。</summary>

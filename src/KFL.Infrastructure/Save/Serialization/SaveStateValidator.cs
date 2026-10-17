@@ -264,7 +264,7 @@ public static class SaveStateValidator
 
     /// <summary>第 12 条：日志的每一行 <c>PersonId</c> MUST 存在于 <c>Family.Members</c>（含归档者）。</summary>
     /// <remarks>
-    /// 覆盖七个位置：行贿的考生、服刑/罚金/释放的当事人、亲属禁令与连坐的当事人及亲属
+    /// 覆盖八个位置（六类事实行）：行贿的考生、服刑/罚金/释放的当事人、亲属禁令与连坐的当事人及亲属
     /// （006-bribery-punishment；data-model §6 I-15、契约十六 §5）。
     /// </remarks>
     private static void EnsureJournalEntriesReferenceMembers(Family family)
@@ -313,7 +313,8 @@ public static class SaveStateValidator
         }
     }
 
-    private static void EnsureBacked(Person member, StatusFlag flag, int? timer, string what)    {
+    private static void EnsureBacked(Person member, StatusFlag flag, int? timer, string what)
+    {
         if (timer is not null && !member.Status.HasFlag(flag))
         {
             throw Invalid($"成员 {member.Id} 的{what}计时非空但状态位为假（R-04 第 5 条）。");

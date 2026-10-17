@@ -17,7 +17,7 @@ namespace KFL.Infrastructure.Save.Serialization;
 /// 就会引入「声明长度与实际字节不符」的可能，而那正是截断判据赖以成立的东西。
 /// </para>
 /// <para>
-/// <b>读只管到 DTO</b>：<see cref="Read"/> 不做字段级复原、不做九条一致性校验——那是
+/// <b>读只管到 DTO</b>：<see cref="Read"/> 不做字段级复原、不做十二条一致性校验——那是
 /// <see cref="SaveStateMapper"/> 与 <see cref="SaveStateValidator"/> 的职责，由
 /// <c>SaveService.Load</c> 按契约十 §6 的次序调用。
 /// </para>

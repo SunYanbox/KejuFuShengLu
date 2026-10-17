@@ -197,7 +197,7 @@ public sealed class SaveService : ISaveService
         // ⑦ 逐字段复原（Core 自身的交叉校验在这里把不一致顶成 InvalidStructure）。
         var state = SaveStateMapper.ToDomain(payload);
 
-        // ⑧ 头标识一致 + 九条一致性校验。
+        // ⑧ 头标识一致 + 十二条一致性校验。
         SaveStateValidator.ValidateIdentity(header, state);
         SaveStateValidator.Validate(state);
 

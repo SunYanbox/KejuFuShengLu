@@ -66,8 +66,10 @@
 `PersonDto` **25 → 28**（末尾追加 `jieShiBribeCount` / `shengShiBribeCount` / `dianShiBribeCount`，
 键 25/26/27）、`FamilyDto` **7 → 8**（末尾追加 `punishmentJournal`，键 7，其内为新增的日志 DTO 行）；
 `MessagePackSaveFormat` 的 `PersonMemberCount` **25 → 28**（`MessagePackSaveFormat.cs:50`，尾随
-`Skip(ref reader, 3)` `:254` → `Skip(ref reader, 6)`）与 `FamilyMemberCount` **7 → 8**（`:47`，
-`:226` 的 `Skip(ref reader, 1)` → `Skip(ref reader, 2)`）；`SaveFileFormat.Version` **2 → 3**
+`Skip(ref reader, 3)` `:309` → `Skip(ref reader, 6)`）与 `FamilyMemberCount` **7 → 8**（`:47`，
+`:247` 的 `Skip(ref reader, 1)`（005 的自动报名）**之后追加** `EnsureJournalShape` `:249`——
+家族末尾的 `punishmentJournal` 是嵌套数组，须核对六类事实行的成员数，**不是**盲跳 `Skip(2)`）；
+`SaveFileFormat.Version` **2 → 3**
 （`src/KFL.Infrastructure/Save/SaveFileFormat.cs:30`）。`KFL.Core` 与 `KFL.Rules` 仍是**零**文件系统
 访问（G-07 零违规）。
 

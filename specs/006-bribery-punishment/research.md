@@ -442,7 +442,7 @@ L18 是 `SalaryTable.LowestLevel`（`SalaryTable.cs:23`），本特性 MUST NOT 
 | `FamilyDto` | 追加键 **7** `punishmentJournal`(`PunishmentJournalDto`)；成员数常量 7 → **8** |
 | `SaveStateValueDtos` | 新增 `PunishmentJournalDto`（6 个列表成员）与六个事实行 DTO |
 | `SaveFileFormat.Version` | **2 → 3**；`!= 3` 一律 `UnsupportedVersion`（拒绝而非迁移） |
-| 同步物 | `MessagePackSaveFormat` 的 `PersonMemberCount` / `FamilyMemberCount` 与 `EnsurePersonShape` / `EnsureFamilyShape`（`:254` 的尾随 `Skip(3)` → `Skip(6)`；`:226` 的 `Skip(1)` → `Skip(2)`）、`SaveStateMapper` 双向映射与复原次序（新计数并入第 ② 步、日志复原独立一步）、`SaveStateComparer.AssertPerson`、`SaveStateValidator` 新增第 ⑪/⑫ 条、`SaveFormatContractTests` 的 `BinaryKeyTables`（`:388-397`）/ `ContractKeyTable`（`:488-571`）、`SaveFixtures.RichState()` 的非默认值、`SaveFailureTests` 的版本闸门用例（旧 **2** 拒绝 / 更新 **4** 拒绝） |
+| 同步物 | `MessagePackSaveFormat` 的 `PersonMemberCount` / `FamilyMemberCount` 与 `EnsurePersonShape` / `EnsureFamilyShape`（`:254` 的尾随 `Skip(3)` → `Skip(6)`；`:247` 的 `Skip(1)` 之后追加 `EnsureJournalShape`（`:249`））、`SaveStateMapper` 双向映射与复原次序（新计数并入第 ② 步、日志复原独立一步）、`SaveStateComparer.AssertPerson`、`SaveStateValidator` 新增第 ⑪/⑫ 条、`SaveFormatContractTests` 的 `BinaryKeyTables`（`:388-397`）/ `ContractKeyTable`（`:488-571`）、`SaveFixtures.RichState()` 的非默认值、`SaveFailureTests` 的版本闸门用例（旧 **2** 拒绝 / 更新 **4** 拒绝） |
 
 **Rationale**: FR-032。004 的线上形状是**位置式数组**（`[Key]` 自 0 连续），「加字段 = 改线上形状」，
 而 004 的版本闸门是「**拒绝**而非迁移」（`SaveFileFormat.cs:24-29`），因此必须升版。键一律**追加在
