@@ -162,7 +162,7 @@ public class AssetMarketTests
             UrbanHouses = 0,
             Shops = 0,
         }));
-        var noneEngine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(none));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        var noneEngine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(none), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         for (var index = 0; index < 3; index++)
         {
@@ -176,7 +176,7 @@ public class AssetMarketTests
         var sold = NewState(Fixture());
         SellAll(sold);
 
-        var soldEngine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(sold));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        var soldEngine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(sold), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         for (var index = 0; index < 3; index++)
         {
@@ -286,7 +286,7 @@ public class AssetMarketTests
         state.Origin);
 
     private static SettlementResult SettleDecember(GameState state) =>
-        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state)).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
     private static EconomyFixture Fixture(EconomyFixtureSettings? settings = null) =>
         EconomyFixtures.Create(settings ?? new EconomyFixtureSettings());

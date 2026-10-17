@@ -17,7 +17,7 @@ namespace KFL.Infrastructure.Abstractions;
 /// </para>
 /// <para>
 /// 这里**没有**「当前档槽位」：按 FR-010/Q4，槽位是会话信息，由回合编排层的构造参数携带
-/// （<c>TurnRunner(IRandomService, ISaveService?, SaveSlot)</c>），MUST NOT 落盘。
+/// （<c>TurnRunner(IRandomService, ISaveService?, SaveSlot, INameGenerator)</c>，007 追加姓名来源），MUST NOT 落盘。
 /// </para>
 /// </remarks>
 public sealed record SaveOptions

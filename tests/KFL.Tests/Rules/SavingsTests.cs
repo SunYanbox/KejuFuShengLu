@@ -37,7 +37,7 @@ public class SavingsTests
 
         values.Add(double.MaxValue);
 
-        var engine = new MonthlySettlementEngine(new FixedRandomService(values.ToArray()), new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(new FixedRandomService(values.ToArray()), new GameStateClock(state), new FixedNameGenerator());
         var first = engine.Settle(state);
 
         // 米价先被消费：若次序颠倒，本月米价拿到的会是储蓄利率的那个取值。
@@ -74,7 +74,7 @@ public class SavingsTests
         var state = NewState(January, Origin.Scholar, cash: Guan(1000m), savings: savings);
 
         // 第 1 个取值给米价，第 2 个给 1 月的储蓄利率 roll（极大值 → 区间上限）；其余月份回落中值。
-        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d, 1.0d), new GameStateClock(state));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d, 1.0d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         var interest80 = DecemberInterest(engine, state);
 
@@ -184,7 +184,7 @@ public class SavingsTests
     {
         var savings = Guan(100m);
         var state = NewState(January, Origin.Scholar, cash: Guan(1000m), savings: savings);
-        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
         var interest = Money.Zero;
 
         for (var index = 0; index < 12; index++)
@@ -247,7 +247,7 @@ public class SavingsTests
     }
 
     private static SettlementResult Settle(GameState state) =>
-        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state)).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
     private static Loan LoanOf(Money principal) => new() { Principal = principal };
 

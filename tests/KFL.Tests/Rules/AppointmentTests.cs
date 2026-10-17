@@ -301,7 +301,7 @@ public class AppointmentTests
             new Holdings()));
 
     private static SettlementResult Settle(GameState state) =>
-        new MonthlySettlementEngine(new FixedRandomService(0.0d), new GameStateClock(state)).Settle(state);
+        new MonthlySettlementEngine(new FixedRandomService(0.0d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);
 
     /// <summary>
     /// 恒返回**上界**的整数随机替身：<see cref="IRandomService.Next"/> 返回 <c>maxExclusive - 1</c>，

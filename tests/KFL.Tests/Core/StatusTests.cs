@@ -212,4 +212,46 @@ public class StatusTests
         Assert.True(person.Status.HasFlag(StatusFlag.Deceased));
         Assert.True(person.Status.HasFlag(StatusFlag.MarriedOut));
     }
+
+    [Fact]
+    public void 疾病程度与疗程同款交叉校验且与患病位同生同灭()
+    {
+        var person = FamilyFixtures.NewPerson(809, "患者", Gender.Male, 1, 1, generation: 0);
+
+        // 位为假时两项 MUST 为空（与既有四个剩余月数同款；data-model §6 不变量 1/2）。
+        Assert.Throws<ArgumentException>(
+            () => person.Timers = new StatusTimers(illnessSeverityBasisPoints: 5000));
+        Assert.Throws<ArgumentException>(
+            () => person.Timers = new StatusTimers(treatmentRemainingMonths: 3));
+
+        // 建立：先置患病位、后写两项（与其他状态位同款次序）。
+        person.Status = StatusFlag.Ill;
+        person.Timers = new StatusTimers(illnessSeverityBasisPoints: 5000, treatmentRemainingMonths: 3);
+
+        Assert.Equal(5000, person.Timers.IllnessSeverityBasisPoints.GetValueOrDefault(-1));
+        Assert.Equal(3, person.Timers.TreatmentRemainingMonths.GetValueOrDefault(-1));
+        Assert.True(person.Status.HasFlag(StatusFlag.Ill));
+
+        // 清除：先清计时（写 null）、后清位。
+        Assert.Throws<ArgumentException>(() => person.Status = StatusFlag.None);
+
+        person.Timers = default;
+        person.Status = StatusFlag.None;
+
+        Assert.Null(person.Timers.IllnessSeverityBasisPoints);
+        Assert.Null(person.Timers.TreatmentRemainingMonths);
+    }
+
+    [Fact]
+    public void 疾病程度必须落在一到一万磅值之间()
+    {
+        // 边界值合法（0 与 10000 均含）。
+        Assert.Equal(0, new StatusTimers(illnessSeverityBasisPoints: 0).IllnessSeverityBasisPoints);
+        Assert.Equal(10000, new StatusTimers(illnessSeverityBasisPoints: 10000).IllnessSeverityBasisPoints);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new StatusTimers(illnessSeverityBasisPoints: -1));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new StatusTimers(illnessSeverityBasisPoints: 10001));
+    }
 }

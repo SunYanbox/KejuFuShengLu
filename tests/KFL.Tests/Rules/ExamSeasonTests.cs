@@ -645,7 +645,7 @@ public class ExamSeasonTests
     // ------------------------------------------------------------------ 夹具
 
     private static SettlementResult Settle(GameState state) =>
-        new MonthlySettlementEngine(new RecordingRandom(), new GameStateClock(state)).Settle(state);
+        new MonthlySettlementEngine(new RecordingRandom(), new GameStateClock(state), new FixedNameGenerator()).Settle(state);
 
     private static GameState NewState(
         Family family,

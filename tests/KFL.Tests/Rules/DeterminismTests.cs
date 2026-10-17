@@ -198,27 +198,34 @@ public class DeterminismTests
     [Fact]
     public void 随机消费次序固定为米价储蓄利率再计息()
     {
+        // 007 起 ⑧（人口与健康推进）会按在册成员数量消费随机数，故本用例一律用**常量随机源**
+        // （FixedRandomService 用尽后恒返回 0.5）消去取值相关性：0.5 高于感染率上限、低于提亲概率，
+        // 于是 ⑧ 的消费次数只由「在册且 AgeAt>=3 的人数」决定，逐月可比。
         // 已结清的贷款：任何月份都不进入计息节点，故随机槽位只有米价与 1 月的储蓄利率。
-        var settled = Counts(January, 12, settings: SettledLoan());
-        var settledTotal = 0;
+        var settled = FixedCounts(January, 12, settings: SettledLoan());
 
-        for (var index = 0; index < settled.Count; index++)
+        for (var index = 1; index < settled.Count; index++)
         {
-            var expected = index == 0 ? 2 : 1;
-
-            Assert.Equal(expected, settled[index]);
-            settledTotal += settled[index];
+            // 相对口径：MUST NOT 写死绝对次数（007 起 ⑧ 的槽位随成员数变化）；
+            // 只断言「1 月恰比其余月份多一次储蓄利率 roll」。
+            // 这也一并覆盖 ⑧-d（成长）/ ⑧-g（死亡落账）/ ⑧-h（家主继任）三类**零随机**子步：
+            // 它们若消费了随机数，12 个月里逐月的消费次数就不再相等（年龄档跨越每年都在发生）。
+            Assert.Equal(settled[0] - 1, settled[index]);
         }
 
-        // 1 月额外消费一次（储蓄利率 roll），全年共 13 次。
-        Assert.Equal(12 + 1, settledTotal);
+        // 首次结算月即命中计息节点：该月比同月未命中者恰多消费一次
+        // （次序为米价 → 储蓄利率 → 计息利率，故计息利率排在 ⑧ 之前）。
+        var due = FixedCounts(January, 2, settings: DueLoan());
 
-        // 首次结算月即命中计息节点：该月多消费一次（次序为米价 → 储蓄利率 → 计息利率）。
-        var due = Counts(January, 2, settings: DueLoan());
+        Assert.Equal(settled[0] + 1, due[0]);
 
-        Assert.Equal(3, due[0]);
-        Assert.Equal(1, due[1]);
+        // 次月未命中计息节点，两侧回到相同槽位。
+        Assert.Equal(settled[1], due[1]);
     }
+
+    /// <summary>常量随机源下的逐月 <c>NextDouble()</c> 次数（次序断言的直接观测口，取值无关）。</summary>
+    private static List<int> FixedCounts(GameDate from, int months, EconomyFixtureSettings settings) =>
+        RunFrom(from, months, settings, new CountingRandomService(new FixedRandomService())).DoublesPerMonth;
 
     private static GameDate January => RulesHarness.Date;
 
@@ -272,7 +279,7 @@ public class DeterminismTests
     {
         var fixture = EconomyFixtures.Create(settings with { Date = from });
         var state = new GameState(StateId, from, Difficulty.Normal, origin, fixture.Family, fixture.Economy);
-        var engine = new MonthlySettlementEngine(random, new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(random, new GameStateClock(state), new FixedNameGenerator());
         var results = new List<SettlementResult>();
         var doublesPerMonth = new List<int>();
 
@@ -405,7 +412,7 @@ public class DeterminismTests
             StateId, BeforeJieShi, Difficulty.Normal, Origin.Scholar, family, economy);
 
         var random = new SeededRandomService(seed);
-        var engine = new MonthlySettlementEngine(random, new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(random, new GameStateClock(state), new FixedNameGenerator());
         var results = new List<SettlementResult>();
 
         for (var index = 0; index < KeYearMonths; index++)
@@ -583,7 +590,7 @@ public class DeterminismTests
             new Holdings());
         var state = new GameState(StateId, RulesHarness.Date, Difficulty.Normal, Origin.Scholar, family, economy);
         var random = new CountingRandomService(new SeededRandomService(Seed));
-        var engine = new MonthlySettlementEngine(random, new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(random, new GameStateClock(state), new FixedNameGenerator());
         var counts = new List<int>();
 
         for (var index = 0; index < 6; index++)
@@ -639,7 +646,7 @@ public class DeterminismTests
         var state = new GameState(
             StateId, new GameDate(79, 6), Difficulty.Normal, Origin.Scholar, family, economy);
         var random = new CountingRandomService(new SeededRandomService(seed));
-        var engine = new MonthlySettlementEngine(random, new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(random, new GameStateClock(state), new FixedNameGenerator());
         var results = new List<SettlementResult>();
 
         for (var index = 0; index < 70; index++)

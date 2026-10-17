@@ -144,7 +144,7 @@ public class LoanTests
         var principal = Guan(1_000_000m);
         var loan = LoanOf(principal, monthsSinceInterest: InterestPolicy.InterestPeriodMonths - 1);
         var state = NewState(loan, FamilyOf(1, 0), cash: Guan(1000m));
-        var engine = new MonthlySettlementEngine(new FixedRandomService(), new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(new FixedRandomService(), new GameStateClock(state), new FixedNameGenerator());
 
         var first = engine.Settle(state);
 
@@ -255,7 +255,7 @@ public class LoanTests
             });
             var state = new GameState(
                 StateId, fixture.Date, Difficulty.Normal, Origin.Artisan, fixture.Family, fixture.Economy);
-            var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state));
+            var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state), new FixedNameGenerator());
             var loan = fixture.Economy.Treasury.Loan;
             var trace = new List<(Money, Money, Money, Money, Money, int)>();
 
@@ -448,7 +448,7 @@ public class LoanTests
     }
 
     private static SettlementResult Settle(GameState state) =>
-        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state)).Settle(state);  // arch-guard:allow 夹具金额与随机取值（非规则数值副本）
+        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);  // arch-guard:allow 夹具金额与随机取值（非规则数值副本）
 
     private static Money TreasuryDelta(IReadOnlyList<LedgerEntry> entries)
     {

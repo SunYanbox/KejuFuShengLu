@@ -69,6 +69,15 @@ public sealed class Family
     /// </summary>
     public PunishmentJournal PunishmentJournal { get; } = new();
 
+    /// <summary>
+    /// 家族生命周期状态（007）：买人口计数 / 待分娩 / 生育申请 / 待应答提议。
+    /// </summary>
+    /// <remarks>
+    /// 家族级唯一实例、随家族同生共死。买人口、生育与提议的**全部**写入都经它，
+    /// <see cref="Family"/> 为此 MUST NOT 新增任何写入方法。
+    /// </remarks>
+    public FamilyLifecycleState Lifecycle { get; } = new();
+
     /// <summary>**在册**成员 = 非「已亡」且非「外嫁」（规格书 §12.1、§15）。</summary>
     public IReadOnlyCollection<Person> RegisteredMembers =>
         _members.Where(IsRegistered).ToList().AsReadOnly();

@@ -193,7 +193,7 @@ public class RetirementTests
         var state = NewState(RulesHarness.FamilyOf(person));
 
         // 随机取值 0：若该月参与考课必晋升；③-c 先于 ③-d ⇒ MUST NOT 晋升。
-        var result = new MonthlySettlementEngine(new FixedRandomService(0.0d), new GameStateClock(state)).Settle(state);
+        var result = new MonthlySettlementEngine(new FixedRandomService(0.0d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);
 
         Assert.True(person.Status.HasFlag(StatusFlag.Retired));
         Assert.Equal(15, person.Rank!.Value.Level);
@@ -262,5 +262,5 @@ public class RetirementTests
             new Holdings()));
 
     private static SettlementResult Settle(GameState state) =>
-        new MonthlySettlementEngine(new FixedRandomService(0.0d), new GameStateClock(state)).Settle(state);
+        new MonthlySettlementEngine(new FixedRandomService(0.0d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);
 }
