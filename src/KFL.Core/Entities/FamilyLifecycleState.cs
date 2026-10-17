@@ -77,6 +77,14 @@ public sealed class FamilyLifecycleState
     /// <summary>清空待分娩队列（⑧-b 处理完毕后调用一次）。</summary>
     public void ConsumeBirths() => _pendingBirths.Clear();
 
+    /// <summary>
+    /// 清空**已到期**的待分娩记录（<see cref="PendingBirth.AppliedAt"/> 早于当月的），
+    /// 保留当月新提交、须待次月才分娩的申请（契约十九 §7「申请当月不分娩」）。
+    /// </summary>
+    /// <param name="month">当月。</param>
+    public void ConsumeBirths(GameDate month) =>
+        _pendingBirths.RemoveAll(birth => birth.AppliedAt < month);
+
     /// <summary>该夫妇在本自然年是否已申请过生育。</summary>
     /// <param name="couple">夫妇键。</param>
     /// <param name="year">当前自然年。</param>

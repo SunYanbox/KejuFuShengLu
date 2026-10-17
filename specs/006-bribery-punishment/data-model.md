@@ -383,6 +383,9 @@ Skip 代数同步（`PersonMemberCount` 25 → 28、`FamilyMemberCount` 7 → 8�
 - 新的三个计数并入既有**第 ② 步**（标量 + `RestoreExamProgress`），走 `RestoreBribeCounts`；
 - `PunishmentJournal` 的复原在**第 ⑦ 步之后、第 ⑧ 步之前**独立一步（`Restore(…)`），不与 `Rank` /
   `Status` / `Timers` 的顺序耦合（缓冲区不参与交叉校验，只做 I-15 的引用完整性校验）。
+  > **007 后记（2026-10-17）**：007 在同一位置追加了**第 ⑦″ 步**（`FamilyLifecycleState.RestoreBookkeeping`，
+  > 见 [004 data-model §3.11](../../004-save-system/data-model.md) 的 007 后记）；两步次序为
+  > ⑦′ `PunishmentJournal.Restore` → ⑦″ 生命周期簿记 → ⑧ `SaveStateValidator`，互不依赖。
 
 ### 7.4 同提交必须同步的实现与断言物
 

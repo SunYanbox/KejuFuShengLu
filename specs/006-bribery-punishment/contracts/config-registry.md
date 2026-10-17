@@ -101,6 +101,13 @@
 | 7 | MUST NOT 引入「乘数上限」或「乘数封顶」——规格书把封顶写在**最终概率**上（FR-010） |
 | 8 | MUST NOT 新增「死囚待决」相关的状态或时长常量（§7.5 明写死刑立即执行） |
 
+> **007 后记（2026-10-17）**：上表第 1 条与第 3 条是 **006 的越界约束**（006 MUST NOT 引入这些数值），
+> 该约束**继续成立且未被放宽**；但两条所指向的**数值归属**已由 007 交付——第 1 条的概率与年龄线
+> 落在 `KFL.Rules/Config/{GrowthPolicy, IllnessPolicy, ChildbirthPolicy}.cs`，第 3 条的婚育与买人口
+> 数值落在 `KFL.Rules/Config/{MarriagePolicy, ChildbirthPolicy, PopulationPurchasePolicy}.cs`
+> （「买功名婚姻」的数值复用 `MarriagePolicy.DegreeMarriageFeeRatio` 与 `SalaryTable`），
+> 登记见 [007 contracts/config-registry.md](../../007-family-lifecycle/contracts/config-registry.md)。
+> 故 006 的 `RegisteredValues` 对照表（§4）**无需增补**，也不得因此放宽本节的禁止项。
 ---
 
 ## 4. 与 `ConfigLiteralTests.RegisteredValues` 的对照

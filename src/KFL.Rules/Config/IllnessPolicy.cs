@@ -9,8 +9,8 @@ namespace KFL.Rules.Config;
 /// 三段年龄增益、疗程月数与程度的万分之换算。
 /// </para>
 /// <para>
-/// **明确不含**：难度负面事件系数——患病概率 MUST NOT 引用
-/// <c>DifficultyRates.NegativeEventFactor</c>（本类 MUST NOT 出现该符号，SC-014）。
+/// **明确不含**：难度负面事件系数——患病概率 MUST NOT 引用它（本类 MUST NOT 出现该符号，
+/// SC-014；该系数只作用于 ⑧-a 的提亲与榜下捉婿底数，见 <c>MarriagePolicy</c>）。
 /// </para>
 /// </remarks>
 public static class IllnessPolicy

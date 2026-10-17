@@ -43,6 +43,8 @@ public static class SaveStateValidator
         EnsureExamProgressInRange(members);
         EnsureBribeCountsNonNegative(members);
         EnsureJournalEntriesReferenceMembers(state.Family);
+        EnsureLifecycleProposalReferencesMember(state.Family);
+        EnsurePendingBirthsApplied(state.Family);
     }
 
     /// <summary>校验第 8 条：头记录的 <c>SaveId</c> MUST 等于主体的 <c>GameState.Id</c>。</summary>
@@ -309,6 +311,73 @@ public static class SaveStateValidator
             if (Find(members, id) is null)
             {
                 throw Invalid($"{what} {id} 不是本家族成员（R-04 第 12 条）。");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 第 13 条：待应答提议的 <c>OurMemberId</c> MUST 指向本家族的在册未婚成员（007-family-lifecycle）。
+    /// </summary>
+    /// <remarks>
+    /// data-model §6 不变量 3：提议至多一条，且 <c>OurMemberId</c> MUST 指向在册成员
+    /// （已亡与外嫁者 MUST NOT 承载提议）。
+    /// </remarks>
+    private static void EnsureLifecycleProposalReferencesMember(Family family)
+    {
+        if (family.Lifecycle.Proposal is not { } proposal)
+        {
+            return;
+        }
+
+        var member = Find(family.Members, proposal.OurMemberId)
+            ?? throw Invalid($"提议的 OurMemberId {proposal.OurMemberId} 不是本家族成员（R-04 第 13 条）。");
+
+        if ((member.Status & (StatusFlag.Deceased | StatusFlag.MarriedOut)) != StatusFlag.None)
+        {
+            throw Invalid(
+                $"提议的 OurMemberId {proposal.OurMemberId} 指向已亡或外嫁的成员（R-04 第 13 条）。");
+        }
+
+        if (member.SpouseId is not null)
+        {
+            throw Invalid($"提议的 OurMemberId {proposal.OurMemberId} 已有配偶（R-04 第 13 条）。");
+        }
+    }
+
+    /// <summary>
+    /// 第 14 条：每条待分娩记录都 MUST 出自同年的已申请夫妇集合（007-family-lifecycle）。
+    /// </summary>
+    /// <remarks>
+    /// data-model §6 不变量：<c>PendingBirths ⊆ AppliedBirthCouples</c>。簿记在跨年时会同时清空两侧，
+    /// 故本条只在被清空到一半的损坏档上生效。
+    /// </remarks>
+    private static void EnsurePendingBirthsApplied(Family family)
+    {
+        var lifecycle = family.Lifecycle;
+
+        foreach (var birth in lifecycle.PendingBirths)
+        {
+            if (!lifecycle.AppliedBirthCouples.Contains(birth.Couple))
+            {
+                throw Invalid(
+                    $"待分娩记录的夫妇（夫 {birth.Couple.HusbandId}、妻 {birth.Couple.WifeId}）不在已申请本年生育的夫妇集合内（R-04 第 14 条）。");
+            }
+
+            EnsureMember(birth.Couple.HusbandId, "待分娩记录的夫");
+            EnsureMember(birth.Couple.WifeId, "待分娩记录的妻");
+        }
+
+        foreach (var couple in lifecycle.AppliedBirthCouples)
+        {
+            EnsureMember(couple.HusbandId, "已申请生育的夫");
+            EnsureMember(couple.WifeId, "已申请生育的妻");
+        }
+
+        void EnsureMember(PersonId id, string what)
+        {
+            if (Find(family.Members, id) is null)
+            {
+                throw Invalid($"{what} {id} 不是本家族成员（R-04 第 14 条）。");
             }
         }
     }

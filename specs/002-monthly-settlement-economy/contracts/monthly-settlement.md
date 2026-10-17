@@ -19,8 +19,9 @@
 | ⑤ | **收入**：§6 的全部来源入账（俸禄按 §6 的**三态**口径），含 12 月的储蓄利息与工出身 bonus | 1 月时 1 次（储蓄利率） | 资金类若干 |
 | ⑥ | **生活费**：按 §5 计算应付额 → 支付（足额或部分）→ 按 §8 判定饥馑阶段迁移 | — | `LivingCost` + 事件类若干 |
 | ⑦ | **贷款**：先计息（第 12 个月节点），后划扣 | 命中节点时每笔 1 次 | `LoanInterestAccrued`（事件类）+ 划扣（资金类） |
-| ⑧ | **科举季**（**005 追加**，FR-019；`ExamSeasonRunner.Run`，逐人按 `PersonId` 升序）：① 自动报名 → ② 路费扣除与弃考 → ③ 免解行使 → ④ 录取/进甲判定 → ⑤ 及第入仕（待阙月数）→ ⑥ 特奏名询问；非考试月六段全部跳过 | 见 §4 的「科举判定」与「及第入仕待阙」两段 | `ExamTravelCost`（资金类，仅省试月；MUST NOT 新增账本类别） |
-| ⑨ | **推进时间**：调用 `GameState.AdvanceMonth()` 推进 `CurrentDate`，返回 `SettlementResult` | — | — |
+| ⑧ | **人口与健康推进**（**007 追加**，FR-041；`PopulationAdvance.Run`，八子步见 §1.1）：⑧-a 婚配事件（榜下捉婿 → 提亲）→ ⑧-b 分娩 → ⑧-c 患病与病程 → ⑧-d 成长与遗忘 → ⑧-e 饥馑体质损失 → ⑧-f 寿终与夭折 → ⑧-g 死亡落账（**当月唯一置 `Deceased` 处**）→ ⑧-h 家主继任（每月至多一次） | 见 §4 的「人口与健康推进」段；⑧-d / ⑧-g / ⑧-h **0 次** | `ChildBorn` / `MemberDeceased` / `MarriageFormed` / `MemberMarriedOut`（事件类，金额 0）；⑧-c 的 `MedicineExpense` / ⑧-d 的 `TutorFee`（资金类） |
+| ⑨ | **科举季**（**005 追加**，FR-019；`ExamSeasonRunner.Run`，逐人按 `PersonId` 升序）：① 自动报名 → ② 路费扣除与弃考 → ③ 免解行使 → ④ 录取/进甲判定 → ⑤ 及第入仕（待阙月数）→ ⑥ 特奏名询问；非考试月六段全部跳过 | 见 §4 的「科举判定」与「及第入仕待阙」两段 | `ExamTravelCost`（资金类，仅省试月；MUST NOT 新增账本类别） |
+| ⑩ | **推进时间**：调用 `GameState.AdvanceMonth()` 推进 `CurrentDate`，返回 `SettlementResult` | — | — |
 
 > **③ 是本契约原六步之外的整步**（2026-10-08 由 003 插入，FR-019）：①②④⑤⑥⑦ 的**语义不变**，
 > 仅原 ③~⑥ 的序号顺移为 ④~⑦。③ 的逐子步次序、子步间的强制关系与「③ MUST 在收入之前」的
@@ -39,7 +40,34 @@
 > 恰好 0 次**（日志投影、计时递减、释放归零与服刑人数统计全为确定性操作）。步内次序与快照面见
 > [契约十六 §1](../../006-bribery-punishment/contracts/punishment.md)。
 > **整月随机消费次序随之更新为**：米价（②）→ **惩罚推进（③）—— 0 次** → 考课掷骰（④-d）→
-> 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）→ 科举判定（⑧）→ 及第入仕待阙（⑧）。
+> 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）→ 科举判定（⑨）→ 及第入仕待阙（⑨）。
+>
+> **007 后记（2026-10-17）**：**⑧ 是本契约由 007 追加的整步**（007 FR-041）：①②③④⑤⑥⑦ 与
+> 原 ⑧（科举季）的**语义不变**，原 ⑧「科举季」顺移为 **⑨**、原 ⑨「推进时间」顺移为 **⑩**，
+> 全月结算由九步变**十步**。本步的位置钉死在「⑦ 贷款之后、⑨ 科举季之前」，MUST NOT 调用
+> `AdvanceMonth`、MUST NOT 修改 `CurrentDate`（用当月日期判定），且 MUST NOT 改变 ②~⑦ 与 ⑨
+> 的既有随机次序与次数。步内八子步与随机消费见 §1.1；`SettlementResult` 的公开属性由 20 变为 **21**
+> （尾部新增 `Lifecycle`）。
+> **整月随机消费次序随之更新为**：米价（②）→ **惩罚推进（③）—— 0 次** → 考课掷骰（④-d）→
+> 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）→ **⑧-a 婚配事件（每月 1 次，捉婿命中另 1 次）**
+> → **⑧-b 分娩（每对夫妇 1 次分娩死亡骰 + 1 次性别 + 属性与寿数）** → **⑧-c 患病与病程
+> （逐人升序）** → **⑧-d 成长（0 次）** → **⑧-e 饥馑（仅严重期，逐人 1 次）** →
+> **⑧-f 寿终与夭折（逐人升序，`AgeAt < 3` 的生日月 1 次）** → **⑧-g 死亡落账（0 次）** →
+> **⑧-h 家主继任（0 次）** → 科举判定（⑨）→ 及第入仕待阙（⑨）。
+> 任何后续阶段新增随机消费 MUST 先登记进此式。
+
+#### 1.1 第 ⑧ 步的八子步（**007 追加**）
+
+| 子步 | 执行器 | 消费随机 | 说明 |
+| --- | --- | --- | --- |
+| ⑧-a | `MarriageMarket.Run` | 每月恰 1 次（提亲骰）；榜下捉婿命中时另 1 次（金额） | 先捉婿后提亲；两者同月各自掷；提亲 MUST NOT 覆盖同月捉婿提议；只写 `Family.Lifecycle.Proposal` |
+| ⑧-b | `Childbirth.Run` | 每对夫妇：分娩死亡 1 + 性别 1 + 天赋 8 + 学业 2 + 体质 2 + 寿数 2 | 按 `WifeId` 升序；消费**上一月**排入的待产记录；新生儿经 `Family.AddChild` 注册 |
+| ⑧-c | `IllnessAdvance.Run` | 旧病：清除 1 次（`>= 1` 短路 0 次）；新感染：`AgeAt >= 3` 者 1 次，命中再 1 次（程度） | 两段式；**先扣体质、再掷清除**；疗程中先付药费；清除命中后该月不再有后续随机消费 |
+| ⑧-d | `GrowthAdvance.Run` | **0 次** | 学业增减与遗忘、体质自然恢复（生活费足额、非饥馑、非患病） |
+| ⑧-e | `FamineHealth.Run` | 仅 `FamineStage.Severe`：计口每人 1 次；`Relief` / 未进入饥馑 0 次 | 只读饥馑阶段机，MUST NOT 改写 002 的阶段机 |
+| ⑧-f | `LifespanAdvance.Run` | 每人：夭折 1 次（仅 `AgeAt < 3` 且为生日月）；其余 0 次 | 遍历集合 = 在册 ∪ 已外嫁归档；寿终/患病/服刑均不豁免 |
+| ⑧-g | `DeathSettlement.Run` | **0 次** | 按 `PersonId` 升序去重落 `Deceased` + `MemberDeceased` 事件条目；幂等；死因不落字段 |
+| ⑧-h | `HeadSuccession` | **0 次** | 在 ⑧-g 之后执行**一次**；无候选 ⇒ `SetHead(null)` + 快照标记「家主空缺」 |
 
 **为什么收入在生活费之前**（§17 裁决 E-04，规格书 §3 已回写）：玩家直觉是「先领俸禄、
 收田租，再拿这些钱买粮」。原顺序（生活费 → 收入）会让「本月有俸禄可领」的家庭在发放前
@@ -48,8 +76,11 @@
 **为什么计息在划扣之前**（E-05）：§5.4 规定「每 12 个月按**当时**剩余本金计息一次」，
 先计息使「当时本金」= 月初结余本金，不受本月划扣影响。
 
-**MUST NOT 存在**的步骤（各自阶段负责）：随机事件（逻辑轨 ⑦）、属性成长/衰老/疾病/死亡判定
-（逻辑轨 ⑦）、绝嗣判定（逻辑轨 ⑧）、存档写入（阶段④）。
+**MUST NOT 存在**的步骤（各自阶段负责）：随机事件总表与成就解锁（逻辑轨 ⑦ 的余项）、
+绝嗣判定（逻辑轨 ⑧）、结局与统计（逻辑轨 ⑨/U2）、存档写入（阶段④）。
+**007 已从本句交付的项**：属性成长/衰老/疾病/死亡判定（**已由 007 的 ⑧ 接管**，2026-10-17；
+`SettlementResult.Lifecycle` 承载当月事实段），以及 2026-10-13 由 006 交付的惩罚推进。
+**仍不交付**：怀孕率（007 明确不含）、家族声望、随机事件总表（007 只交付 §9.1 提亲与 §9.2 捉婿）。
 
 > **005 后记（2026-10-12）**：原清单中的「**科举季触发（阶段⑤）**」**已解除**——`005-exam-cycle`
 > 把它落成为结算的固定新整步 ⑦「科举季」（位于 ⑥ 贷款之后、⑧ 推进时间之前），见
@@ -82,8 +113,8 @@
 
 ## 4. 随机消费次序与映射
 
-同一次结算内的随机取值**次序固定**为：`米价（②）→ 惩罚推进（③）—— 0 次 → 考课掷骰（④-d，逐人按 PersonId 升序）→ 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）→ 科举判定（⑧，逐人按 PersonId 升序）→ 及第入仕待阙（⑧，逐人按 PersonId 升序）`。
-除考课掷骰按命中人数各 1 次、以及 ⑧ 的「一甲名次」与「待阙月数」用 `Next(...)` 外，其余每个取值都是 `IRandomService.NextDouble()` 的一次调用，映射公式如下（`r ∈ [0,1)`）：
+同一次结算内的随机取值**次序固定**为：`米价（②）→ 惩罚推进（③）—— 0 次 → 考课掷骰（④-d，逐人按 PersonId 升序）→ 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）→ 婚配事件（⑧-a）→ 分娩（⑧-b，逐对按 WifeId 升序）→ 患病与病程（⑧-c，逐人按 PersonId 升序）→ 成长（⑧-d）—— 0 次 → 饥馑死亡判定（⑧-e，仅严重期）→ 寿终与夭折（⑧-f，逐人按 PersonId 升序）→ 死亡落账（⑧-g）—— 0 次 → 家主继任（⑧-h）—— 0 次 → 科举判定（⑨，逐人按 PersonId 升序）→ 及第入仕待阙（⑨，逐人按 PersonId 升序）`。
+除考课掷骰按命中人数各 1 次、⑧-b 的性别与 ⑧-a 的金额、以及 ⑨ 的「一甲名次」与「待阙月数」用 `Next(...)` 外，其余每个取值都是 `IRandomService.NextDouble()` 的一次调用，映射公式如下（`r ∈ [0,1)`）：
 
 | 取值 | 公式 | 区间/边界 |
 | --- | --- | --- |
@@ -92,8 +123,13 @@
 | 考课掷骰（**003 追加**） | `r < OfficialCareerPolicy.PromotionChance(merit)`，其中 `PromotionChance(merit) = min(0.25 + merit × 0.003, 0.70)`；成功 ⇒ 官阶级数 −1 | 仅在职月数达 36 且非禁升、非服刑的在册在职成员各 1 次；**禁升**跳过判定时 MUST NOT 消费随机；服刑者暂停（既不计时也不掷骰）（§8.2；契约七 §4/§8） |
 | 当年储蓄利率 | `0.005 + r × 0.019` | 0.5%~2.4%（§5.4） |
 | 贷款计息利率 | `0.005 + r × 0.019` | 0.5%~2.4%（§5.4） |
-| 科举判定（**005 追加**，⑧ ④） | 录取（解试/省试）或进甲（殿试）：1 次 `NextDouble()`；**进甲者紧接 1 次 `Next(1, 4)`** 取一甲名次 | 仅考试月的候选成员各 1 次，逐人按 `PersonId` 升序；**报名阶段（①）MUST NOT 消耗随机**；免解者、判定前资格不符者与现金不足弃考者 MUST NOT 消耗随机；殿试不掷录取骰（契约十三 §1.3） |
-| 及第入仕待阙（**005 追加**，⑧ ⑤） | 1 次 `Next(6, 25)` —— 待阙月数（经 `AppointmentEntry` 入口） | 仅供本月及第入仕者各 1 次，逐人按 `PersonId` 升序（契约十三 §1.3） |
+| 婚配事件（**007 追加**，⑧-a） | 提亲：每月恰 1 次 `r < ProposalBaseChance × NegativeEventFactor`（`0.05 × 系数`）；命中后用**同一次** `r` 在阶层权重内分段映射并均匀取候选成员（**0 额外随机**）。榜下捉婿：窗口内逐人 1 次 `r < 0.30 × NegativeEventFactor ÷ (1 + P)`；命中后 1 次 `Next(500, 1001)` 取金额 | 捉婿窗口 = 新科一甲及第的**次月**；`P` = 判定时在册有官者的压力权重之和（[007 contracts/marriage-birth.md §4](../../007-family-lifecycle/contracts/marriage-birth.md)） |
+| 分娩（**007 追加**，⑧-b） | 每对夫妇：① `r < ChildbirthDeathChance × NegativeEventFactor`（分娩死亡）② `Next(0, 2)`（性别）③ 天赋 ×4 + 学业 + 体质（各 2 次，遗传口径）④ 寿数 2 次 | 按 `WifeId` 升序消费**上一月**排入的待产记录；申请当月的记录不消费（007 FR-042） |
+| 患病与病程（**007 追加**，⑧-c） | 旧病清除：`r < min(1, 体质系数 × m_q + b)`（`min` 钳到 1 ⇒ 必愈且**不消费**）；新感染：`r < (0.0025 + 0.3975 × (100 − c) / 99) × m_p`，命中后紧接 1 次 `NextDouble()` 定程度 `s`（`IllnessSeverityBasisPoints = round(s × 10000)`） | `AgeAt < 3` 不掷不消费；感染率**不乘**难度系数；`m_p` / `m_q` 取主导天赋（并列按 农 → 商 → 仕 → 工）（007 contracts/illness-lifespan.md §4/§5） |
+| 饥馑死亡判定（**007 追加**，⑧-e） | 严重期计口每人 1 次 `r < FamineDeathChance`（5%，**不乘**难度系数）；`Relief` / 未进入饥馑 0 次 | 扣体质后归零者直接登记死亡、不掷（007 contracts/illness-lifespan.md §6） |
+| 寿终与夭折（**007 追加**，⑧-f） | 夭折：`AgeAt < 3` 且为生日月 ⇒ 1 次 `r < ChildbirthPolicy.InfantDeathChance × InfantDeathFactor(难度)`（基准 10%，系数 0.5/1.0/1.1/1.2 ⇒ 5%/10%/11%/**12%**，落差档按规格书 §9.4 明示端点）；寿终 0 次 | 遍历 = 在册 ∪ 已外嫁归档；`Lifespan` 不重掷不设上限（007 contracts/illness-lifespan.md §7） |
+| 科举判定（**005 追加**，⑨ ④） | 录取（解试/省试）或进甲（殿试）：1 次 `NextDouble()`；**进甲者紧接 1 次 `Next(1, 4)`** 取一甲名次 | 仅考试月的候选成员各 1 次，逐人按 `PersonId` 升序；**报名阶段（①）MUST NOT 消耗随机**；免解者、判定前资格不符者与现金不足弃考者 MUST NOT 消耗随机；殿试不掷录取骰（契约十三 §1.3） |
+| 及第入仕待阙（**005 追加**，⑨ ⑤） | 1 次 `Next(6, 25)` —— 待阙月数（经 `AppointmentEntry` 入口） | 仅供本月及第入仕者各 1 次，逐人按 `PersonId` 升序（契约十三 §1.3） |
 
 **条款**
 1. MUST NOT 使用全局随机源、系统时钟或 `Guid.NewGuid()`（章程原则 IV；G-07）。
@@ -219,8 +255,11 @@
 
 5. 每个月的阶段迁移 MUST **至多触发一次**；同一个月份 MUST NOT 既转阶段又重复计时
    （spec Edge Cases）。
-6. **体质 −10/月、每人每月 5% 死亡判定与救济期的体质减免属逻辑轨 ⑦**，本阶段 MUST NOT 实现；
-   但阶段与剩余月数 MUST 可读（`Stage`、`ElapsedMonths`；剩余月数 = 时限 − 已持续月数）。
+6. **体质 −10/月、每人每月 5% 死亡判定与救济期的体质减免**已由 **007（逻辑轨 ⑦）** 交付
+   （2026-10-17；第 ⑧-e 子步 `FamineHealth.Run`）——本阶段（第⑥步的饥馑状态机）**仍 MUST NOT**
+   实现它们；阶段与剩余月数 MUST 可读（`Stage`、`ElapsedMonths`；剩余月数 = 时限 − 已持续月数），
+   ⑦ 的 ⑧-e **只读** `Stage` 而 MUST NOT 改写本阶段机。
+   见 [007 contracts/illness-lifespan.md §6](../../007-family-lifecycle/contracts/illness-lifespan.md)。
 
 **边界断言（E-14）**：「恰好第 3 月」转 `Relief` 与「恰好第 12 月」转 `Severe` MUST 各有一条
 独立断言，且第 2 月与第 11 月 MUST NOT 触发；`Relief` 的 −20% 自转入后的**次月**应付额起生效
@@ -228,7 +267,7 @@
 
 ## 9. 本契约明确不包含
 
-随机事件与灾年米价跳涨、属性成长/衰老/疾病/死亡、婚育与外嫁、买人口、绝嗣判定、
+随机事件与灾年米价跳涨、绝嗣判定、
 存档落盘与成就、调试控制台入口。以上各项在本阶段**没有写入通道**（不可达），而非「暂未实现」。
 **待阙/授官/考课/致仕原列于本清单，已由 003（逻辑轨 ③）在第④步「官吏推进」交付**，见
 [契约七](../../003-opening-assets-officialdom/contracts/official-career.md)；
@@ -243,6 +282,18 @@
 > 12 格惩罚矩阵由 `PunishmentImposer` 在行贿判定命中时施加，服刑/禁考/禁升计时由第③步
 > `PunishmentAdvance.Run(state)` 建立与递减（见 [契约十六 §1](../../006-bribery-punishment/contracts/punishment.md)）。
 > 本清单其余各项仍成立。
+
+> **007 后记（§9 清单，2026-10-17）**：「**属性成长/衰老/疾病/死亡**」「**婚育与外嫁**」
+> 「**买人口**」三项自本清单**移除**——它们已由 007（逻辑轨 ⑦）在第 ⑧ 步「人口与健康推进」交付：
+> ⑧-b `Childbirth.Run`（分娩与遗传）、⑧-c `IllnessAdvance.Run`（患病与病程）、
+> ⑧-d `GrowthAdvance.Run`（成长与遗忘）、⑧-e `FamineHealth.Run`（饥馑体质损失与死亡判定）、
+> ⑧-f `LifespanAdvance.Run`（寿终与夭折）、⑧-g `DeathSettlement.Run`（死亡落账）、
+> ⑧-h `HeadSuccession`（家主继任）、⑧-a `MarriageMarket.Run`（提亲与榜下捉婿），
+> 婚嫁金额与买人口入口见
+> [007 contracts/marriage-birth.md](../../007-family-lifecycle/contracts/marriage-birth.md)；
+> 体质成长与疾病死亡口径见
+> [007 contracts/illness-lifespan.md](../../007-family-lifecycle/contracts/illness-lifespan.md)。
+> 本清单其余各项（随机事件与灾年米价跳涨、绝嗣判定、存档落盘与成就、调试控制台入口）仍成立。
 
 > **005 后记 · 快照面（2026-10-12）**：`SettlementResult` 随之新增**必填子段**
 > `public required ExamSeasonSnapshot ExamSeason { get; init; }`（类型 `KFL.Rules.Exam.ExamSeasonSnapshot`），
@@ -262,3 +313,13 @@
 > `FamilyBanDeclared`（`bool`）与 `PrisonerCount`（`int`，当月在册服刑人数）。
 > 快照内容来自第③步对 `Family.PunishmentJournal` 的投影与清空。
 > 形状细则见 [契约十六 §9](../../006-bribery-punishment/contracts/punishment.md)。
+
+> **007 后记 · 快照面（2026-10-17）**：`SettlementResult` 随之新增**必填子段**
+> `public required LifecycleSnapshot Lifecycle { get; init; }`（类型 `KFL.Rules.FamilyLifecycle.LifecycleSnapshot`），
+> 由第 ⑧ 步「人口与健康推进」产生（公开属性 20 → **21**）。它与 `ExamSeason` / `Punishment`
+> 同构：**增量、只读**的当月快照——只描述本月发生的事（`Births` / `Deaths` / `Marriages` /
+> `MarriedOut` / `Purchases` / `Illnesses` / `Crossings` / `PendingProposal` / `NewHeadId` /
+> `HeadBecameVacant`），MUST NOT 承载累计值、MUST NOT 成为与 `Person` / `Family` 并存的第二真源；
+> `Deaths` 的死因 `DeathCause`（寿终/病亡/饥馑/夭折/分娩）**只在此段出现**，MUST NOT 落
+> `Person` 字段或账本条目。形状与不变量见
+> [007 data-model.md §3.2/§6](../../007-family-lifecycle/data-model.md)。

@@ -16,8 +16,14 @@ namespace KFL.Rules.FamilyLifecycle;
 /// 同一人在多个子步被登记时**只保留首个**，优先级固定为
 /// ⑧-b 分娩 &gt; ⑧-c 病亡 &gt; ⑧-e 饥馑 &gt; ⑧-f 寿终 / 夭折；后续登记 MUST 被忽略。
 /// </para>
+/// <para>
+/// **与 data-model §3.6 的可见性差异**（Phase 9 回写登记）：本类改为 <c>public</c>——
+/// <see cref="Childbirth.Run"/> / <see cref="DeathSettlement.Run"/> /
+/// <c>LifespanAdvance.Run</c> 等执行器为可被测试直接调用而均为 <c>public</c>，
+/// 参数类型不能比方法更封闭（CS0051）。
+/// </para>
 /// </remarks>
-internal sealed class DeathRegister
+public sealed class DeathRegister
 {
     private readonly Dictionary<PersonId, (Person Person, DeathCause Cause)> _entries = [];
 

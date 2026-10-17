@@ -371,6 +371,10 @@ public sealed class SaveFormatContractTests
             ("RelativeBanFactMemberCount", typeof(RelativeBanFactDto)),
             ("CollectivePunishmentFactMemberCount", typeof(CollectivePunishmentFactDto)),
             ("ReleaseFactMemberCount", typeof(ReleaseFactDto)),
+            ("FamilyLifecycleMemberCount", typeof(FamilyLifecycleDto)),
+            ("PendingBirthMemberCount", typeof(PendingBirthDto)),
+            ("CoupleKeyMemberCount", typeof(CoupleKeyDto)),
+            ("MarriageProposalMemberCount", typeof(MarriageProposalDto)),
         ];
 
         foreach (var (constant, dto) in mapping)
@@ -394,18 +398,19 @@ public sealed class SaveFormatContractTests
             ["id", "currentYear", "currentMonth", "difficulty", "pendingDifficulty", "origin", "family", "economy"]),
         (typeof(FamilyDto),
             ["name", "hasShiStatus", "headId", "members", "settledOutsiders", "marriageAlignedOutsiders",
-                "autoExamApplication", "punishmentJournal"]),
+                "autoExamApplication", "punishmentJournal", "lifecycle"]),
         (typeof(PersonDto),
             [
                 "id", "name", "gender", "birthYear", "birthMonth", "generation", "talents", "study",
                 "health", "lifespan", "rankLevel", "merit", "status", "timers", "occupation",
                 "monthsInOffice", "entryTrack", "fatherId", "motherId", "spouseId", "formerSpouseIds",
                 "degreeHistory", "jieShiFailureCount", "shengShiFailureCount", "appliedExam",
-                "jieShiBribeCount", "shengShiBribeCount", "dianShiBribeCount",
+                "jieShiBribeCount", "shengShiBribeCount", "dianShiBribeCount", "isTutoredByMaster",
             ]),
         (typeof(TalentDto), ["agriculture", "commerce", "officialdom", "craft"]),
         (typeof(StatusTimersDto),
-            ["sentenceRemainingMonths", "examBanRemainingMonths", "promotionBanRemainingMonths", "awaitingPostRemainingMonths"]),
+            ["sentenceRemainingMonths", "examBanRemainingMonths", "promotionBanRemainingMonths",
+                "awaitingPostRemainingMonths", "illnessSeverityBasisPoints", "treatmentRemainingMonths"]),
         (typeof(DegreeRecordDto),
             ["level", "placement", "changedYear", "changedMonth", "cause", "imperialClass"]),
         (typeof(FamilyEconomyDto),
@@ -431,6 +436,20 @@ public sealed class SaveFormatContractTests
         (typeof(CollectivePunishmentFactDto),
             ["date", "subject", "outcome", "relative", "degreeBefore", "degreeAfter"]),
         (typeof(ReleaseFactDto), ["date", "subject", "newRankLevel"]),
+
+        // 007-family-lifecycle：家族生命周期簿记与一条待应答提议（键均自 0 连续）。
+        (typeof(FamilyLifecycleDto),
+            ["purchaseCount", "purchaseYear", "pendingBirths", "appliedBirthCouples", "birthApplicationYear",
+                "proposal"]),
+        (typeof(PendingBirthDto), ["husbandId", "wifeId", "appliedYear", "appliedMonth"]),
+        (typeof(CoupleKeyDto), ["husbandId", "wifeId"]),
+        (typeof(MarriageProposalDto),
+            [
+                "kind", "ourMemberId", "candidateName", "candidateGender", "candidateAge",
+                "talentAgriculture", "talentCommerce", "talentScholar", "talentCraft", "candidateStudy",
+                "candidateHealth", "candidateLifespan", "candidateDegree", "class", "betrothalGift",
+                "dowry", "proposedYear", "proposedMonth", "candidatePlacement",
+            ]),
     ];
 
     /// <summary>造一个账本有 <paramref name="entryCount"/> 条的状态。</summary>
@@ -545,6 +564,15 @@ public sealed class SaveFormatContractTests
         "family.autoExamApplication",
         "family.hasShiStatus",
         "family.headId",
+        // 007：夹具没有待产记录 / 已申请夫妇 / 待应答提议，故 JSON 里只有空集合与 null 三个成员；
+        //      四个新 DTO 的内部键位由上面的 BinaryKeyTables 与 walker 常量表钉死。
+        "family.lifecycle",
+        "family.lifecycle.appliedBirthCouples",
+        "family.lifecycle.birthApplicationYear",
+        "family.lifecycle.pendingBirths",
+        "family.lifecycle.proposal",
+        "family.lifecycle.purchaseCount",
+        "family.lifecycle.purchaseYear",
         "family.marriageAlignedOutsiders",
         "family.members",
         "family.members[].appliedExam",
@@ -565,6 +593,7 @@ public sealed class SaveFormatContractTests
         "family.members[].generation",
         "family.members[].health",
         "family.members[].id",
+        "family.members[].isTutoredByMaster",
         "family.members[].jieShiBribeCount",
         "family.members[].jieShiFailureCount",
         "family.members[].lifespan",
@@ -587,8 +616,10 @@ public sealed class SaveFormatContractTests
         "family.members[].timers",
         "family.members[].timers.awaitingPostRemainingMonths",
         "family.members[].timers.examBanRemainingMonths",
+        "family.members[].timers.illnessSeverityBasisPoints",
         "family.members[].timers.promotionBanRemainingMonths",
         "family.members[].timers.sentenceRemainingMonths",
+        "family.members[].timers.treatmentRemainingMonths",
         "family.name",
         "family.punishmentJournal",
         "family.punishmentJournal.bribes",
