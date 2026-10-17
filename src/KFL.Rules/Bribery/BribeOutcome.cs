@@ -25,13 +25,19 @@ public enum BribeRejectReason
 
     /// <summary>该级别的最终录取率 / 进甲率已触顶（再行贿不再提高）。</summary>
     CapReached,
+
+    /// <summary>
+    /// 现银 + 储蓄不足以**全额**覆盖应付金额（行贿是玩家主动的可选支出，MUST NOT 转贷款）。
+    /// </summary>
+    InsufficientFunds,
 }
 
 /// <summary>
-/// 行贿可行性快照（纯查询结果）：当前应付金额、当前被抓概率、是否已触顶、拒绝原因。
+/// 行贿可行性快照（纯查询结果）：当前应付金额、当前被抓概率、是否已触顶、是否付得起、拒绝原因。
 /// </summary>
 /// <remarks>
 /// 由 <see cref="BribeRules.CanBribe"/> 产出；**只读派生值**，MUST NOT 持久化。
+/// <see cref="IsAffordable"/> 是「现银 + 储蓄 ≥ <see cref="Amount"/>」的现金台账快照，用于界面置灰。
 /// </remarks>
 public sealed record BribeFeasibility
 {
@@ -43,6 +49,12 @@ public sealed record BribeFeasibility
 
     /// <summary>该级别的最终录取率 / 进甲率是否已触顶（入口应置灰）。</summary>
     public required bool IsCapReached { get; init; }
+
+    /// <summary>
+    /// 现银 + 储蓄是否足以**全额**覆盖 <see cref="Amount"/>（不足时入口应置灰）。
+    /// </summary>
+    /// <remarks>行贿 MUST NOT 转贷款，故不足即拒绝（<see cref="BribeRejectReason.InsufficientFunds"/>）。</remarks>
+    public required bool IsAffordable { get; init; }
 
     /// <summary>拒绝原因；<see cref="BribeRejectReason.None"/> 表示可行。</summary>
     public required BribeRejectReason RejectReason { get; init; }
@@ -74,9 +86,6 @@ public sealed record BribeOutcome
 
     /// <summary>储蓄支付段。</summary>
     public required Money FromSavings { get; init; }
-
-    /// <summary>不足以支付而转入贷款的余额段。</summary>
-    public required Money ToLoan { get; init; }
 
     /// <summary>本次行贿是否被抓。</summary>
     public required bool Caught { get; init; }

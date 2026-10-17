@@ -33,8 +33,13 @@ public readonly record struct PaymentResult(Money FromCash, Money FromSavings, M
 /// <para>
 /// **唯一用途是「付不起的支出」**：规格书 §5.4 规定「不存在主动借贷」，贷款只能由付不起的支出
 /// 产生。002 阶段首写时这类支出（罚金）尚不存在，故当时本类只有单测（`LoanTests`）；
-/// 006 起它有了**产品调用方**——行贿支出与罚金（契约十五 §2 段③、契约十六 §4.2 条款 3）。
+/// 006 起它有了**产品调用方**——罚金（契约十六 §4.2 条款 3）。
 /// 它同时是 <c>Loan.Principal</c> 的唯一产生路径（data-model §3.2 的注）。
+/// </para>
+/// <para>
+/// **玩家主动发起的可选支出 MUST NOT 走第三步**：行贿（§7.1）、买人口（§9.5）与资产买卖（§5.3）
+/// 都要先用 <see cref="CanCover"/> 校验**全额可付**，付不起即拒绝该行动。故行贿调用本类时
+/// <see cref="PaymentResult.ToLoan"/> **恒为 0**（规格书 §7.1 的 `§17 裁决回写（2026-10-17）`）。
 /// </para>
 /// <para>
 /// **资产买卖与生活费 MUST NOT 走这条路径**：前者按 `AssetMarket` 买卖，后者按 E-06 做部分支付
@@ -107,5 +112,25 @@ public static class PaymentPrimitive
         }
 
         return new PaymentResult(fromCash, fromSavings, toLoan);
+    }
+
+    /// <summary>
+    /// 现金 + 储蓄是否足以**全额**覆盖 <paramref name="amount"/>（即 <see cref="Pay"/> 不会走第三步转贷款）。
+    /// </summary>
+    /// <remarks>
+    /// 玩家**主动**发起的可选支出（行贿 §7.1、买人口 §9.5、资产买卖 §5.3）MUST 先用本方法校验，
+    /// 付不起即**拒绝该行动**——它们 MUST NOT 转贷款（§5.4「不存在主动借贷」，贷款来源被封闭枚举为
+    /// 罚金 / 固定罚金）。本方法是「可付性」的**唯一**判据，与 <see cref="Pay"/> 的池口径同源。
+    /// </remarks>
+    /// <param name="economy">家族经济聚合。</param>
+    /// <param name="amount">待支付额，语义与 <see cref="Pay"/> 相同。</param>
+    /// <returns>池内足以全额覆盖时为 <see langword="true"/>。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="economy"/> 为 <c>null</c>。</exception>
+    public static bool CanCover(FamilyEconomy economy, Money amount)
+    {
+        ArgumentNullException.ThrowIfNull(economy);
+
+        // Money 只定义了 < 与 >，故「足额」写成 !(池内 < 应付额)，语义等价于 >=。
+        return !(economy.Treasury.Cash + economy.Treasury.Savings < amount);
     }
 }

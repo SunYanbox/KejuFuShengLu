@@ -276,6 +276,7 @@ description: "Task list for 006-bribery-punishment（贿赂全链路：行贿、
 | 19 | `specs/006-bribery-punishment/tasks.md` | 本表：登记上述回写范围（同步了哪些文件、同步到哪里），供后续审计核对 | AGENTS.md 铁律第 3 条 | T073 |
 | 20 | **收敛批次 T077~T080 的同步核算**（同批登记，供审计） | **T077** → 第 15 行（`spec.md` FR-014 置位/清除次序）；**T078** → 第 16 行（`SaveFileHeader` / `SaveFileException` / `JsonSaveFormat` 三处「版本 2」注释）；**T079** → 第 15 行（`spec.md` Assumptions FR-031 开放项 + `plan.md:143` 引用）；**T080** → 第 15 行（`contracts/punishment.md` §8/§9、`research.md` R-09/R-10）与第 17 行（`Rules/BribeQueryTests.cs`）与源码（`KFL.Rules/Punishment/PunishmentQueries.cs` 新增纯函数 `WasExecutedByState(Person)`，**不动** `SaveFileFormat.Version`、不动存档形状）。四条均属「活工件与实现不一致时以规格书为准修正工件」的同批收敛，无跨特性形状变更 | AGENTS.md 铁律第 1/3 条；FR-029、FR-030、FR-031；SC-010 | T077~T080 |
 | 21 | **PR #13 评审收敛批次 T082~T087 的同步核算**（同批登记，供审计） | **T082** → 源码（`src/KFL.Rules/Punishment/PunishmentImposer.cs` 的 `IsExemptFromExecution` + 新增 `IsChildOf`；真源 = 规格书 §7.4 与 §17 ③「只适用于孩子」）与断言物（`tests/KFL.Tests/Rules/CollectivePunishmentTests.cs` 新增「免死例外不扩展到未成年非子女亲属」一例）；**T083** → 源码（同文件 `Collective` 的有官职分支回收 `Ban` 的返回值）与断言物（同文件 `连坐三分支各命中一条且后果与格一致` 追加 `RelativeBans` 断言）；**T084** → 源码（`src/KFL.Rules/Bribery/BribeRules.cs` 改读 `BribePolicy.WindowPreviousMonths` 单一真源 + 新增私有 `SubtractMonths`）；**T085** → 源码（`src/KFL.Core/ValueObjects/PunishmentFacts.cs:84-85`/`:109`/`:111` 的 `Subject`/`Relative` 注释改为与 `PunishmentImposer.cs:22-26` 的口径同向）；**T086** → 第 9/10/15/16 行（`save-format.md` 的 `:132` 十条→十二条、`:149` 断言锚点、§6 条款表新增第 8 条；`save-service.md:61`/`:62`；`specs/004-save-system/plan.md:231`/`:283`；`SaveService.cs:200`、`ISaveFormat.cs:20`、`SaveStateValidator.cs:267`/`:316`；`specs/006-bribery-punishment/plan.md:68-70`、`research.md:445`、`quickstart.md:209`）；**T087** → 第 15 行（`spec.md` Assumptions 新增「零资金池行贿的账本条目」开放项，**不改**代码与契约措辞，等规格书 §17 裁决）。全批次**不改任何数值、不动存档形状、不动跨特性契约的形状** | AGENTS.md 铁律第 1/3 条；真源一致性；FR-009、FR-032 | T082~T087 |
+| 22 | **§17 裁决收敛批次 T089~T093 的同步核算**（同批登记，供审计） | **T089** → 规格书 `科举浮生录规格书.md` §7.1 新增 `§17 裁决回写（2026-10-17，行贿的资金来源）` 块；**T090** → 源码（`src/KFL.Rules/Economy/PaymentPrimitive.cs` 新增 `CanCover` 与类文档；`src/KFL.Rules/Bribery/BribeOutcome.cs` 的 `BribeRejectReason.InsufficientFunds` / `BribeFeasibility.IsAffordable` / 删 `BribeOutcome.ToLoan`；`src/KFL.Rules/Bribery/BribeRules.cs` 的 `CanBribe` 判定次序末尾追加可付性；`src/KFL.Rules/Bribery/BribeEntry.cs` 删转贷款自守与类文档）；**T091** → 断言物（`tests/KFL.Tests/Rules/BribeEntryTests.cs` 三例新增 + 一例改述）；**T092** → 第 15 行（`specs/006-bribery-punishment/` 的 `spec.md` / `contracts/bribery.md` / `data-model.md` / `plan.md` 四件自身活工件）。罚金侧（`contracts/punishment.md`、`FineFact.ToLoan`）与存档形状**不动**，`PaymentPrimitive.Pay` 的三段语义逐位不变 | AGENTS.md 铁律第 1/2/3 条；规格书 §5.4、§7.1；FR-007 | T089~T093 |
 
 **回写核算结论（T073）**：[plan.md](./plan.md)「回写义务清单」**17 项**逐条对应到上表第 1~17 行，
 **无遗留项**；另有 tasks.md 第 T070/T071 点名的 2 处（003 / 005 的 `contracts/config-registry.md`）落在上表第 13/14 行，
@@ -434,3 +435,29 @@ T053 SaveFixtures.cs   T054 SaveStateComparer.cs   T055 SaveFormatContractTests.
 - [X] T086 修正五类活工件回写缺口（R-6）：`specs/004-save-system/contracts/save-format.md`（`:132` 十条→**十二条**；`:149` 断言锚点改为「`≠ 3` 一律拒绝：`4` 拒绝、`2` 拒绝」，与 §6 ④ 同口径；§6 条款表新增**第 8 条**登记 006 的 ⑪/⑫ 两条校验）；`specs/004-save-system/contracts/save-service.md`（`:61` `FormatVersion != 2` → `!= 3`；`:62` 十条→十二条）；`specs/004-save-system/plan.md`（`:231` 80 → **84**；`:283` 十条→十二条）；源码文档 `src/KFL.Infrastructure/Save/SaveService.cs:200`、`Serialization/ISaveFormat.cs:20`（九条→十二条）、`Serialization/SaveStateValidator.cs:267`（七个→**八个**）与 `:316`（尾随空格）；`specs/006-bribery-punishment/plan.md:68-70`、`research.md:445`（walker 描述改为 `:247` 保留 `Skip(1)` + `:249` 追加 `EnsureJournalShape`）、`quickstart.md:209`（`:254` → `:309`）。验收：`specs/` 与 `src/` 不再出现「十条/九条」一致性校验、「80 个线上成员」、「`FormatVersion != 2`」、或把家谱 walker 写成 `Skip(1)` → `Skip(2)` 的字样。
 - [X] T087 登记 §17 待裁决项（R-3，**不擅改**）：在 `specs/006-bribery-punishment/spec.md` 的 Assumptions 新增开放项——「零资金池行贿的账本条目」：`contracts/bribery.md:37`/`:142`（恰好 1 条）与 `:145`（MUST NOT 记 0 金额条目）在「现银 + 储蓄 = 0」时互斥，MUST 先经规格书 §17 裁决；裁决前本特性 MUST NOT 自选一侧、MUST NOT 动 `PaymentPrimitive` 或契约措辞。依据：AGENTS.md 铁律（涉契约语义的裁决先在规格书 §17 回写，再改工件）；章程「需求真源」。验收：`spec.md` 与 `tasks.md` 各有一处登记，且 `src/` 与 `contracts/` 无任何改动。
 - [X] T088 门禁复跑与收口（与 T082~T087 同一提交）：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false`（0 警告 0 错误）、`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`（全绿、0 skipped）、`dotnet sln KejuFuShengLu.slnx list`（恰六工程）、递归无 `*.sln`；并把本批复写并入「回写范围登记」表第 **21** 行。依据：AGENTS.md 门禁四条；SC-010、SC-011。
+
+---
+
+## Phase 12: §17 裁决收敛（2026-10-17，行贿支付的资金来源）
+
+**Purpose**: 消解 Phase 11 登记的 §17 开放项（R-3 / T087）。用户裁定：行贿是玩家**主动的可选支出**，
+应付金额 MUST 由**现银 + 储蓄全额覆盖**，不足即**拒绝**，**MUST NOT 转贷款**。真源 = 规格书 §5.4
+（贷款因**罚金 / 固定罚金**付不起而产生，**「不存在主动借贷」**）与 §5.4 买人口（玩家主动可选支出
+⇒「付不起即无法购买」）。原实现沿用 §4.3 的**罚金**支付顺序（现金 → 储蓄 → 余额转贷款），属
+**未经规格书授权的自造**——按 AGENTS.md 铁律「按真源修正代码/工件」，不属「先改代码再补文档」。
+裁决已回写规格书 §7.1 的 `§17 裁决回写（2026-10-17）` 块。**罚金侧不动**（`contracts/punishment.md`、
+`FineFact.ToLoan`、`PaymentPrimitive.Pay` 的三段语义一字不动）。
+
+**收敛判据**：
+
+| # | 严重度 | 类别 | 缺口（锚点） | 结论 |
+| --- | --- | --- | --- | --- |
+| J-1 | Medium | contradicts | 行贿支付沿用罚金口径「现金 → 储蓄 → **余额转贷款**」：`contracts/bribery.md:37`（原写「付不起**不阻止行贿**」）、`spec.md:275`、`plan.md:18`、`data-model.md:291`，与规格书 §5.4 的**贷款封闭枚举**矛盾；`BribeOutcome.ToLoan` 亦为自造字段 | **改代码 + 同批回写工件**：新增可付性判据与拒绝原因 `InsufficientFunds`，`BribeExpense` 由「可能 0 条」收敛为「恒恰好 1 条」——同时消解 R-3 的契约内部矛盾 |
+
+### 收敛任务
+
+- [X] T089 回写真源（J-1）：在 `科举浮生录规格书.md` §7.1 追加 `§17 裁决回写（2026-10-17，行贿的资金来源）` 块——行贿 MUST 全额可付、不足即拒绝、MUST NOT 转贷款；贷款唯一来源仍是罚金 / 固定罚金；原文按 §16.2 历史事实口径保留不改写。依据：AGENTS.md 铁律（裁决先落规格书）；规格书 §5.4、§9.5。
+- [X] T090 修正源码（J-1）：`src/KFL.Rules/Economy/PaymentPrimitive.cs` 新增 `public static bool CanCover(FamilyEconomy economy, Money amount)`（`!(现银 + 储蓄 < amount)`）并在类文档说明行贿调用恒不走第三段；`src/KFL.Rules/Bribery/BribeOutcome.cs` 增 `BribeRejectReason.InsufficientFunds`、`BribeFeasibility.IsAffordable`，**删除** `BribeOutcome.ToLoan`；`src/KFL.Rules/Bribery/BribeRules.cs` 的 `CanBribe` 在判定次序**末尾**追加可付性（「窗口 → 在册 → 级别匹配 → 触顶 → 可付性」）；`src/KFL.Rules/Bribery/BribeEntry.cs` 删除转贷款自守并同步类文档。验收：`src/KFL.Rules/Bribery/` 不再出现「余额转贷款」字样；`Pay` 的三段语义与 `Fine` 路径逐位不变。
+- [X] T091 补断言物（J-1）：`tests/KFL.Tests/Rules/BribeEntryTests.cs` 新增三例——差 1 文 ⇒ 拒绝（逐字段不变、随机 0、无账本条目、**贷款本金不变**）、恰好等于 ⇒ 可行且不转贷款、储蓄补足 ⇒ 可行且不转贷款；既有「窗口外」一例的 `ToLoan` 断言改述为 `Amount` 断言（`BribeOutcome` 已无该字段）。依据：`data-model.md` I-20；SC-008。
+- [X] T092 回写工件（J-1）：`specs/006-bribery-punishment/spec.md`（Clarifications 新增 `Session 2026-10-17` Q4；US1 摘要与 FR-005 / FR-007 改述；FR-035 ① 扩为「四项裁决」；Assumptions 的 R-3 开放项改为「已由 §17 裁决消解」）；`contracts/bribery.md`（§1 条款 7 增「可付性」与判定次序、新增 §17 裁决注；§2 ① 增判据、③ 改「现金 → 储蓄全额付清」；§2 条款 1/5；§6 可行性行增 `IsAffordable`；§7 注「恒恰好 1 条」）；`data-model.md`（§3.2 字段面、§4.3、§5.1 转移表、新增不变量 I-20）；`plan.md`（US1 支付口径）。依据：AGENTS.md 铁律第 1/2/3 条。
+- [X] T093 门禁复跑与收口（与 T089~T092 同一提交）：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false`（0 警告 0 错误）、`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`（全绿、0 skipped）、`dotnet sln KejuFuShengLu.slnx list`（恰六工程）、递归无 `*.sln`；并把本批复写并入「回写范围登记」表第 **22** 行。依据：AGENTS.md 门禁四条；SC-010、SC-011。

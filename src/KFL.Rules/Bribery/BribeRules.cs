@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Rules.Config;
+using KFL.Rules.Economy;
 using KFL.Rules.Exam;
 using KFL.Rules.Settlement;
 
@@ -211,8 +212,9 @@ public static class BribeRules
     /// <returns>可行时为 <see langword="true"/>。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="state"/> 或 <paramref name="examinee"/> 为 <see langword="null"/>。</exception>
     /// <remarks>
-    /// 拒绝原因按「窗口 → 在册 → 级别与功名匹配 → 触顶」的固定次序判定（契约十五 §2 步骤①），
-    /// 因此同时违反多项时返回**最先命中的那一条**。
+    /// 拒绝原因按「窗口 → 在册 → 级别与功名匹配 → 触顶 → 可付性」的固定次序判定（契约十五 §2 步骤①），
+    /// 因此同时违反多项时返回**最先命中的那一条**。可付性一项来自规格书 §7.1 的
+    /// `§17 裁决回写（2026-10-17）`：行贿是玩家主动的可选支出，MUST 全额可付、MUST NOT 转贷款。
     /// </remarks>
     public static bool CanBribe(GameState state, Person examinee, ExamLevel level, out BribeFeasibility feasibility)
     {
@@ -223,6 +225,7 @@ public static class BribeRules
         var amount = PayableAmount(level, nth, state.Difficulty);
         var probability = CaughtProbability(level, nth, state.Difficulty);
         var capReached = IsLevelCapReached(state, examinee, level);
+        var affordable = PaymentPrimitive.CanCover(state.Economy, amount);
 
         var reason = BribeRejectReason.None;
         if (!IsWithinWindow(state.CurrentDate, level))
@@ -241,12 +244,17 @@ public static class BribeRules
         {
             reason = BribeRejectReason.CapReached;
         }
+        else if (!affordable)
+        {
+            reason = BribeRejectReason.InsufficientFunds;
+        }
 
         feasibility = new BribeFeasibility
         {
             Amount = amount,
             Probability = probability,
             IsCapReached = capReached,
+            IsAffordable = affordable,
             RejectReason = reason,
         };
 

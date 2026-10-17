@@ -134,7 +134,7 @@ public static bool CanBribe(GameState state, Person examinee, ExamLevel level, o
 `AdmissionRateWith` **只调用** 005 的 `ExamAdmission.AdmissionRate` / `ImperialPromotionRate`
 （殿试进甲率），把 `MultiplierOf` 作为 `bribeMultiplier` 形参传入——本类 MUST NOT 复制录取率公式。
 `CanBribe` 是**纯查询**（不改状态、不消费随机），返回的 `BribeFeasibility` 含
-`Amount` / `Probability` / `IsCapReached` / `RejectReason`（枚举）。
+`Amount` / `Probability` / `IsCapReached` / `IsAffordable` / `RejectReason`（枚举）。
 
 ### 3.2 `BribeEntry`（`src/KFL.Rules/Bribery/BribeEntry.cs`）——玩家行动
 
@@ -144,8 +144,9 @@ public static void ResetBribeCounts(Person examinee, ExamLevel? level);
 ```
 
 固定次序见 [契约十五 §2](./contracts/bribery.md#2-行贿行动的固定次序fr-003fr-010)。`BribeOutcome`
-（`Bribery/BribeOutcome.cs`）含：`Accepted`、`RejectReason`、`Amount`、`FromCash` / `FromSavings` /
-`ToLoan`（`PaymentResult` 的三段）、`Caught`、`Nth`、`MultiplierAfter`、`CapReached`，以及
+（`Bribery/BribeOutcome.cs`）含：`Accepted`、`RejectReason`、`Amount`、`FromCash` / `FromSavings`
+（`PaymentResult` 的前两段；**无 `ToLoan`**——行贿 MUST 全额可付、MUST NOT 转贷款，见 §17 裁决
+2026-10-17）、`Caught`、`Nth`、`MultiplierAfter`、`CapReached`，以及
 `PunishmentSnapshot? Punishment`（被抓时由 `PunishmentImposer.Apply` 生成，供 U2/U4 当刻反馈）。
 
 ### 3.3 `PunishmentImposer`（`src/KFL.Rules/Punishment/PunishmentImposer.cs`）
@@ -279,6 +280,8 @@ public static PaymentResult Pay(
 ```
 
 三段次序（现金 → 储蓄 → 余额转贷款）、不做部分支付、`amount <= 0` 的拒绝语义**一字不动**。
+**行贿调用恒不走第三段**（`CanBribe` 的可付性判据已保证现银 + 储蓄 ≥ 应付额，见 §5.1）；
+罚金调用仍按三段次序（规格书 §4.3）。
 
 ---
 
@@ -288,9 +291,9 @@ public static PaymentResult Pay(
 
 | 起点 | 触发 | 结果 | 日志 / 条目 |
 | --- | --- | --- | --- |
-| 窗口内、未触顶 | `Bribe(state, examinee, level, random)` | 扣款（现金 → 储蓄 → 余额转贷款）；计数 +1；乘数 = kⁿ（**含被抓当次**）；掷 1 次骰 | 1 条 `BribeExpense`（资金类、负、归属本人）+ 1 行 `BribeFact` |
+| 窗口内、未触顶、**现银 + 储蓄 ≥ 应付额** | `Bribe(state, examinee, level, random)` | 扣款（现金 → 储蓄，**全额付清，MUST NOT 转贷款**）；计数 +1；乘数 = kⁿ（**含被抓当次**）；掷 1 次骰 | 1 条 `BribeExpense`（资金类、负、归属本人）+ 1 行 `BribeFact` |
 | 同上 ∧ 命中抓获 | 同一次调用 | 追加第 3.3 节的七段施加 | 1 条 `Fine`（若有）；`SentenceFact` / `RelativeBanFact` / `CollectivePunishmentFact` 若干行 |
-| 窗口外 / 未在册 / 级别与功名不符 / 已触顶 | `Bribe(...)` | **拒绝**：状态逐字段不变、随机消费 **0** | 无 |
+| 窗口外 / 未在册 / 级别与功名不符 / 已触顶 / **现银 + 储蓄不足** | `Bribe(...)` | **拒绝**：状态逐字段不变、随机消费 **0**、不落账本条目、**贷款本金不变** | 无 |
 | 落榜（考试判定） | `ExamSeasonRunner` | **不退钱、无补偿**，乘数保留 | 无退款条目 |
 
 ### 5.2 服刑 / 禁考 / 禁升（FR-014、FR-020）
@@ -341,6 +344,7 @@ public static PaymentResult Pay(
 | I-17 | 结算第③步消费随机 **0** 次；整月随机次序与 005 逐项同构（仅序号顺移） | `DeterminismTests` 的逐月 `NextDouble` 计数 |
 | I-18 | `SettlementResult.Punishment` MUST NOT 被写回 `GameState`；MUST NOT 成为与 `Person` 并存的第二真源 | 只读 `required init` + 无 setter；调用前后状态比对 |
 | I-19 | 新增的三个计数与日志在二进制与 JSON 两种格式下往返后**逐字段相等** | `SaveStateComparer` + `SaveFormatContractTests` |
+| I-20 | 行贿 MUST **全额可付**：`现金 + 储蓄 < 应付额` ⇒ 拒绝（状态逐字段不变、随机 0、无账本条目、**贷款本金不变**）；可付时 `BribeExpense` **恰好 1 条**且 `ToLoan` 不存在（MUST NOT 转贷款） | 边界三例（差 1 文 / 恰好相等 / 储蓄补足）各一断言 |
 
 ---
 

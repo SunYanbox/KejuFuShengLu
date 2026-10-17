@@ -12,14 +12,16 @@ namespace KFL.Rules.Bribery;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 固定次序（MUST NOT 调换）：① 校验 → ② 自算 <c>n</c> / 金额 / 概率 → ③ 支付
-/// （<see cref="LedgerCategory.BribeExpense"/>，恰 1 条恒为负的资金类条目）→ ④ 消费随机**恰 1 次**
-/// 判定被抓 → ⑤ <c>RecordBribe</c>（**无论是否被抓都执行**，Q1 = B）→ ⑥ 落 1 行
-/// <see cref="BribeFact"/> → ⑦ 被抓时交 <c>PunishmentImposer</c> 裁决。
+/// 固定次序（MUST NOT 调换）：① 校验（窗口 ∧ 在册 ∧ 级别匹配 ∧ 未触顶 ∧ **全额可付**）→ ② 自算
+/// <c>n</c> / 金额 / 概率 → ③ 支付（<see cref="LedgerCategory.BribeExpense"/>，恰 1 条恒为负的资金类条目）
+/// → ④ 消费随机**恰 1 次** 判定被抓 → ⑤ <c>RecordBribe</c>（**无论是否被抓都执行**，Q1 = B）
+/// → ⑥ 落 1 行 <see cref="BribeFact"/> → ⑦ 被抓时交 <c>PunishmentImposer</c> 裁决。
 /// </para>
 /// <para>
 /// 拒绝路径（①未通过）MUST NOT 改动任何字段、MUST NOT 消费随机、MUST NOT 落条目（不变量 I-3）。
 /// 被抓 MUST NOT 退贿款、MUST NOT 落任何补偿条目（FR-009）。无次数上限、无拒收机制。
+/// **行贿 MUST NOT 转贷款**：它是玩家主动的可选支出，应付金额须由现银 + 储蓄全额覆盖，付不起即拒绝
+/// （规格书 §7.1 的 `§17 裁决回写（2026-10-17）`）。故 ③ 的池内付出恒等于应付额、`ToLoan` 恒为 0。
 /// </para>
 /// <para>
 /// 本类是本特性**唯一**新增的随机消费点，且发生在结算之外（契约十六 §1.3 的整月随机次序不变）。
@@ -54,7 +56,6 @@ public static class BribeEntry
                 Amount = feasibility.Amount,
                 FromCash = Money.Zero,
                 FromSavings = Money.Zero,
-                ToLoan = Money.Zero,
                 Caught = false,
                 Nth = BribeRules.NthOf(examinee, level),
                 MultiplierAfter = BribeRules.MultiplierOf(level, examinee),
@@ -68,8 +69,14 @@ public static class BribeEntry
         var amount = feasibility.Amount;
         var probability = feasibility.Probability;
 
-        // ③ 支付：恰 1 条 BribeExpense（现金 → 储蓄 → 余额转贷款）。
+        // ③ 支付：恰 1 条 BribeExpense（现金 → 储蓄；① 已保证全额可付，故不走第三步转贷款）。
         var payment = PaymentPrimitive.Pay(state.Economy, LedgerCategory.BribeExpense, month, amount, examinee.Id);
+
+        if (payment.ToLoan != Money.Zero)
+        {
+            throw new InvalidOperationException(
+                "行贿 MUST NOT 转贷款（规格书 §7.1 的 §17 裁决回写（2026-10-17））。");
+        }
 
         // ④ 判定被抓：恰消费 1 次随机。
         var caught = random.NextDouble() < (double)probability;
@@ -94,7 +101,6 @@ public static class BribeEntry
             Amount = amount,
             FromCash = payment.FromCash,
             FromSavings = payment.FromSavings,
-            ToLoan = payment.ToLoan,
             Caught = caught,
             Nth = nth,
             MultiplierAfter = BribeRules.MultiplierOf(level, examinee),

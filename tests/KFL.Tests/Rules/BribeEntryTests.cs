@@ -124,13 +124,92 @@ public class BribeEntryTests
         Assert.Equal(BribeRejectReason.OutsideWindow, outcome.RejectReason);
         Assert.Equal(Money.Zero, outcome.FromCash);
         Assert.Equal(Money.Zero, outcome.FromSavings);
-        Assert.Equal(Money.Zero, outcome.ToLoan);
+        Assert.Equal(BribeRules.PayableAmount(ExamLevel.JieShi, 1, Difficulty.Normal), outcome.Amount);
         Assert.Equal(BribePolicy.UnitMultiplier, outcome.MultiplierAfter);
 
         Assert.Equal(before, Fingerprint(state, examinee));
         Assert.Equal(0, random.Doubles);
         Assert.Empty(state.Family.PunishmentJournal.Bribes);
         Assert.Empty(state.Economy.Ledger.Entries);
+    }
+
+    [Fact]
+    public void 现银与储蓄不足以全额支付时行贿被拒且不转贷款()
+    {
+        var examinee = RulesHarness.Member(12, Gender.Male, 20);
+        var amount = BribeRules.PayableAmount(ExamLevel.JieShi, 1, Difficulty.Normal);
+
+        // 池内比应付额少 1 文——「付不起即拒绝」的边界。
+        var state = NewState(
+            RulesHarness.FamilyOf(examinee),
+            JieShiWindowFirstMonth,
+            cash: Money.FromWen(amount.Wen - 1));
+        var random = new CountingRandomService(0.0d);
+
+        Assert.True(BribeRules.IsWithinWindow(state.CurrentDate, ExamLevel.JieShi));
+        Assert.False(BribeRules.CanBribe(state, examinee, ExamLevel.JieShi, out var feasibility));
+        Assert.Equal(BribeRejectReason.InsufficientFunds, feasibility.RejectReason);
+        Assert.False(feasibility.IsAffordable);
+        Assert.Equal(amount, feasibility.Amount);
+
+        var before = Fingerprint(state, examinee);
+
+        var outcome = BribeEntry.Bribe(state, examinee, ExamLevel.JieShi, random);
+
+        Assert.False(outcome.Accepted);
+        Assert.Equal(BribeRejectReason.InsufficientFunds, outcome.RejectReason);
+        Assert.Equal(amount, outcome.Amount);
+        Assert.Equal(Money.Zero, outcome.FromCash);
+        Assert.Equal(Money.Zero, outcome.FromSavings);
+
+        // 逐字段不变；Fingerprint 含 Loan.Principal，故同时钉住「行贿不转贷款」（§17 裁决 2026-10-17）。
+        Assert.Equal(before, Fingerprint(state, examinee));
+        Assert.Equal(0, random.Doubles);
+        Assert.Empty(state.Family.PunishmentJournal.Bribes);
+        Assert.Empty(state.Economy.Ledger.Entries);
+    }
+
+    [Fact]
+    public void 现银恰好等于应付额时可行贿且不转贷款()
+    {
+        var examinee = RulesHarness.Member(12, Gender.Male, 20);
+        var amount = BribeRules.PayableAmount(ExamLevel.JieShi, 1, Difficulty.Normal);
+        var state = NewState(RulesHarness.FamilyOf(examinee), JieShiWindowFirstMonth, cash: amount);
+        var random = new FixedRandomService(0.999d, 0.999d);
+
+        Assert.True(BribeRules.CanBribe(state, examinee, ExamLevel.JieShi, out var feasibility));
+        Assert.True(feasibility.IsAffordable);
+
+        var outcome = BribeEntry.Bribe(state, examinee, ExamLevel.JieShi, random);
+
+        Assert.True(outcome.Accepted);
+        Assert.Equal(amount, outcome.FromCash);
+        Assert.Equal(Money.Zero, outcome.FromSavings);
+        Assert.Equal(Money.Zero, state.Economy.Treasury.Cash);
+        Assert.Equal(Money.Zero, state.Economy.Treasury.Loan.Principal);
+        Assert.Single(
+            state.Economy.Ledger.Entries, entry => entry.Category == LedgerCategory.BribeExpense);
+    }
+
+    [Fact]
+    public void 现金不足但储蓄补足时可行贿且不转贷款()
+    {
+        var examinee = RulesHarness.Member(12, Gender.Male, 20);
+        var amount = BribeRules.PayableAmount(ExamLevel.JieShi, 1, Difficulty.Normal);
+        var cash = Money.FromWen(amount.Wen / 2);
+        var savings = amount - cash;
+        var state = NewState(
+            RulesHarness.FamilyOf(examinee), JieShiWindowFirstMonth, cash: cash, savings: savings);
+        var random = new FixedRandomService(0.999d, 0.999d);
+
+        var outcome = BribeEntry.Bribe(state, examinee, ExamLevel.JieShi, random);
+
+        Assert.True(outcome.Accepted);
+        Assert.Equal(cash, outcome.FromCash);
+        Assert.Equal(savings, outcome.FromSavings);
+        Assert.Equal(Money.Zero, state.Economy.Treasury.Cash);
+        Assert.Equal(Money.Zero, state.Economy.Treasury.Savings);
+        Assert.Equal(Money.Zero, state.Economy.Treasury.Loan.Principal);
     }
 
     [Fact]
@@ -376,12 +455,13 @@ public class BribeEntryTests
         GameDate date,
         Origin origin = Origin.Scholar,
         Difficulty difficulty = Difficulty.Normal,
-        Money cash = default)
+        Money cash = default,
+        Money savings = default)
     {
         var economy = new FamilyEconomy(
             LivingStandard.Normal,
             new GrainPriceIndex(GrainPricePolicy.Initial),
-            new Treasury(cash),
+            new Treasury(cash, savings),
             new Holdings());
 
         return new GameState(StateId, date, difficulty, origin, family, economy);
