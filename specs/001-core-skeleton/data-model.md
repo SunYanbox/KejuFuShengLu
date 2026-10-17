@@ -117,8 +117,12 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `ExamBanRemainingMonths` | `int?` | 禁考剩余月数 | §7.5「禁考与服刑独立并行计时」 |
 | `PromotionBanRemainingMonths` | `int?` | 禁升剩余月数 | §7.5、§8.2「禁升来源…独立计时器」 |
 | `AwaitingPostRemainingMonths` | `int?` | 待阙剩余月数（**003 新增**，逻辑轨 ③） | §8.2 待阙 6~24 月；003 FR-013 |
+| `IllnessSeverityBasisPoints` | `int?` | 疾病程度 `s` 的磅值（`0~10000`，**007 新增**，逻辑轨 ⑦） | §4.3 疾病；007 FR-028 / FR-047 |
+| `TreatmentRemainingMonths` | `int?` | 疗程剩余月数（`0~3`，**007 新增**，逻辑轨 ⑦） | §4.3 药费与疗程；007 FR-029 / FR-047 |
 
-**不变量**：四个字段各自仅在对应状态位为真时可非空；非空值 MUST `>= 0`。
+**不变量**：六个字段各自仅在对应状态位为真时可非空；非空值 MUST `>= 0`；
+`IllnessSeverityBasisPoints` 与 `Ill` 位**同生同灭**（`StatusFlag.Ill` ⇔ 程度非空），
+`TreatmentRemainingMonths` **只**在 `Ill` 置位时非空（`null` = 未在疗程）。
 待阙项与 `Person.EntryTrack` **同生同灭**（见 §2.1 不变量 4），且 MUST NOT 以「0 + 状态位为真」的形态存续。
 **明确不含**：待阙的递减逻辑——「递减到 0 的当月授官」属逻辑轨 ③
 （`OfficialCareerAdvance`），其 6~24 区间属 `OfficialCareerPolicy`。
@@ -274,6 +278,7 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `RegisteredMembers` | 属性 | **在册** = 非「已亡」且非「外嫁」 | §12.1、§15 |
 | `ArchivedMembers` | 属性 | 已归档 = 已亡 或 外嫁 | §12.1 |
 | `AutoExamApplication` | `bool` | **005 新增**：持续报考开关，默认 `false`，**可写**（形状与 `HasShiStatus` 同款）；为真时科举季步按资格自动报名，MUST NOT 覆盖已有报名标记 | 规格书 §3；005 FR-017 |
+| `Lifecycle` | `FamilyLifecycleState` | **007 新增**：家族生命周期簿记（本年度买人口计数与年份 / 待分娩记录 / 本年度已申请生育夫妇 / 待应答提亲提议 / 当月托媒申请），只读聚合属性（`=> _lifecycle`），写入一律经其自身方法与 `internal` 落盘通道 | 规格书 §9.1~§9.5；007 FR-047、007 `data-model.md` §2.3 |
 
 **变更入口（`Family` 是跨实体唯一写入方，§4.4 辈分与 §9.1 一夫一妻的强制点）**
 

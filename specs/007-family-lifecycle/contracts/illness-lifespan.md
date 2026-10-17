@@ -150,9 +150,9 @@ sigma  = |father - mother| / 2 + ChildbirthPolicy.InheritanceSigmaBase(5)
 | 项 | 值 |
 | --- | --- |
 | 判定次数 | **3 次**：出生当月 + 满 1 岁生日月 + 满 2 岁生日月 |
-| 单次概率 | `ChildbirthPolicy.InfantDeathChance`（10%）；简单 `5%`、地狱 `12%` |
+| 单次概率 | `ChildbirthPolicy.InfantDeathChance`（10%）× `ChildbirthPolicy.InfantDeathFactor`：**简单 5% / 普通 10% / 困难 11% / 地狱 12%**（规格书 §9.4、§17 Q3） |
 | 截止 | `AgeAt >= 3` 后**不再判定**、**不消费随机** |
-| 累计 | ≈ 27.1%（`1 - 0.9³`） |
+| 累计 | ≈ 27.1%（普通档 `1 - 0.9³`） |
 | 命中 | 登记死亡（`Infancy`）；`Status |= Deceased` 由 ⑧-g 统一置 |
 
 **判据（派生，不落字段）**：`AgeAt(date) < 3 && BirthDate.Month == date.Month`

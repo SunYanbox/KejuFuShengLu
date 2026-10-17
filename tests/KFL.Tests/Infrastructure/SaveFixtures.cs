@@ -170,9 +170,43 @@ public static class SaveFixtures
             new GameDate(0, 1),
             DegreeChangeCause.ExamPass));
 
+        // ㉓ 家族生命周期簿记（007-family-lifecycle；`FamilyDto` 键 8、`FamilyLifecycleDto` 键 0~6）：
+        //     五组状态 + 当月托媒名额全部取**非默认值**——整块漏存时默认值会让往返比对静默通过。
+        var lifecycle = family.Lifecycle;
+        lifecycle.NextPurchaseOrdinal(ReferenceDate.Year);
+        lifecycle.RecordMatchmakeApplication(multi.GrandsonId, ReferenceDate);
+
+        var couple = new CoupleKey(multi.SonId, multi.DaughterInLawId);
+        lifecycle.RecordBirthApplication(couple, ReferenceDate.Year);
+        lifecycle.ScheduleBirth(new PendingBirth(couple, ReferenceDate));
+
+        lifecycle.SetProposal(new MarriageProposal
+        {
+            Kind = MarriageProposalKind.ImperialProposal,
+            OurMemberId = multi.GrandsonId,
+            CandidateName = "榜下王氏",
+            CandidateGender = Gender.Female,
+            CandidateAge = 17,
+            TalentAgriculture = 41,
+            TalentCommerce = 43,
+            TalentScholar = 47,
+            TalentCraft = 37,
+            CandidateStudy = 63,
+            CandidateHealth = 81,
+            CandidateLifespan = 59,
+            CandidateDegree = DegreeLevel.BaiShen,
+            Class = MarriageClass.Official,
+            BetrothalGift = Money.Zero,
+            Dowry = Money.FromGuan(300m),
+            ProposedAt = ReferenceDate,
+            CandidatePlacement = ImperialPlacement.ZhuangYuan,
+        });
+
+        // ㉔ 师承标记（`PersonDto` 键 28）取 true：漏存时默认 false 会让往返比对暴露出差异。
+        son.IsTutoredByMaster = true;
+
         var economy = RichEconomy(son.Id);
-        var state = new GameState(
-            RichStateId,
+        var state = new GameState(            RichStateId,
             ReferenceDate,
             Difficulty.Hard,
             Origin.Scholar,
@@ -247,6 +281,11 @@ public static class SaveFixtures
             new GameDate(12, 4), personId: null, LedgerCategory.AssetPurchase, Money.FromGuan(-1000m)));
         ledger.Append(new LedgerEntry(
             new GameDate(12, 4), personId: null, LedgerCategory.FamineEntered, Money.Zero));
+
+        // 购人（007）：金额 = 基准价 × 本年第 n 名，故第 1 名取一档价；校验器第 15 条按
+        // 「当年 PersonPurchase 条数 == PurchaseCount」核对，故夹具里成对出现。
+        ledger.Append(new LedgerEntry(
+            new GameDate(12, 6), personId: null, LedgerCategory.PersonPurchase, Money.FromGuan(-120m)));
 
         var economy = new FamilyEconomy(
             LivingStandard.Normal,

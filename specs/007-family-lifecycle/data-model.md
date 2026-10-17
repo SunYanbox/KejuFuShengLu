@@ -69,6 +69,14 @@ public enum MarriageProposalKind
 public readonly record struct PendingBirth(CoupleKey Couple, GameDate AppliedAt);
 ```
 
+**`src/KFL.Core/ValueObjects/MatchmakeApplication.cs`** —— 一条**当月已用名额**的托媒申请记录
+（FR-013 的「同一成员同一月至多一次」载体，**落持久字段**）。与 `PendingBirth` 同款：只承载「谁、哪个月」，
+成败与金额属规则层。
+
+```csharp
+public readonly record struct MatchmakeApplication(PersonId MemberId, GameDate AppliedAt);
+```
+
 **`src/KFL.Core/ValueObjects/MarriageProposal.cs`** —— 待应答提议的**完整快照**（FR-044 要求
 「配偶字段表 + 阶层 + 金额 + 提出年月」在玩家决定前可读）。**不是** `Person`，不入 `Family.Members`。
 
@@ -102,7 +110,7 @@ public sealed record MarriageProposal
 
 ### 2.3 新增聚合 `FamilyLifecycleState`
 
-**`src/KFL.Core/Entities/FamilyLifecycleState.cs`** —— 五组新增状态的唯一载体。
+**`src/KFL.Core/Entities/FamilyLifecycleState.cs`** —— 六组新增状态的唯一载体。
 
 ```csharp
 public sealed class FamilyLifecycleState
@@ -113,6 +121,7 @@ public sealed class FamilyLifecycleState
     public IReadOnlyList<CoupleKey> AppliedBirthCouples { get; }  // 本年度已申请生育的夫妇
     public int BirthApplicationYear { get; }
     public MarriageProposal? Proposal { get; }                    // 至多一条待应答提议
+    public IReadOnlyList<MatchmakeApplication> MatchmakeApplications { get; }  // 当月已托媒的成员（跨月清理）
 
     // 写入通道（规则层唯一入口，均内部校验后落值）
     public int NextPurchaseOrdinal(int year);                     // 返回本年度第 n 名（1 起）；跨年自动重置
@@ -121,16 +130,22 @@ public sealed class FamilyLifecycleState
     public bool HasAppliedForBirth(CoupleKey couple, int year);
     public void RecordBirthApplication(CoupleKey couple, int year); // 跨年自动清空
     public void SetProposal(MarriageProposal? proposal);           // null = 应答/失效后清空
+    public bool HasAppliedForMatchmaking(PersonId member, GameDate month);   // FR-013 判定
+    public void RecordMatchmakeApplication(PersonId member, GameDate month); // 扣款成功后记账（幂等）
+    public void ConsumeMatchmakeApplications(GameDate month);      // ⑧-a 每月初清理过期记录
 
-    internal FamilyLifecycleState CaptureBookkeeping();
-    internal void RestoreBookkeeping(FamilyLifecycleState snapshot);
+    internal (int, int, IReadOnlyList<PendingBirth>, IReadOnlyList<CoupleKey>, int, MarriageProposal?, IReadOnlyList<MatchmakeApplication>) CaptureBookkeeping();
+    internal void RestoreBookkeeping(int purchaseCount, int purchaseYear, IEnumerable<PendingBirth> pendingBirths, IEnumerable<CoupleKey> appliedBirthCouples, int birthApplicationYear, MarriageProposal? proposal, IEnumerable<MatchmakeApplication> matchmakeApplications);
 }
 ```
 
 > `CaptureBookkeeping`/`RestoreBookkeeping` 是 **internal**（`KFL.Core/AssemblyInfo.cs:13` 只放行
-> `KFL.Infrastructure`），与 `Family.CaptureOutsiderBookkeeping`（`Family.cs:340`）同款。
+> `KFL.Infrastructure`），与 `Family.CaptureOutsiderBookkeeping`（`Family.cs:340`）同款；
+> 捕获面是**七项元组**（`MarriageProposal?` 不可空展开，故不用快照对象）。
 > 两个 `Year` 字段是「重置」的唯一实现手段——MUST NOT 依赖 `GameState.CurrentDate` 反推，
 > 否则存档读回时会把旧年度当成新年度。**这两个字段不可省**，它们是 FR-039/FR-022 的跨年重置载体。
+> `MatchmakeApplications` 只在**扣款成功**后追加（`LifecycleEntry.TryMatchmake` ④a），
+> 跨月由 ⑧-a 入口的 `ConsumeMatchmakeApplications` 清理；判定本身按月精确比对，不依赖清理时机（FR-013）。
 
 ### 2.4 `StatusTimers` 的形状变更（4 → 6）
 
@@ -273,6 +288,14 @@ public static class LifecycleEntry
 ③`PaymentPrimitive.CanCover` → ④支付（`PaymentPrimitive.Pay`，恒不转贷款）→ ⑤掷随机 →
 ⑥写状态/账本 → ⑦返回结果。
 
+**托媒的当月名额（2026-10-17 追加，FR-013 / T093）**：`TryMatchmake` 在 ①校验之后插入 **①a**：
+`Family.Lifecycle.HasAppliedForMatchmaking(member.Id, month)` 命中 ⇒ 立即
+`Rejected(LifecycleRejectReason.AlreadyAppliedThisMonth)`（0 次随机、0 次支付、状态零变更，下月可再试）；
+支付成功（④）之后插入 **④a**：`RecordMatchmakeApplication(member.Id, month)`。
+成功判定失败（⑤未命中）**也**占用名额——「同一成员同一月至多一次」对成败一视同仁（Assumption 1），
+故名额记录只在**扣款成功后**落，付款被拒（②/③失败）时不占名额。同款判据经
+`LifecycleQueries.MatchmakeFeasibility` 暴露给灰置按钮（FR-045）。
+
 **婚嫁金额的支付能力校验（2026-10-17 追加，规格书 §17 裁决 Q7 / FR-052）**：
 `TryMatchmake` 在 ⑧「婚嫁金额」算出后追加**⑧a**：`CanCover`（娶入 = 对方阶层聘礼、嫁出 = 本家阶层嫁妆）
 不通过 ⇒ 整单失败（`InsufficientFunds`、不成婚、无婚嫁条目、状态零变更、**已付费用不退**、不转贷款）；
@@ -298,6 +321,9 @@ public static class LifecycleQueries
 }
 ```
 
+`MatchmakeFeasibility.RejectReason` 覆盖 `NotMarriageable` 与 `AlreadyAppliedThisMonth`（FR-013 的
+当月名额），`Available` 恒等于「无拒因」；`ChildbirthFeasibility` / `PurchaseQuote` 同款。
+
 全部 **MUST NOT** 写状态、消费随机、建视图（R-20 已登记纯度断言用例）。
 
 ### 3.5 `Family/LifecycleOutcome.cs` + 拒绝原因
@@ -307,7 +333,7 @@ public enum LifecycleRejectReason
 {
     None = 0, NotMarriageable, InsufficientFunds, NoLowerDegree,
     FertilityWindowClosed, AlreadyAppliedThisYear, HeadVacant,
-    NoPendingProposal, NotHead, NoRegisteredMale,
+    NoPendingProposal, NotHead, NoRegisteredMale, AlreadyAppliedThisMonth,
 }
 ```
 
@@ -396,36 +422,48 @@ public enum LifecycleRejectReason
 11. 死亡登记表内的条目在 ⑧-g 之前**不**改变任何 `Person.Status`（子步隔离）。
 12. `DeathCause` 不出现在 `Person` 与 `LedgerEntry` 上（只在事实段）。
 13. 无在册男性 ⇒ `HeadId == null`，但**不**产生任何「绝嗣」状态（⑧ 的职责）。
+14. `Family.Lifecycle.MatchmakeApplications` 内同一 `(MemberId, AppliedAt)` **至多一条**
+    （`RecordMatchmakeApplication` 幂等），且只在扣款成功后出现；同月同成员的第二次托媒必被
+    `AlreadyAppliedThisMonth` 拒绝（FR-013）。
 
 ## 7. 持久化形状与版本
 
 `SaveFileFormat.Version` **3 → 4**（`src/KFL.Infrastructure/Save/SaveFileFormat.cs:31`）。无迁移路径
-（004 `spec.md:306-307`）；`!= 4` 一律 `UnsupportedVersion`（`MessagePackSaveFormat.cs:363-365`）。
+（004 `spec.md:306-307`）；`!= 4` 一律 `UnsupportedVersion`（`MessagePackSaveFormat.EnsureVersion`，
+`src/KFL.Infrastructure/Save/Serialization/MessagePackSaveFormat.cs:423-430`；JSON 侧同款在
+`JsonSaveFormat.cs:393-401`）。
 
 | DTO | 现状 | 变更 |
 | --- | --- | --- |
 | `PersonDto`（`SaveStateDto.cs:143-316`） | 28 键 | **29 键**：尾部 `[Key(28)] bool isTutoredByMaster` |
 | `FamilyDto`（`SaveStateDto.cs:83-133`） | 8 键 | **9 键**：尾部 `[Key(8)] FamilyLifecycleDto lifecycle` |
 | `StatusTimersDto`（`SaveStateValueDtos.cs:258-284`） | 4 键 | **6 键**：尾部 `[Key(4)] int? illnessSeverityBasisPoints`、`[Key(5)] int? treatmentRemainingMonths` |
-| `FamilyLifecycleDto` | — | **新**，6 键：`[Key(0)] int purchaseCount`、`[Key(1)] int purchaseYear`、`[Key(2)] IReadOnlyList<PendingBirthDto> pendingBirths`、`[Key(3)] IReadOnlyList<CoupleKeyDto> appliedBirthCouples`、`[Key(4)] int birthApplicationYear`、`[Key(5)] MarriageProposalDto? proposal` |
+| `FamilyLifecycleDto` | — | **新**，7 键：`[Key(0)] int purchaseCount`、`[Key(1)] int purchaseYear`、`[Key(2)] IReadOnlyList<PendingBirthDto> pendingBirths`、`[Key(3)] IReadOnlyList<CoupleKeyDto> appliedBirthCouples`、`[Key(4)] int birthApplicationYear`、`[Key(5)] MarriageProposalDto? proposal`、`[Key(6)] List<MatchmakeApplicationDto> matchmakeApplications`（FR-013 的当月名额，T093 追加） |
 | `PendingBirthDto` | — | **新**，4 键：`husbandId`、`wifeId`、`appliedYear`、`appliedMonth` |
+| `MatchmakeApplicationDto` | — | **新**，3 键：`memberId`、`appliedYear`、`appliedMonth`（T093 追加） |
 | `CoupleKeyDto` | — | **新**，2 键：`husbandId`、`wifeId` |
 | `MarriageProposalDto` | — | **新**，19 键：与 `MarriageProposal` 的 18 个成员逐一对应（`ProposedAt` 拆成 `proposedYear` + `proposedMonth`，故 18 → 19 键） |
 
 `MessagePackSaveFormat` 同步：`FamilyMemberCount 8 → 9`（`:47`）、`PersonMemberCount 28 → 29`（`:50`）、
-`StatusTimersMemberCount 4 → 6`（`:56`）、新增 `FamilyLifecycleMemberCount = 6`
-/`PendingBirthMemberCount = 4`/`CoupleKeyMemberCount = 2`/`MarriageProposalMemberCount = 19`；
-`Skip` 序列在 `:237`（Family 0-2 之后）插 `memberCount` 消费后的 lifecycle 分支、在 `:309`
-（Person 22-27 之后）插 `Skip(1)`（`isTutoredByMaster`）、在 `:295` 把 `Skip(4)` 改 `Skip(6)`。
-`EnsureFamilyShape`（`:234`）/`EnsurePersonShape`（`:284`）/新增 `EnsureLifecycleShape` 逐一校验键数。
+`StatusTimersMemberCount 4 → 6`（`:56`）、新增 `FamilyLifecycleMemberCount = 7`（T093 由 6 追加）
+/`PendingBirthMemberCount = 4`/`MatchmakeApplicationMemberCount = 3`/`CoupleKeyMemberCount = 2`
+/`MarriageProposalMemberCount = 19`；`Skip` 序列在 `:237`（Family 0-2 之后）插 `memberCount` 消费后的
+lifecycle 分支、在 `:309`（Person 22-27 之后）插 `Skip(1)`（`isTutoredByMaster`）、在 `:295` 把
+`Skip(4)` 改 `Skip(6)`。`EnsureFamilyShape`（`:234`）/`EnsurePersonShape`（`:284`）/`EnsureLifecycleShape` 逐一校验键数。
 
 `SaveStateMapper`：`ToDto`（`:38`）补三个新段；`Build`（`:100`）在 `:222`（`RestoreOutsiderBookkeeping`）
-之后追加 `family.Lifecycle.RestoreBookkeeping(...)`、在成员标量段（`:149-158` 附近）追加
-`person.RestoreTutoring(...)`。
+之后追加 `family.Lifecycle.RestoreBookkeeping(...)`（**七参**，末参为托媒申请）、在成员标量段
+（`:149-158` 附近）追加 `person.RestoreTutoring(...)`。
 
-`SaveStateValidator` +2 条：
+`SaveStateValidator` +3 条（第 13~15 条）并对既有 2 条加严：
+- 第 4 条 `EnsureHeadIsRegistered` 追加：**有在册男性而 `HeadId == null` ⇒ 拒**（不变量 13）。
+- 第 5 条 `EnsureTimersBackedByStatus` 由 4 路扩到 6 路：`Ill` 位 ⇔ `IllnessSeverityBasisPoints != null`
+  （不变量 1）、`TreatmentRemainingMonths` 仅在 `Ill` 置位时非空（不变量 2）。
 - 第 13 条 `EnsureLifecycleProposalReferencesMember`：`Proposal.OurMemberId` 必须在册。
-- 第 14 条 `EnsurePendingBirthsApplied`：不变量 6。
+- 第 14 条 `EnsurePendingBirthsApplied`：不变量 6，并追加「夫妇双方 `SpouseId` 互指」。
+- 第 15 条 `EnsureLifecycleCountersLegal`：`PurchaseCount >= 0`、`PurchaseYear`/`BirthApplicationYear`
+  落在 `1..当年`，且当年 `PersonPurchase` 条目数与本年度 `PurchaseCount` 一致、同年度单价严格递增
+  （不变量 7 的可检部分；`KFL.Infrastructure` 不能引用 `KFL.Rules`，故不直接比对配置基准价）。
 
 ## 8. 需求 → 模型映射
 

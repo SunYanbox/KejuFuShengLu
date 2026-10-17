@@ -411,7 +411,7 @@ T048 IllnessTests.cs   T049 LifespanTests.cs   T050 FamilyLifecycleTests.cs
 
 ## Notes
 
-- 本特性的**数值真源**是《科举浮生录规格书》§4.1~§4.4、§5.4、§9.1~§9.5、§12.1、§12.3 与 §17 的**六项裁决（2026-10-17，Q1~Q6）**；`tasks.md` MUST NOT 自创或改写任何数值（规格书 §17）。
+- 本特性的**数值真源**是《科举浮生录规格书》§4.1~§4.4、§5.4、§9.1~§9.5、§12.1、§12.3 与 §17 的**七项裁决（2026-10-17，Q1~Q7）**；`tasks.md` MUST NOT 自创或改写任何数值（规格书 §17）。
 - **主导天赋口径**（Assumption 3c，已由 Q6 确认）：取**数值最高的一项**，并列按 **农 → 商 → 仕 → 工** 固定顺序，**四项不叠加**。若日后改为按天赋值缩放乘数或四项连乘，MUST 重算 `m_p` / `m_q` 并回写规格书 §4.3。
 - **患病概率 MUST NOT 乘难度负面事件系数**（Q6）：该系数只作用于提亲 `5%` 与榜下捉婿 `30%` 的底数；故**不需要**「患病概率封顶 50%~60%」这类护栏。
 - **核心数值的进一步调整仍属 §17**，MUST NOT 由实现自行选择。**开放项（实机观察，非本阶段阻断）**：药费档位（现行 `0.05 + 0.45s`；MAY 上调到 `0.08 + 0.55s` / `0.10 + 0.70s`，但 MUST NOT 与下调痊愈概率**同时**进行）、「饥馑 × 疾病叠加」的手感（见 `spec.md` Edge Cases 的最坏情形条目）。
@@ -431,14 +431,14 @@ T048 IllnessTests.cs   T049 LifespanTests.cs   T050 FamilyLifecycleTests.cs
 
 | # | 目标工件（活工件） | 实际同步落点（回写后行号） |
 |---|---|---|
-| 1 | `科举浮生录规格书.md` | `:88`（§4.2 交付与复用）/ `:108-110`（§4.3 整体替换与旧稿作废）/ `:130`（§4.4 继任交付）/ `:212`（§5.4 交付与支付路径）/ `:220-225`（§5.4 未决项）/ `:414-452` 段内（§9.1~§9.5 的回写注）/ `:453`（§9 全章交付注）/ `:715-735`（§17 裁决块 Q1~Q6 与「未决项」）——与 FR-050 ① 逐项一致 |
+| 1 | `科举浮生录规格书.md` | `:88`（§4.2 交付与复用）/ `:108-110`（§4.3 整体替换与旧稿作废）/ `:130`（§4.4 继任交付）/ `:212`（§5.4 交付与支付路径）/ `:220-226`（§5.4 的 §17 裁决回写注）/ `:414-452` 段内（§9.1~§9.5 的回写注）/ `:453`（§9 全章交付注）/ `:715-735`（§17 裁决块 Q1~Q7）——与 FR-050 ① 逐项一致 |
 | 2 | `specs/001-core-skeleton/data-model.md` | `:195`（可写属性**十一个**）/ `:228`（不变量 4 的 007 引用注）/ `:236`（不变量 6：死因只落当月事实段）/ `:317`（⑧-h 豁免失效）/ `:329`（§17：不按人细分仕身份）/ `:436`（§5 状态转移 007 后记八行） |
 | 3 | `specs/001-core-skeleton/contracts/injection-seams.md` | `:101-106`（007 未新增接缝；暂停信号走 `SettlementResult.Lifecycle` + 纯函数查询面） |
 | 4 | `specs/002-monthly-settlement-economy/contracts/monthly-settlement.md` | `:45-57`（007 后记：九步→十步、随机次序式、属性 20→21）/ `:59-95`（§1.1 八子步表）/ `:126-129`（§4 次序式与映射表补 007 五行）/ `:286`（§9 明确不含节）/ `:317`（快照面后记） |
 | 5 | `specs/003-opening-assets-officialdom/data-model.md`、`contracts/new-game-setup.md` | `data-model.md:166`；`new-game-setup.md:112-119`（无父母参照者分布被 007 复用） |
 | 6 | `specs/004-save-system/contracts/save-format.md`、`data-model.md` | `save-format.md:77-81`（三处键数）/ `:136-158`（版本闸门 `== 4`、十四条、常量表）/ `:233-256`（007 后记）；`data-model.md:278` / `:355` / `:359` / `:507-519`（007 后记；**顺带订正 006 遗留的四处 `FormatVersion = 2` 存量旧值**） |
 | 7 | `specs/005-exam-cycle/contracts/exam-session.md`、`data-model.md` | `exam-session.md:17-21`（十步口径与「⑦ 已交付为 ⑧」）；`data-model.md:187`（第 ⑨ 步） |
-| 8 | `specs/006-bribery-punishment/`、`src/KFL.Rules/Exam/ExamSeasonRunner.cs` | `contracts/config-registry.md:104-109`、`contracts/punishment.md:189-193`、`data-model.md:386-387`；`ExamSeasonRunner.cs:17` 的步骤序号注释（勘误 E-02，**仅注释层**） |
+| 8 | `specs/006-bribery-punishment/`、`src/KFL.Rules/Exam/ExamSeasonRunner.cs` | `spec.md:461-466`（T103：逻辑轨 ⑦「已由 007 交付」）/ `contracts/config-registry.md:104-109`；`contracts/punishment.md:189-193`、`data-model.md:386-387`；`ExamSeasonRunner.cs:17` 的步骤序号注释（勘误 E-02，**仅注释层**） |
 | 9 | `tests/KFL.Tests/Rules/SettlementEngineTests.cs` | `:308-311`（十步口径注释）/ `:317`（仍断言 `["Settle"]`）/ `:319-342`（`expectedProperties` **20 → 21**，末尾 `Lifecycle`） |
 | 10 | `specs/007-family-lifecycle/tasks.md` | 本表 + 下方未回改声明 |
 
@@ -459,3 +459,59 @@ T048 IllnessTests.cs   T049 LifespanTests.cs   T050 FamilyLifecycleTests.cs
 断言在 `tests/KFL.Tests/Rules/MarriageTests.cs` 的三例（`聘礼付不起时整单失败且托媒费不退` /
 `嫁妆付不起时整单失败且不外嫁归档` / `接受提亲时付不起聘礼则整单失败且提议已消耗`，
 另含「恰好付得起照常成婚」的边界断言）。至此本特性**不再有未决口径**。
+
+---
+
+## Phase 11 回写范围登记（T093~T105，FR-050 ⑩ / `AGENTS.md` 铁律第 3 条）
+
+**登记时点**：2026-10-18（Phase 11 的实现与回写并入**同一提交**；下表行号均为**回写后原位**）。
+**门禁**：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false` 0 警告 0 错误；`dotnet test`
+（全量，含 `-p:_MSTestEnableParentProcessQuery=false`）全绿；`dotnet sln list` 恰好 6 个工程；
+仓库内除 `.git` 外无 `*.sln`。
+
+| # | 目标工件（活工件） | 实际同步落点（回写后行号） |
+|---|---|---|
+| 1 | `src/KFL.Core/`、`src/KFL.Rules/Family/`、`src/KFL.Infrastructure/Save/` 实现侧 | 新增 `ValueObjects/MatchmakeApplication.cs`；`Entities/FamilyLifecycleState.cs` 三方法 + 七参簿记；`Family/LifecycleOutcome.cs` 的 `AlreadyAppliedThisMonth`；`Family/LifecycleQueries.cs` 的 `MatchmakeFeasibility` 口径；`Family/LifecycleEntry.cs` ①a/④a；`Family/MarriageMarket.cs` 可支付候选集合 + `Next(0, 候选数)`；`Family/DeathSettlement.cs` 调 `Family.EndMarriage`；`Save/Serialization/` 新增 `MatchmakeApplicationDto`（3 键）、`FamilyLifecycleDto` 7 键、`FamilyLifecycleMemberCount = 7`、JSON 缺键一律拒绝（T098） |
+| 2 | `specs/007-family-lifecycle/spec.md` | `:507-509`（FR-013 当月名额持久化）/ `:600-603`（FR-026 四档夭折率）/ `:760-768`（FR-047 六组 + `FamilyLifecycleDto` 7 键 + 常量 7/3） |
+| 3 | `specs/007-family-lifecycle/data-model.md` | §2.2（新增 `MatchmakeApplication`）/ §2.3（六组、七元组、`RestoreBookkeeping` 七参）/ §3.3（①a・④a）/ §3.4（`MatchmakeFeasibility.RejectReason`）/ §3.5（枚举）/ §6（不变量 14）/ §7（7 键 + `MatchmakeApplicationDto` + 十五条校验器描述） |
+| 4 | `specs/007-family-lifecycle/contracts/lifecycle.md` | `:41`（⑧-a）/ `:47`（⑧-g 丧偶终止）/ `:56-58`（R-25 第 3 条；原「不再消耗额外随机」句删除）/ `:96`（§3 随机消费次序式） |
+| 5 | `specs/007-family-lifecycle/contracts/marriage-birth.md` | `:29-31`（§2 第 3 条）/ `:42`（§3 失败行去掉「不落持久字段」）/ `:49-53`（①a・④a）/ `:75`（§4.1 候选集合）/ §7 条款 2（四档夭折率） |
+| 6 | `specs/007-family-lifecycle/contracts/illness-lifespan.md`、`contracts/config-registry.md` | `illness-lifespan.md:153`（§7.2 四档与累计口径）/ `config-registry.md:102`（四档同步） |
+| 7 | `specs/004-save-system/contracts/save-format.md`、`data-model.md` | `save-format.md:81`（`FamilyLifecycleDto` 7 键 + 新 DTO 行）/ `:124`（条款 3 缺键对称）/ `:137`・`:151`（十四条 → 十五条）/ `:159`（常量 7、3）/ `:234-260`（007 后记 + 缺键对称段）；`data-model.md:124` / `:227-228` / `:278` / `:311` / `:359` / `:520-521`（线上成员计数按 007 基线再 +4） |
+| 8 | `specs/001-core-skeleton/data-model.md` | `:120-125`（§1.7 `StatusTimers` 由四个字段补到**六个字段**，含 `Ill` 位配对与来源）/ `:281`（§2.2 `Family` 成员表补 `Lifecycle` 行）——T102 |
+| 9 | `specs/006-bribery-punishment/spec.md` | `:461-466`（逻辑轨 ⑦「已由 007 交付」并写明 ⑧ 子步位于第⑧步）——T103；同时补进上方登记表 #8 |
+| 10 | `科举浮生录规格书.md` | `:718`（标题 `Q1~Q7`）/ `:720`（七项裁决）——T104；Q3/Q7 数值裁决行（`:439`・`:728`）为真源，未改 |
+| 11 | 实现侧注释层 | `src/KFL.Rules/Config/ChildbirthPolicy.cs:51-60`（`InfantDeathFactor` 删除「待规格书 §17 裁决」失真注释，改注 Q3 裁决行）——T105；`src/KFL.Infrastructure/Save/Serialization/JsonSaveFormat.cs:16`（`FormatVersion: 4`）——T104 |
+| 12 | 测试 | `tests/KFL.Tests/Rules/MarriageTests.cs`（T093 三例、T097 两例）/ `Rules/ChildbirthTests.cs`（T094 三死因 `[Theory]`）/ `Rules/DeterminismTests.cs`（T095 成员级恒等比较面）/ `Infrastructure/SaveFixtures.cs`・`SaveStateComparer.cs`（T096 五类状态 + `IsTutoredByMaster`）/ `Infrastructure/SaveStateValidatorTests.cs`（T101 十例）/ `Infrastructure/SaveFailureTests.cs`（T099 两格式 `formatVersion = 3` 拒绝）/ `Infrastructure/SaveFormatContractTests.cs`（键表 7 键 + `MatchmakeApplicationDto`） |
+
+**T104 的落点勘误**：任务文字所列 `specs/004-save-system/data-model.md:403` 的「引用行号」在该文件内
+并不存在（`:403` 是 FR-002 的 `84 个线上成员` 追溯行，不含源码行号）；真正的陈旧引用在
+`specs/007-family-lifecycle/data-model.md:431-433`（原写 `MessagePackSaveFormat.cs:363-365`），已订正为
+`MessagePackSaveFormat.EnsureVersion`（`src/KFL.Infrastructure/Save/Serialization/MessagePackSaveFormat.cs:423-430`）
+与 `JsonSaveFormat.cs:393-401`。`specs/004-save-system/data-model.md:403` 保持原样。
+
+**未回改（历史记录类工件，MUST NOT 回改）**：本文件 T001~T092 既有条目（含其 `(missing)` /
+`(partial)` / `(contradicts)` 标注——它们记录收敛时点的缺口事实）、各 `implementation-notes.md`、
+既有 `checklists/`。
+
+---
+
+## Phase 11: Convergence
+
+> 来源：2026-10-17 `$speckit-converge` 对 007 已交付实现（commit `39eccf9`）与 `spec.md` / `plan.md` / `tasks.md` 的逐条比对。
+> 门禁现状：`dotnet build` 0 警告 0 错误、`dotnet test` 960 全绿 —— **完成声明不构成证据**，下列条目按当前行为重新核对后仍为缺口。
+> 本阶段**只追加**，MUST NOT 回改 T001~T092 既有条目；实现时仍受 `AGENTS.md`「变更授权在变更源，回写义务在同一提交」约束。
+
+- [X] T093 [HIGH] 在 `TryMatchmake` 之前补「同一成员同一月至多一次托媒」守卫：`FamilyLifecycleState` 新增持久记录（成员 × 年月的托媒申请，形状与 `AppliedBirthCouples` 同款），`LifecycleQueries.MatchmakeFeasibility` 暴露该判定，`LifecycleRejectReason` 增对应拒绝值；失败后下月可再试，命中该项时 0 随机、0 支付、状态零变更；同步 `specs/007-family-lifecycle/contracts/marriage-birth.md:42`（删「不落持久字段」）与 `contracts/lifecycle.md` §3 随机次序式、`spec.md` FR-013/FR-047 五项清单、`specs/007-family-lifecycle/data-model.md`、`specs/004-save-system/contracts/save-format.md` 与 `data-model.md` 的 `FamilyLifecycleDto` 键数（6→7）与 validator；补 `tests/KFL.Tests/Rules/MarriageTests.cs` 用例（同月第二次被拒且 `CountingRandom` 无消费、下月可再试）per FR-013 (missing)
+- [X] T094 [HIGH] 在 `DeathSettlement.Run` 归档每名亡者后，对其在世配偶调用 `Family.EndMarriage(亡者 PersonId)`，使 `SpouseId` 置空并追加 `FormerSpouseIds`（⑧-g 死亡结算归档路径统一承担，`Childbirth.cs:131` 的分娩死亡路径改为复用或保持等价）；同步 `specs/007-family-lifecycle/contracts/lifecycle.md` ⑧-g 行与 `contracts/marriage-birth.md:29`；补测试断言病亡/寿终/饥馑三种死因下在世配偶「可再婚、`FormerSpouseIds` 追加、再婚不覆盖婚姻历史」per FR-021 (missing)
+- [X] T095 [HIGH] 扩展 `tests/KFL.Tests/Rules/DeterminismTests.cs` 的 120 月运行恒等比较面至成员级：成员集合与逐人字段（四项天赋、`Study`、`Health`、`Generation`、`SpouseId`、`FormerSpouseIds`、`Status`、`Timers` 的 `illnessSeverityBasisPoints`/`treatmentRemainingMonths`、`IsTutoredByMaster`）、`HeadId`、`Family.Lifecycle` 全簿记（proposal / pendingBirths / appliedBirthCouples / purchaseCount / purchaseYear / birthApplicationYear）与账本；并断言 ⑧ 步确被驱动（同一次运行内至少发生 1 次患病、分娩与婚配）per SC-002 (partial)
+- [X] T096 [HIGH] 补齐 007 五类状态的存档往返实证：`tests/KFL.Tests/Infrastructure/SaveFixtures.cs` 的 `RichState` 置入 `IsTutoredByMaster`、患病 `s` + 疗程、买人口计数与年份、`pendingBirths`/`appliedBirthCouples`/`birthApplicationYear`、`proposal`（含捉婿 `kind`）全部 19 个字段，并让 `SaveStateComparer.cs` 逐字段比较 `Lifecycle` 与 `IsTutoredByMaster`；JSON 与 MessagePack 两条路径都要断言 per FR-047 (partial)
+- [X] T097 [MEDIUM] 使 `MarriageMarket.DrawMatchmakerProposal` 与 FR-020 对齐：候选集合只保留「本家可为其支付相应聘礼者」，命中后在候选集合内以 `Next(0, 候选数)` 均匀抽 1 名（新增一次随机消费），阶层分段只用于确定对方阶层与金额；同步 `contracts/lifecycle.md:56-57`（删「不额外消费随机」）、`contracts/marriage-birth.md:71`、`contracts/lifecycle.md` §3 次序式；补测试（付不起聘礼者不入候选集、命中后随机消费次数与次序表一致）per FR-020 (partial)
+- [X] T098 [MEDIUM] 消除 JSON 与 MessagePack 的「缺失键」行为不对称：`JsonSaveFormat.cs:230-239` 对无 `[JsonRequired]` 的可缺失属性不再静默 `continue`，使缺 `"proposal"` 键的可选成员被检出（与 `SaveStateValueDtos.cs:860-866` 注释和 `specs/004-save-system/contracts/save-format.md:253-255` 一致）；若判定为「可空成员允许缺键」，则 MUST 反向订正注释与契约并说明理由；两种情况都要补两格式对照用例 per SC-010 (contradicts)
+- [X] T099 [MEDIUM] 在 `tests/KFL.Tests/Infrastructure/SaveFailureTests.cs` 补 `formatVersion = 3` 的拒绝用例（JSON 与 MessagePack 各一），与 `specs/004-save-system/contracts/save-format.md:156` 的用例表一致 per SC-010 (missing)
+- [X] T100 [MEDIUM] 补齐 `SaveStateValidator` 缺失的不变量校验：`EnsureTimersBackedByStatus` 扩到 6 路（`Ill` 位 ⇔ `illnessSeverityBasisPoints != null`，`treatmentRemainingMonths` 仅在 `Ill` 时非空）；`purchaseCount >= 0`、`purchaseYear >= 1` 且与 `GameDate` 同年或更早、`purchaseCount` 与「本年第 n 名」报价自洽；`birthApplicationYear` 合法；`EnsurePendingBirthsApplied` 增「夫妇 `SpouseId` 双向一致」；新增「无在册男性 ⇒ `HeadId == null`」（004 `data-model.md` §6 不变量 13）per FR-047 (partial)
+- [X] T101 [MEDIUM] 在 `tests/KFL.Tests/Infrastructure/SaveStateValidatorTests.cs` 为 validator 第 13 条（提议指向在册未婚成员）与第 14 条（待分娩 ⊆ 已申请、成员在册、夫妇互相指向）补正/反用例，并覆盖 T100 新增的计数与计时项校验 per FR-047 (missing)
+- [X] T102 [MEDIUM] 回写上游活工件 `specs/001-core-skeleton/data-model.md`：§1.7 `StatusTimers` 字段表由 4 行补到 6 行（`IllnessSeverityBasisPoints` / `TreatmentRemainingMonths`，含 `:121-122` 不变量文字改为「六个字段」并说明 `Ill` 位配对、来源标 007 FR-047/FR-028），§2.2 `Family` 成员表补 `Lifecycle` 行（`FamilyLifecycleState`，来源 007 §数据模型）；同步在 `tasks.md` 登记本轮回写范围 per FR-050 ② (missing)
+- [X] T103 [MEDIUM] 回写 `specs/006-bribery-punishment/spec.md:461-466`：把仍写「属逻辑轨 ⑦」的表述改述为「⑦ 已由 007 交付」，并在 `specs/007-family-lifecycle/tasks.md` 回写登记表 #8 补登该实际落点（现 #8 只写 `contracts/` 与 `data-model.md:386-387`）per FR-050 ⑧ (missing)
+- [X] T104 [LOW] 订正四处描述层残句：`科举浮生录规格书.md:718` 标题「Q1~Q6」补为「Q1~Q7」且 `:720` 提及 Q7；`specs/007-family-lifecycle/tasks.md:430` 登记 #1 描述去掉已不存在的「未决项」；`src/KFL.Infrastructure/Save/Serialization/JsonSaveFormat.cs:16` 注释 `FormatVersion:3` 改 4；`specs/004-save-system/data-model.md:403` 的引用行号更新为 `MessagePackSaveFormat.cs:410-418` per FR-050 ⑩ (partial)
+- [X] T105 [LOW] 补齐 FR-026 的难度全档：`specs/007-family-lifecycle/spec.md:600-603` 与 `contracts/marriage-birth.md` §3 的夭折率写明「简单 5% / 普通 10% / 困难 11% / 地狱 12%」（与 `科举浮生录规格书.md:439`/`:728` 一致），并订正 `src/KFL.Rules/Config/ChildbirthPolicy.cs` 中「待规格书 §17 裁决」的失真注释 per FR-026 (partial)

@@ -224,6 +224,11 @@ public static class LifecycleQueries
     }
 
     /// <summary>托媒可行性预览（含金额区间与买功名选项）。</summary>
+    /// <remarks>
+    /// <para>FR-013：同一成员同一月内至多一次托媒，故本月已申请者返回
+    /// <see cref="LifecycleRejectReason.AlreadyAppliedThisMonth"/> 且 <c>Available = false</c>；
+    /// 下月记录过期即可再试。</para>
+    /// </remarks>
     /// <param name="state">游戏状态。</param>
     /// <param name="member">我方成员。</param>
     /// <param name="direction">婚配方向。</param>
@@ -237,6 +242,11 @@ public static class LifecycleQueries
         ArgumentNullException.ThrowIfNull(member);
 
         var available = IsMarriageable(state.Family, member, direction, state.CurrentDate);
+        var rejectReason = !available
+            ? LifecycleRejectReason.NotMarriageable
+            : state.Family.Lifecycle.HasAppliedForMatchmaking(member.Id, state.CurrentDate)
+                ? LifecycleRejectReason.AlreadyAppliedThisMonth
+                : LifecycleRejectReason.None;
         var lowerDegree = LowerDegreeOf(member.CurrentDegree);
         var degreeAvailable = state.Family.HasShiStatus && member.Rank is not null && lowerDegree is not null;
         var degreeReason = degreeAvailable
@@ -252,8 +262,8 @@ public static class LifecycleQueries
         var ownDowry = DowryAmount(state, classForDowry);
 
         return new MarriageFeasibility(
-            Available: available,
-            RejectReason: available ? LifecycleRejectReason.None : LifecycleRejectReason.NotMarriageable,
+            Available: rejectReason == LifecycleRejectReason.None,
+            RejectReason: rejectReason,
             DegreeMarriageRejectReason: degreeReason,
             Direction: direction,
             FamilyClass: ClassOf(state, member),

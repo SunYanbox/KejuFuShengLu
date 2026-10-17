@@ -59,6 +59,9 @@ public enum LifecycleRejectReason
 
     /// <summary>家族内无在册男性成员。</summary>
     NoRegisteredMale = 9,
+
+    /// <summary>该成员本月已托过一次媒（FR-013：同一成员同一月至多一次，下月可再试）。</summary>
+    AlreadyAppliedThisMonth = 10,
 }
 
 /// <summary>生命周期入口的统一返回（data-model §3.4）。</summary>

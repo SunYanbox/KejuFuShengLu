@@ -48,6 +48,47 @@ public class DeterminismTests
         var second = Run(RunMonths, Origin.Artisan);
 
         AssertSameRun(first, second);
+        AssertLifecycleActuallyRan(first);
+    }
+
+    /// <summary>
+    /// 断言 ⑧ 在 <see cref="RunMonths"/> 个月里**真的执行过**（SC-002）：否则逐位比对可能集体假绿。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 断言的是 ⑧-c（患病）、⑧-f/⑧-g（身故与丧偶终止）与 ⑧-g 的丧偶不变量：身故者 MUST 已无配偶
+    /// （<c>SpouseId == null</c>、<c>FormerSpouseIds</c> 非空），见 FR-021 / T094。
+    /// </para>
+    /// <para>
+    /// **不**断言的三种事实及其原因：成婚与分娩恒为 0 是**正确**的——托媒、应答提亲与生育申请都是
+    /// 玩家动作，无头运行不会触发（它们由 <c>MarriageTests</c> / <c>FamilyLifecycleTests</c> 覆盖）；
+    /// 待应答提议（⑧-a）虽每月掷 1 次，但本夹具家族在第 7 个月即被患病潮灭门（实证：80-07 起在册为 0），
+    /// 命中月是否落在存活期完全取决于种子，故此处不作断言。跨年龄档（⑧-d）同理可以合法为 0。
+    /// </para>
+    /// </remarks>
+    /// <param name="run">一次运行。</param>
+    private static void AssertLifecycleActuallyRan(RunRecord run)
+    {
+        var illnesses = run.Results.Sum(result => result.Lifecycle.Illnesses.Count);
+        var deaths = run.Results.Sum(result => result.Lifecycle.Deaths.Count);
+        var crossings = run.Results.Sum(result => result.Lifecycle.Crossings.Count);
+        var proposals = run.Results.Count(result => result.Lifecycle.PendingProposal is not null);
+
+        Assert.True(
+            illnesses >= 1,
+            $"⑧-c 未真正执行：{RunMonths} 个月里 0 次患病（身故 {deaths}、跨档 {crossings}、提议 {proposals}）。");
+        Assert.True(
+            deaths >= 1,
+            $"⑧-f/⑧-g 未真正执行：{RunMonths} 个月里 0 次身故（患病 {illnesses}、跨档 {crossings}、提议 {proposals}）。");
+
+        // FR-021：丧偶 MUST 经 Family.EndMarriage——身故者一律已无配偶，且幸存配偶留下前配偶记录。
+        var members = run.State.Family.Members.ToList();
+        Assert.False(
+            members.Any(member => member.Status.HasFlag(StatusFlag.Deceased) && member.SpouseId is not null),
+            "⑧-g 未终止身故者的婚姻：存在既已身故又仍有配偶的成员（FR-021）。");
+        Assert.True(
+            members.Any(member => member.FormerSpouseIds.Count > 0),
+            $"⑧-g 未真正执行丧偶终止：{RunMonths} 个月里 0 名成员留下前配偶记录（身故 {deaths}）。");
     }
 
     [Fact]
@@ -351,6 +392,8 @@ public class DeterminismTests
         Assert.Equal(first.State.Economy.Famine.ElapsedMonths, second.State.Economy.Famine.ElapsedMonths);
         Assert.Equal(first.State.CurrentDate, second.State.CurrentDate);
 
+        AssertSameFamily(first.State.Family, second.State.Family);
+
         var firstEntries = first.State.Economy.Ledger.Entries;
         var secondEntries = second.State.Economy.Ledger.Entries;
 
@@ -360,6 +403,72 @@ public class DeterminismTests
         {
             Assert.Equal(firstEntries[index], secondEntries[index]);
         }
+    }
+
+    /// <summary>
+    /// 成员级逐字段比对（SC-002）：只比「资金池 + 账本」会漏掉 ⑧ 对 <see cref="Person"/> 与
+    /// <c>Family.Lifecycle</c> 的写入——例如患病程度、师承标记、待应答提议与购人计数。
+    /// </summary>
+    /// <param name="first">第一遍运行的家族。</param>
+    /// <param name="second">第二遍运行的家族。</param>
+    private static void AssertSameFamily(Family first, Family second)
+    {
+        Assert.Equal(first.Name, second.Name);
+        Assert.Equal(first.HasShiStatus, second.HasShiStatus);
+        Assert.Equal(first.AutoExamApplication, second.AutoExamApplication);
+        Assert.Equal(first.HeadId, second.HeadId);
+
+        var firstMembers = first.Members.ToList();
+        var secondMembers = second.Members.ToList();
+        Assert.Equal(firstMembers.Select(member => member.Id), secondMembers.Select(member => member.Id));
+
+        for (var index = 0; index < firstMembers.Count; index++)
+        {
+            var expected = firstMembers[index];
+            var actual = secondMembers[index];
+
+            Assert.Equal(expected.Name, actual.Name);
+            Assert.Equal(expected.Gender, actual.Gender);
+            Assert.Equal(expected.BirthDate, actual.BirthDate);
+            Assert.Equal(expected.Generation, actual.Generation);
+            Assert.Equal(expected.Talents, actual.Talents);
+            Assert.Equal(expected.Study, actual.Study);
+            Assert.Equal(expected.Health, actual.Health);
+            Assert.Equal(expected.Lifespan, actual.Lifespan);
+            Assert.Equal(expected.Rank, actual.Rank);
+            Assert.Equal(expected.Merit, actual.Merit);
+            Assert.Equal(expected.Status, actual.Status);
+            Assert.Equal(expected.Timers, actual.Timers);
+            Assert.Equal(expected.Timers.IllnessSeverityBasisPoints, actual.Timers.IllnessSeverityBasisPoints);
+            Assert.Equal(expected.Timers.TreatmentRemainingMonths, actual.Timers.TreatmentRemainingMonths);
+            Assert.Equal(expected.Occupation, actual.Occupation);
+            Assert.Equal(expected.MonthsInOffice, actual.MonthsInOffice);
+            Assert.Equal(expected.EntryTrack, actual.EntryTrack);
+            Assert.Equal(expected.FatherId, actual.FatherId);
+            Assert.Equal(expected.MotherId, actual.MotherId);
+            Assert.Equal(expected.SpouseId, actual.SpouseId);
+            Assert.Equal(expected.FormerSpouseIds, actual.FormerSpouseIds);
+            Assert.Equal(expected.DegreeHistory, actual.DegreeHistory);
+            Assert.Equal(expected.JieShiFailureCount, actual.JieShiFailureCount);
+            Assert.Equal(expected.ShengShiFailureCount, actual.ShengShiFailureCount);
+            Assert.Equal(expected.AppliedExam, actual.AppliedExam);
+            Assert.Equal(expected.JieShiBribeCount, actual.JieShiBribeCount);
+            Assert.Equal(expected.ShengShiBribeCount, actual.ShengShiBribeCount);
+            Assert.Equal(expected.DianShiBribeCount, actual.DianShiBribeCount);
+            Assert.Equal(expected.IsTutoredByMaster, actual.IsTutoredByMaster);
+        }
+
+        // ⑧ 的五组生命周期簿记：只比「成员集合」看不出待应答提议、待产记录与购人名次。
+        var firstLifecycle = first.Lifecycle;
+        var secondLifecycle = second.Lifecycle;
+
+        Assert.Equal(firstLifecycle.PurchaseCount, secondLifecycle.PurchaseCount);
+        Assert.Equal(firstLifecycle.PurchaseYear, secondLifecycle.PurchaseYear);
+        Assert.Equal(firstLifecycle.BirthApplicationYear, secondLifecycle.BirthApplicationYear);
+        Assert.Equal(firstLifecycle.PendingBirths, secondLifecycle.PendingBirths);
+        Assert.Equal(firstLifecycle.AppliedBirthCouples, secondLifecycle.AppliedBirthCouples);
+        Assert.Equal(firstLifecycle.MatchmakeApplications, secondLifecycle.MatchmakeApplications);
+        Assert.Equal(firstLifecycle.Proposal, secondLifecycle.Proposal);
     }
 
     private static void AssertSameResult(SettlementResult expected, SettlementResult actual)

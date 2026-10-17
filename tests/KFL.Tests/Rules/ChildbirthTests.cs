@@ -306,6 +306,42 @@ public class ChildbirthTests
         Assert.Equal(entriesBefore, state.Economy.Ledger.Entries.Count);
     }
 
+    /// <summary>
+    /// FR-021 / T094：⑧-g 对三种死因一律经 <c>Family.EndMarriage</c> 终止婚姻——
+    /// 双方 <c>SpouseId</c> 置空、互为前配偶；幸存配偶可再婚，且再婚不覆盖旧婚姻史。
+    /// </summary>
+    /// <param name="cause">死因（病亡 / 寿终 / 饥馑）。</param>
+    [Theory]
+    [InlineData(DeathCause.Illness)]
+    [InlineData(DeathCause.OldAge)]
+    [InlineData(DeathCause.Famine)]
+    public void 死亡结算终止婚姻且幸存配偶可再婚(DeathCause cause)
+    {
+        var (state, husband, wife) = Couple();
+        var deaths = new DeathRegister();
+        deaths.Add(husband, cause);
+
+        DeathSettlement.Run(state, deaths, state.CurrentDate);
+
+        Assert.Null(husband.SpouseId);
+        Assert.Null(wife.SpouseId);
+        Assert.Equal([husband.Id], wife.FormerSpouseIds);
+        Assert.Equal([wife.Id], husband.FormerSpouseIds);
+
+        // 幸存配偶回到可婚配状态（查询面与规则层同口径）。
+        Assert.True(LifecycleQueries.IsMarriageable(
+            state.Family, wife, MarriageDirection.GroomOut, state.CurrentDate));
+
+        // 再婚：新配偶写入 SpouseId，旧婚姻留在 FormerSpouseIds。
+        var next = RulesHarness.Member(3, Gender.Male, 45);
+        state.Family.AddOutsider(next);
+        state.Family.Marry(next.Id, wife.Id);
+
+        Assert.Equal(next.Id, wife.SpouseId);
+        Assert.Equal([husband.Id], wife.FormerSpouseIds);
+        Assert.Empty(next.FormerSpouseIds);
+    }
+
     // ------------------------------------------------------------------ 基座
     /// <summary>建一对已婚夫妇（男方年龄大于女方，女方 16~45）。</summary>
     /// <param name="wifeAge">女方年龄。</param>

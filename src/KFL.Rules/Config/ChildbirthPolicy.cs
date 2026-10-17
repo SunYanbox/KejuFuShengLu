@@ -49,14 +49,14 @@ public static class ChildbirthPolicy
     public const int InfantExemptAge = 3;
 
     /// <summary>
-    /// 夭折概率的难度分档（规格书 §9.4 明示端点：简单 5% / 地狱 12%；普通 10%）。
+    /// 夭折概率的难度分档（规格书 §9.4 / §17 Q3：简单 5% / 普通 10% / 困难 11% / 地狱 12%）。
     /// </summary>
     /// <param name="difficulty">难度。</param>
     /// <returns>概率乘数。</returns>
     /// <remarks>
     /// <b>Must NOT 改用 <c>DifficultyRates.NegativeEventFactor</c></b>：后者的地狱值为 <c>1.4</c>，
-    /// 会得到 14%，与规格书 §9.4 明示的「地狱 12%」冲突。困难档（<c>1.1</c>）无工件依据，
-    /// 取普通与地狱之间的插值，已在 007 的 Phase 9 回写登记中列出待规格书 §17 裁决。
+    /// 会得到 14%，与规格书 §9.4 明示的「地狱 12%」冲突。四档取值直接取自规格书 §17 Q3 的
+    /// 裁决行（`科举浮生录规格书.md:728`「简单 5 / 普通 10 / 困难 11 / 地狱 12」），无需另行裁决。
     /// </remarks>
     public static decimal InfantDeathFactor(Difficulty difficulty) => difficulty switch
     {

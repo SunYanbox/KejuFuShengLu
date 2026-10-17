@@ -13,7 +13,7 @@ namespace KFL.Infrastructure.Save.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 文件形状 <c>{"FormatVersion":3,"PayloadLength":N,"SaveId":"…","State":&lt;主体&gt;}</c>：
+/// 文件形状 <c>{"FormatVersion":4,"PayloadLength":N,"SaveId":"…","State":&lt;主体&gt;}</c>：
 /// 三个头成员**先于** <c>State</c> 出现且次序固定（契约十 §2）。头用
 /// <see cref="Utf8JsonWriter.WriteRawValue(ReadOnlySpan{byte}, bool)"/> 拼装，主体保持
 /// 它自己的逐行缩进。
@@ -188,7 +188,8 @@ public sealed class JsonSaveFormat : ISaveFormat
         // 默认值——null 必须按「必需成员缺失」拒掉，否则 null 集合会被复原期的 ?? [] 静默
         // 吞成空、null 元素会在复原期炸成未分类的 NullReferenceException（契约十 §6 第 ⑥ 步）。
         // 唯一例外：未标 [JsonRequired] 的引用成员（007 的 FamilyLifecycleDto.Proposal），
-        // 其 null 是本版本明确允许的语义取值；缺键仍按必需成员处理。
+        // 其 null 是本版本明确允许的语义取值；**缺键**则一律按必需成员处理（与是否标
+        // [JsonRequired] 无关，两格式 MUST 对称）。
         if (element.ValueKind == JsonValueKind.Null)
         {
             if (Nullable.GetUnderlyingType(type) is not null || !required)
@@ -229,13 +230,10 @@ public sealed class JsonSaveFormat : ISaveFormat
 
             if (!element.TryGetProperty(name, out var child))
             {
-                if (property.GetCustomAttribute<JsonRequiredAttribute>() is not null)
-                {
-                    throw InvalidStructure(
-                        $"文件缺本版本必需成员 {underlying.Name}.{name}（契约十 §6 第 ⑥ 步）。");
-                }
-
-                continue;
+                // 契约十 §5 条款 3：缺失 MUST 被检出，MUST NOT 静默默认化——
+                // 这与该成员是否标 [JsonRequired] 无关（两格式行为 MUST 对称，SC-010）。
+                throw InvalidStructure(
+                    $"文件缺本版本必需成员 {underlying.Name}.{name}（契约十 §6 第 ⑥ 步）。");
             }
 
             EnsureRequiredMembersPresent(

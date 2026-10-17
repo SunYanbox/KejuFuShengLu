@@ -78,7 +78,8 @@
 | `PersonDto` | 0 `id`(Guid)、1 `name`(string)、2 `gender`、3 `birthYear`(int)、4 `birthMonth`(int)、5 `generation`(int)、6 `talents`(TalentDto)、7 `study`(int)、8 `health`(int)、9 `lifespan`(int)、10 `rankLevel`(int?)、11 `merit`(int)、12 `status`(StatusFlag)、13 `timers`(StatusTimersDto)、14 `occupation`、15 `monthsInOffice`(int)、16 `entryTrack`(AppointmentTrack?)、17 `fatherId`(Guid?)、18 `motherId`(Guid?)、19 `spouseId`(Guid?)、20 `formerSpouseIds`(Guid[])、21 `degreeHistory`(DegreeRecordDto[])、22 `jieShiFailureCount`(int)、23 `shengShiFailureCount`(int)、24 `appliedExam`(`ExamLevel?`)、25 `jieShiBribeCount`(int)、26 `shengShiBribeCount`(int)、27 `dianShiBribeCount`(int)、**28 `isTutoredByMaster`(bool)** |
 | `TalentDto` | 0 `agriculture`、1 `commerce`、2 `officialdom`、3 `craft`（皆 `int`） |
 | `StatusTimersDto` | 0 `sentenceRemainingMonths`(int?)、1 `examBanRemainingMonths`(int?)、2 `promotionBanRemainingMonths`(int?)、3 `awaitingPostRemainingMonths`(int?)、**4 `illnessSeverityBasisPoints`(int?)**、**5 `treatmentRemainingMonths`(int?)** |
-| `FamilyLifecycleDto` | 0 `purchaseCount`(int)、1 `purchaseYear`(int)、2 `pendingBirths`(PendingBirthDto[])、3 `appliedBirthCouples`(CoupleKeyDto[])、4 `birthApplicationYear`(int)、5 `proposal`(`MarriageProposalDto?`) |
+| `FamilyLifecycleDto` | 0 `purchaseCount`(int)、1 `purchaseYear`(int)、2 `pendingBirths`(PendingBirthDto[])、3 `appliedBirthCouples`(CoupleKeyDto[])、4 `birthApplicationYear`(int)、5 `proposal`(`MarriageProposalDto?`)、**6 `matchmakeApplications`(`MatchmakeApplicationDto[]`)** |
+| `MatchmakeApplicationDto` | 0 `memberId`(Guid)、1 `appliedYear`(int)、2 `appliedMonth`(int) |
 | `PendingBirthDto` | 0 `husbandId`(Guid)、1 `wifeId`(Guid)、2 `appliedYear`(int)、3 `appliedMonth`(int) |
 | `CoupleKeyDto` | 0 `husbandId`(Guid)、1 `wifeId`(Guid) |
 | `MarriageProposalDto` | 0 `kind`、1 `ourMemberId`(Guid)、2 `candidateName`(string)、3 `candidateGender`、4 `candidateAge`(int)、5 `talentAgriculture`(int)、6 `talentCommerce`(int)、7 `talentScholar`(int)、8 `talentCraft`(int)、9 `candidateStudy`(int)、10 `candidateHealth`(int)、11 `candidateLifespan`(int)、12 `candidateDegree`、13 `class`、14 `betrothalGift`(decimal)、15 `dowry`(decimal)、16 `proposedYear`(int)、17 `proposedMonth`(int)、18 `candidatePlacement`(`ImperialPlacement?`) |
@@ -120,7 +121,7 @@
 | --- | --- |
 | 1 | 两种格式 MUST 承载**同一信息集**：§4 的键表是两种格式共用的唯一字段清单（MUST NOT 出现「某种格式少存一块」） |
 | 2 | 同一状态经任一种格式存读后 MUST **逐字段相等**（含 `decimal` 的 scale、归档成员、簿记、计时与全量账本） |
-| 3 | 任一字段的缺失 MUST 被检出（JSON：`[JsonRequired]`；二进制：位置式数组长度）——MUST NOT 静默默认化 |
+| 3 | 任一字段的缺失 MUST 被检出（JSON：**凡本版本 DTO 成员缺键**一律拒绝，与其是否标 `[JsonRequired]` 无关——可空成员只允许显式写 `null`；二进制：位置式数组长度）——MUST NOT 静默默认化；两种格式的检出面 MUST 对称（T098 据 SC-010） |
 | 4 | 等价性 MUST 由**键表断言** + **逐字段往返断言**共同覆盖（只做往返会漏掉「两格式同缺一个字段」，R-22） |
 
 ## 6. 版本闸门与失败分类
@@ -133,7 +134,7 @@
 ⑤ 主体可解析？         否 ⇒ Malformed
 ⑥ 必需成员齐备？       否 ⇒ InvalidStructure
 ⑦ 逐字段复原（Core 校验）？ 否 ⇒ InvalidStructure
-⑧ 一致性校验（十四条）？ 否 ⇒ InvalidStructure
+⑧ 一致性校验（十五条）？ 否 ⇒ InvalidStructure
 ```
 
 | 条款 | 要求 |
@@ -147,7 +148,7 @@
 | 7 | **第 ⑩ 条校验（005 新增）**：`appliedExam` 非空 ⇒ MUST ∈ { `JieShi`, `ShengShi` }（`Enum.IsDefined` 拒绝 `0` 与 `> 3`；殿试 `DianShi` 不是合法报名态）；`jieShiFailureCount` 与 `shengShiFailureCount` MUST `>= 0`。二进制写原值整数 ⇒ 越界整数在 ⑦ 被拒 ⇒ `InvalidStructure`；JSON 写枚举名 ⇒ 不认得的名字在 ⑤ 就读不出 ⇒ `Malformed`（与条款 6 同口径） |
 | 8 | **第 ⑪ / ⑫ 条校验（006 新增）**：三个行贿计数 `jieShiBribeCount` / `shengShiBribeCount` / `dianShiBribeCount` MUST `>= 0`（⑪）；惩罚日志六类事实行的**全部 8 个引用位置**（`Bribes.Examinee`、`Sentences.Subject`、`Fines.Subject`、`RelativeBans.Subject`/`.Relative`、`CollectivePunishments.Subject`/`.Relative`、`Releases.Subject`）MUST 指向 `Family.Members` 中的成员（**含归档者**）（⑫）。两条都在 ⑦ 逐字段复原之后判定 ⇒ 失败为 `InvalidStructure` |
 
-| 9 | **第 ⑬ / ⑭ 条校验（007 新增）**：`lifecycle.proposal` 非空 ⇒ `ourMemberId` MUST 指向 `Family.Members` 中的成员、且该成员**未亡、未外嫁、无配偶**（⑬）；`lifecycle.pendingBirths` 的每一条 `(husbandId, wifeId)` MUST 同时出现在 `appliedBirthCouples` 中，且双方 MUST 指向 `Family.Members` 中的成员（⑭）。两条都在 ⑦ 逐字段复原之后判定 ⇒ 失败为 `InvalidStructure`。⇒ 校验总数由十二条变为**十四条** |
+| 9 | **第 ⑬ / ⑭ / ⑮ 条校验（007 新增）**：`lifecycle.proposal` 非空 ⇒ `ourMemberId` MUST 指向 `Family.Members` 中的成员、且该成员**未亡、未外嫁、无配偶**（⑬）；`lifecycle.pendingBirths` 的每一条 `(husbandId, wifeId)` MUST 同时出现在 `appliedBirthCouples` 中、双方 MUST 指向 `Family.Members` 中的成员、且双方 `spouseId` MUST 互指（⑭）；`lifecycle` 的计数与年份 MUST 合法——`purchaseCount >= 0`、`purchaseYear` / `birthApplicationYear` 落在 `1..当年`，当年 `PersonPurchase` 条目数 MUST 等于本年度 `purchaseCount` 且同年度单价严格递增（⑮）。另：第 ④ 条追加「有在册男性而 `headId` 为空 ⇒ 拒」，第 ⑤ 条由 4 路扩到 **6 路**（`Ill` 位 ⇔ `illnessSeverityBasisPoints` 非空、`treatmentRemainingMonths` 仅在 `Ill` 置位时非空）。以上都在 ⑦ 逐字段复原之后判定 ⇒ 失败为 `InvalidStructure`。⇒ 校验总数由十二条变为**十五条** |
 
 ## 7. 常量登记、依赖与验证物
 
@@ -155,7 +156,7 @@
 | --- | --- | --- | --- |
 | 文件格式版本 **4** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2`，006 由 `2` 升为 `3`，007 由 `3` 升为 `4` | 版本闸门的用例（**`≠ 4` 一律拒绝**：`5` 拒绝、`3` 拒绝——与 §6 ④ 的谓词 `FormatVersion == 4` 同口径） |
 | `FamilyMemberCount` = **9**、`PersonMemberCount` = **29**、`StatusTimersMemberCount` = **6** | `MessagePackSaveFormat`（二进制 walker 的成员数常量） | 键表 §4.2；006 各 +1 / +3（`punishmentJournal` 与三个行贿计数）；007 各 +1 / +1 / +2（`lifecycle`、`isTutoredByMaster`、疾病程度与疗程两路计时） | `SaveFormatContractTests` 的键数断言 |
-| `FamilyLifecycleMemberCount` = **6**、`PendingBirthMemberCount` = **4**、`CoupleKeyMemberCount` = **2**、`MarriageProposalMemberCount` = **19** | `MessagePackSaveFormat` | 键表 §4.2；四个 007 新增 DTO 的键数 | 同上 |
+| `FamilyLifecycleMemberCount` = **7**、`PendingBirthMemberCount` = **4**、`MatchmakeApplicationMemberCount` = **3**、`CoupleKeyMemberCount` = **2**、`MarriageProposalMemberCount` = **19** | `MessagePackSaveFormat` | 键表 §4.2；五个 007 新增 DTO 的键数（`matchmakeApplications` 与 `MatchmakeApplicationDto` 为 T093 追加） | 同上 |
 | `PunishmentJournalMemberCount` = **7** | `MessagePackSaveFormat` | 键表 §4.2；`PunishmentJournalDto` 键数 7 | 同上 |
 | `BribeFactMemberCount` = **7**、`SentenceFactMemberCount` = **3**、`FineFactMemberCount` = **5**、`RelativeBanFactMemberCount` = **5**、`CollectivePunishmentFactMemberCount` = **6**、`ReleaseFactMemberCount` = **3** | `MessagePackSaveFormat` | 键表 §4.2；六类事实行 DTO 的键数 = 对应 `KFL.Core` 记录的成员数（逐一对应） | 同上 |
 | 扩展名 `.dat` / `.json` | `SaveFileFormat` | §14 | 未指定格式 ⇒ `.dat`；指定 JSON ⇒ `.json`（FR-005） |
@@ -239,9 +240,9 @@
 | --- | --- |
 | §2、§4.2、§7 | 头记录 `FormatVersion` 与 `SaveFileFormat.Version` 由 `3` 升为 **`4`**；版本闸门的接受谓词改为 `FormatVersion == 4`（**任何 ≠ 4 的值**一律 `UnsupportedVersion`，**无迁移路径**） |
 | §4.2 | `FamilyDto` 8 → **9** 键（末尾追加 `8 lifecycle`(`FamilyLifecycleDto`)）；`PersonDto` 28 → **29** 键（末尾追加 `28 isTutoredByMaster`(bool)）；`StatusTimersDto` 4 → **6** 键（末尾追加 `4 illnessSeverityBasisPoints`(int?)、`5 treatmentRemainingMonths`(int?)）；既有键的 `Key` 序号与键名**不变**，新键**只追加** |
-| §4.2 | 新增四个 DTO 行：`FamilyLifecycleDto`（6 键）、`PendingBirthDto`（**4 键展开式**：`husbandId` / `wifeId` / `appliedYear` / `appliedMonth`）、`CoupleKeyDto`（2 键）、`MarriageProposalDto`（**19 键**，`ProposedAt` 拆为 `proposedYear` + `proposedMonth`） |
-| §6 | 一致性校验由「十二条」变「**十四条**」，新增第 ⑬ 条（提议引用在册未婚成员）与第 ⑭ 条（待产记录 ⊆ 已申请夫妇）及其 `InvalidStructure` 落点（条款 9） |
-| §7 | `SaveFileFormat.Version` **3 → 4**；登记二进制 walker 的成员数常量：`FamilyMemberCount` **9**、`PersonMemberCount` **29**、`StatusTimersMemberCount` **6**、`FamilyLifecycleMemberCount` **6**、`PendingBirthMemberCount` **4**、`CoupleKeyMemberCount` **2**、`MarriageProposalMemberCount` **19** |
+| §4.2 | 新增 DTO 行：`FamilyLifecycleDto`（**7 键**，`matchmakeApplications` 由 T093 追加）、`MatchmakeApplicationDto`（**3 键**：`memberId` / `appliedYear` / `appliedMonth`）、`PendingBirthDto`（**4 键展开式**：`husbandId` / `wifeId` / `appliedYear` / `appliedMonth`）、`CoupleKeyDto`（2 键）、`MarriageProposalDto`（**19 键**，`ProposedAt` 拆为 `proposedYear` + `proposedMonth`） |
+| §6 | 一致性校验由「十二条」变「**十五条**」，新增第 ⑬ 条（提议引用在册未婚成员）、第 ⑭ 条（待产记录 ⊆ 已申请夫妇 + 夫妇 `spouseId` 互指）与第 ⑮ 条（生命周期计数与年份合法、当年购人价严格递增）及其 `InvalidStructure` 落点（条款 9）；第 ④ / ⑤ 条加严 |
+| §7 | `SaveFileFormat.Version` **3 → 4**；登记二进制 walker 的成员数常量：`FamilyMemberCount` **9**、`PersonMemberCount` **29**、`StatusTimersMemberCount` **6**、`FamilyLifecycleMemberCount` **7**、`PendingBirthMemberCount` **4**、`MatchmakeApplicationMemberCount` **3**、`CoupleKeyMemberCount` **2**、`MarriageProposalMemberCount` **19** |
 
 **边界**：007 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`≠ 4` 的旧档一律
 `UnsupportedVersion`）；三处新状态属于 `Person` / `Family` 领域类型的**形状扩展**，其语义真源
@@ -253,4 +254,8 @@
 **可空引用成员**：`FamilyLifecycleDto.proposal` 是可空成员，JSON 侧 **MUST NOT** 标
 `[JsonRequired]`（否则 `proposal: null` 会被 ⑥ 误判为 `InvalidStructure`）；二进制侧用
 `TryReadNil()`。
+**缺键与两种格式的对称性**（T098，SC-010）：JSON 侧「成员缺失」的判据**不**取决于是否标了
+`[JsonRequired]`——凡本版本 DTO 的成员（含可空成员）**缺键**一律 `InvalidStructure`；可空成员
+只允许显式写 `null`。这样 JSON 的「缺键」与二进制位置式数组的「长度不足」在信息集上严格对称
+（条款 3：任一字段缺失 MUST 被检出）。
 
