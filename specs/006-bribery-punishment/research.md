@@ -262,7 +262,7 @@ public static PunishmentSnapshot Run(GameState state);
 成为新的**第 ③ 步**；原 ③~⑧ 顺移为 ④~⑨，全月结算由八步变**九步**。步内固定次序（Q2 = A）：
 
 ```
-① 投影并清空日志（行贿 / 被抓 / 服刑建立 / 罚金 / 亲属禁考禁升 / 连坐 / 死刑 / 全族禁考禁升）
+① 投影并清空日志（行贿 / 被抓 / 服刑建立 / 罚金 / 亲属禁考禁升 / 连坐（含致亲属处死）/ 全族禁考禁升）
 → ② 按 PersonId 升序逐人：服刑 / 禁考 / 禁升剩余月数各递减 1（仅当计时非空）
 → ③ 递减到 0：服刑 ⇒ 释放（清计时与状态位、Rank 非 null 则 Level + 1、L18 维持、仍在禁考期则继续禁考）；
    禁考 / 禁升 ⇒ 清对应计时与状态位
@@ -293,7 +293,10 @@ public required PunishmentSnapshot Punishment { get; init; }
 
 快照含 `Month`、日志投影出的六类行记录（`IReadOnlyList`，**全部按 `PersonId` 升序**）、
 `bool FamilyBanDeclared`、`int PrisonerCount`；并提供 `public static PunishmentSnapshot None(GameDate month)`
-的静态空实例（与 `ExamSeasonSnapshot.None` 同款）。
+的静态空实例（与 `ExamSeasonSnapshot.None` 同款）。**当事人本人的死刑不在本快照**：它经
+`PunishmentQueries.WasExecutedByState(Person)` 从 `Person.Status` 的已亡位**派生**（规格书 §7.5
+死刑立即执行 ⇒ 无「已判未决」持久状态，状态位即事实），六类事实行 MUST NOT 新增「本人被处死」
+一类；`CollectivePunishmentFact.Outcome == Executed` 只表达**被连坐的亲属**（契约十六 §8/§9）。
 
 **Rationale**: FR-028 明令「作为 `SettlementResult` 的新增必填子段」，与 003 的 `Career`、005 的
 `ExamSeason` 同款：**增量、只读、MUST NOT 写回 `GameState`**、MUST NOT 成为第二真源。快照必须能表达

@@ -16,7 +16,7 @@ namespace KFL.Tests.Rules;
 /// 囚犯计数的口径，以及「逻辑轨 ⑧ 解锁成就所需事实是否齐备且本特性**不解锁任何成就**」。
 /// </summary>
 /// <remarks>
-/// 查询面七个入口一律是**纯派生值**：它们不接收 <c>IRandomService</c>，也不写回
+/// 查询面八个入口一律是**纯派生值**：它们不接收 <c>IRandomService</c>，也不写回
 /// <see cref="GameState"/>，故「随机消费 = 0」由签名即可判定（无随机入口）。
 /// 期望值一律经 <c>KFL.Rules/Config</c> 的成员取得（SC-008）；本文件 MUST NOT 另存规则数值。
 /// </remarks>
@@ -31,7 +31,7 @@ public class BribeQueryTests
     private static readonly GameDate JieShiWindowFirstMonth = new(79, 7);
 
     [Fact]
-    public void 查询面七个入口都是纯函数且逐字段不变()
+    public void 查询面八个入口都是纯函数且逐字段不变()
     {
         var examinee = RulesHarness.Member(1, Gender.Male, 20, officialdom: 80);
         var cleanJinShi = RulesHarness.Member(2, Gender.Male, 40, officialdom: 80);
@@ -47,9 +47,10 @@ public class BribeQueryTests
         var cumulative = PunishmentQueries.FamilyCumulativeBribes(state.Family);
         var clean = PunishmentQueries.WasBribeFreeAtImperialPass(cleanJinShi);
         var status = PunishmentQueries.StatusOf(examinee);
+        var executed = PunishmentQueries.WasExecutedByState(cleanJinShi);
         var prisoners = PunishmentQueries.PrisonerCount(state.Family, state.CurrentDate);
 
-        // 七个入口各调用一遍后，GameState 逐字段差异项 = 0。
+        // 八个入口各调用一遍后，GameState 逐字段差异项 = 0。
         Assert.Equal(before, Fingerprint(state));
 
         // 重复调用给出相同结果（纯派生值，不含时间重放）。
@@ -58,13 +59,15 @@ public class BribeQueryTests
         Assert.Equal(capped, PunishmentQueries.IsLevelCapReached(state, examinee, ExamLevel.JieShi));
         Assert.Equal(cumulative, PunishmentQueries.FamilyCumulativeBribes(state.Family));
         Assert.Equal(clean, PunishmentQueries.WasBribeFreeAtImperialPass(cleanJinShi));
+        Assert.Equal(executed, PunishmentQueries.WasExecutedByState(cleanJinShi));
         Assert.Equal(status, PunishmentQueries.StatusOf(examinee));
         Assert.Equal(prisoners, PunishmentQueries.PrisonerCount(state.Family, state.CurrentDate));
 
-        // 抽查口径：解试行贿窗口内、可受理、清白进士、无人在服刑。
+        // 抽查口径：解试行贿窗口内、可受理、清白进士、无人在服刑、无人被处死。
         Assert.True(window);
         Assert.True(feasibility.IsFeasible);
         Assert.True(clean);
+        Assert.False(executed);
         Assert.Equal(0, cumulative);
         Assert.False(status.IsServingSentence);
         Assert.Equal(0, prisoners);
@@ -146,7 +149,8 @@ public class BribeQueryTests
         // 事实五~八：死刑、连坐致亲属死亡或降级、外嫁女儿被追及、全族禁考禁升触发。
         PunishmentImposer.Apply(state, subject, ExamLevel.DianShi, new FixedRandomService());
 
-        Assert.True(subject.Status.HasFlag(StatusFlag.Deceased));
+        // 事实五「身首异处」= **当事人本人**的死刑：状态派生（契约十六 §8），不经六类事实行。
+        Assert.True(PunishmentQueries.WasExecutedByState(subject));
         Assert.Contains(
             family.PunishmentJournal.CollectivePunishments,
             fact => fact.Outcome == CollectiveOutcome.Executed);

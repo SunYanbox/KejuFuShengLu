@@ -98,6 +98,25 @@ public static class PunishmentQueries
     }
 
     /// <summary>
+    /// 「身首异处」的派生事实：该成员**本人**是否被处死（FR-030）。
+    /// </summary>
+    /// <param name="person">成员。</param>
+    /// <returns>已亡位为真时为 <see langword="true"/>。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="person"/> 为 <see langword="null"/>。</exception>
+    /// <remarks>
+    /// **状态派生，不经当月快照的六类事实行**（契约十六 §8/§9）：规格书 §7.5 的死刑**立即执行**，
+    /// 规则层不存在「已判未决」的持久状态，故 <see cref="StatusFlag.Deceased"/> 即事实。
+    /// 被**连坐**的亲属之死则由 <see cref="CollectivePunishmentFact.Outcome"/> 的
+    /// <see cref="CollectiveOutcome.Executed"/> 表达。⑧ 与 U2 MUST 只经本入口取值。
+    /// </remarks>
+    public static bool WasExecutedByState(Person person)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        return person.Status.HasFlag(StatusFlag.Deceased);
+    }
+
+    /// <summary>
     /// 一名成员的惩罚状态面（FR-029②）：三个计时的**剩余月数**与「是否有官职」。
     /// </summary>
     /// <param name="person">待查询的成员。</param>
