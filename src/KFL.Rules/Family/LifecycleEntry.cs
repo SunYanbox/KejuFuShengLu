@@ -134,6 +134,25 @@ public static class LifecycleEntry
         var dowry = direction == MarriageDirection.BrideInto
             ? LifecycleQueries.DowryAmount(state, counterpartClass)
             : LifecycleQueries.OwnDowryAmount(state, member);
+
+        // ⑧a 支付能力校验（规格书 §5.4 / §17 裁决 2026-10-17）：聘礼（娶入）或本家嫁妆（嫁出）
+        //     必须在**本次交易前**由「现金 + 储蓄」足额覆盖；否则**整单失败**——不成婚、无婚嫁条目、
+        //     状态零变更，且**已付的托媒费与买功名费不退**（媒人已行事，规格书 §9.1「失败不退费」同源）。
+        //     MUST NOT 转贷款（与生育费、买人口价、药费、名师学费同一口径）。
+        var obligation = direction == MarriageDirection.BrideInto ? gift : dowry;
+        if (obligation.IsPositive && !PaymentPrimitive.CanCover(economy, obligation))
+        {
+            return new LifecycleOutcome
+            {
+                Accepted = false,
+                RejectReason = LifecycleRejectReason.InsufficientFunds,
+                Amount = upfront,
+                FromCash = fromCash,
+                FromSavings = fromSavings,
+                Entry = entry,
+            };
+        }
+
         SettleAmounts(state, member, direction, gift, dowry);
         SettleMarriage(state, member, counterpart, direction);
 
@@ -250,6 +269,25 @@ public static class LifecycleEntry
                 : null;
         }
 
+        // 支付能力校验（规格书 §5.4 / §17 裁决 2026-10-17）：付不起聘礼（娶入）或本家嫁妆（嫁出）
+        // ⇒ 整单失败、提议**已消耗**（清空）、不成婚、无婚嫁条目；已付的买功名费不退。
+        var obligation = direction == MarriageDirection.BrideInto
+            ? proposal.BetrothalGift
+            : proposal.Dowry;
+        if (obligation.IsPositive && !PaymentPrimitive.CanCover(economy, obligation))
+        {
+            family.Lifecycle.SetProposal(null);
+            return new LifecycleOutcome
+            {
+                Accepted = false,
+                RejectReason = LifecycleRejectReason.InsufficientFunds,
+                Amount = degreeFee,
+                FromCash = Money.Zero,
+                FromSavings = Money.Zero,
+                Entry = entry,
+            };
+        }
+
         SettleAmounts(state, member, direction, proposal.BetrothalGift, proposal.Dowry);
         SettleMarriage(state, member, candidate, direction);
         family.Lifecycle.SetProposal(null);
@@ -266,7 +304,12 @@ public static class LifecycleEntry
         };
     }
 
-    /// <summary>按方向结算婚嫁金额（正额先入账、负额后出账，避免为可选行动凭空造贷款）。</summary>
+    /// <summary>按方向结算婚嫁金额（正额先入账、负额后出账）。</summary>
+    /// <remarks>
+    /// 调用方 MUST 先用 <see cref="PaymentPrimitive.CanCover"/> 校验**本方应付额**（娶入 = 聘礼、
+    /// 嫁出 = 本家嫁妆）——不足一律整单失败（规格书 §5.4 / §17 裁决 2026-10-17），
+    /// 故本方法内的 <see cref="PaymentPrimitive.Pay"/> 恒不会把缺口转成贷款。
+    /// </remarks>
     private static void SettleAmounts(
         GameState state,
         Person member,

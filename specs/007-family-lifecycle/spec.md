@@ -818,12 +818,24 @@
   `spec.md:461-466` 的「属逻辑轨 ⑦」条目改述为「⑦ 已交付」口径；
   ⑨ `tests/KFL.Tests/Rules/SettlementEngineTests.cs:305` 的负向断言改为十步口径；
   ⑩ `specs/007-family-lifecycle/tasks.md` 登记上述回写范围。
+  ⑪ **追加（2026-10-17，裁决块 Q7 / FR-052）**：规格书 §5.4 的「待 §17 裁决」段改为**已裁决口径**、
+  §17 裁决块末尾的「未决项」改为 **Q7 裁决行**；本文件「开放项 ⑤」改为已裁决；
+  `specs/007-family-lifecycle/contracts/marriage-birth.md` 的 §3 次序、§4.3 应答与 §5 金额表增补
+  **支付能力校验与整单失败口径**；`tasks.md` 的登记段同步。
   **历史记录类工件**（`specs/001-core-skeleton/tasks.md:88`、`specs/002-monthly-settlement-economy/tasks.md:83/:279`
   中写「阶段⑧」的条目）MUST **NOT** 回改，仅在 ⑦ 的 `tasks.md` 中登记「本特性接管原『阶段⑧』残句」。
 - **FR-051**: **门禁**（AGENTS.md 四条）MUST 全绿：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false`
   （0 警告 0 错误）、`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`、
   `dotnet sln KejuFuShengLu.slnx list` 恰为六个工程、仓库内无 `*.sln`；
   架构约束 G-01~G-08（`tests/KFL.Tests/Architecture/`）MUST 全部通过。
+- **FR-052**: **婚嫁金额的支付能力校验**（规格书 §17 裁决块 **Q7** / §5.4，2026-10-17）：
+  对方阶层确定后，「我方应付额」（**娶入** = 对方阶层聘礼、**嫁出** = 本家阶层嫁妆）MUST 由当月
+  「现金 + 储蓄」足额覆盖；不足 ⇒ **整单失败**——`LifecycleOutcome.Accepted = false` +
+  `LifecycleRejectReason.InsufficientFunds`、**不成婚、无任何婚嫁条目、成员状态零变更**，
+  已付的**托媒费与买功名费不退**（媒人已行事，与 §9.1「失败不退费」同源），MUST NOT 转贷款；
+  `LifecycleEntry.RespondToProposal` 的接受路径同理，且**提议被清空（名额已消耗）**。
+  可付性 MUST 在**结算前**校验，MUST NOT 依赖 `PaymentPrimitive.Pay` 的缺口语义；
+  查询面 `MatchmakeFeasibility` 的金额字段只作预览，可付性由调用方拿 `Treasury.Cash + Savings` 自行比较。
 
 ### Key Entities
 
@@ -1039,9 +1051,10 @@
   已按 §17② 取默认（见上 1/2/4/7），若与预期不符可在 `$speckit-clarify` 阶段调整；
   ④ **六项裁决**在落地时若发现与既有契约互斥（如 `StatusTimers` 无法承载两个新计时项），
   MUST 回到本 `spec.md` 与规格书重新裁决，MUST NOT 就地改契约；
-  ⑤ **新增未决项（2026-10-17 登记，尚未裁决）**：**基础聘礼 / 嫁妆在可付额不足时的处置**。
-  规格书 §5.4 的「不存在主动借贷」与 002 契约的「付不起部分不入账、不转贷款」倾向于不得因此产生
-  贷款，而婚配流程的固定次序（先扣托媒费、后按对方阶层结算）使「先校验可付额」在时序上不可行。
-  当前实现按**现金 → 储蓄全额支付、缺口计入贷款本金**；规格书 §5.4 与 §17（「未决项」）已同步登记
-  三项备选（①维持现口径 ②整单失败且托媒费不退 ③允许部分支付）。**裁决前 MUST NOT 视为已定，
-  也不得据此新增测试断言**；这是本特性唯一的未决口径（其余开放项仍属「实机观察」）。
+  ⑤ **原未决项已裁决（2026-10-17，规格书 §17 裁决块 Q7 / §5.4 回写）**：**基础聘礼 / 嫁妆在可付额不足时的处置**
+  ⇒ 取备选 **②整单失败且托媒费不退**——对方阶层确定后，「我方应付额」（娶入 = 对方阶层聘礼、
+  嫁出 = 本家阶层嫁妆）必须由当月「现金 + 储蓄」足额覆盖，不足则**不成婚、无任何婚嫁条目、状态零变更**，
+  已付的托媒费与买功名费**不退还**，MUST NOT 转贷款；接受待应答提议时同理，且**名额已消耗**（提议清空）。
+  备选①「缺口计入贷款本金」与③「允许部分支付」**均不采用**。断言在
+  `tests/KFL.Tests/Rules/MarriageTests.cs`（`聘礼付不起时整单失败且托媒费不退` 等三例）。
+  这是本特性此前唯一的未决口径，**现已落地**；其余开放项仍属「实机观察」。

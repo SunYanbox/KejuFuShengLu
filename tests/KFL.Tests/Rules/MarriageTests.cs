@@ -731,6 +731,155 @@ public class MarriageTests
         Assert.Equal(0, CountOf(state, LedgerCategory.DegreeMarriageDowryReceived));
     }
 
+    // ------------------------------------------------- 支付能力不足 ⇒ 整单失败（§17 裁决 2026-10-17）
+
+    /// <summary>聘礼「现金 + 储蓄」不足 ⇒ 整单失败：不成婚、无婚嫁条目、托媒费不退、不转贷款。</summary>
+    [Fact]
+    public void 聘礼付不起时整单失败且托媒费不退()
+    {
+        var member = RulesHarness.Member(1, Gender.Male, 20);
+        var state = State(
+            Difficulty.Normal,
+            Origin.Artisan,
+            RulesHarness.Guan(MarriagePolicy.MatchmakerFeeGuan),
+            false,
+            member);
+        var random = new ScriptedRandom(SuccessRoll, RollIn(MarriageClass.Official, WeightsOf(state)));
+
+        var expectedFee = LifecycleQueries.MatchmakerFee(state);
+        var expectedGift = LifecycleQueries.GiftAmount(state, MarriageClass.Official);
+        Assert.True(expectedGift.Guan > expectedFee.Guan);
+
+        var outcome = LifecycleEntry.TryMatchmake(
+            state,
+            member,
+            MarriageDirection.BrideInto,
+            random,
+            new FixedNameGenerator());
+
+        Assert.False(outcome.Accepted);
+        Assert.Equal(LifecycleRejectReason.InsufficientFunds, outcome.RejectReason);
+        Assert.Equal(expectedFee, outcome.Amount);
+
+        // 托媒费照实扣下且不退；托媒成功后才会发生的婚嫁条目一条也不许有
+        Assert.Equal(-expectedFee, TotalOf(state, LedgerCategory.MatchmakerFee));
+        Assert.Equal(1, CountOf(state, LedgerCategory.MatchmakerFee));
+        Assert.Equal(0, CountOf(state, LedgerCategory.BetrothalGiftPaid));
+        Assert.Equal(0, CountOf(state, LedgerCategory.DowryReceived));
+        Assert.Equal(0, CountOf(state, LedgerCategory.MarriageFormed));
+
+        Assert.Null(state.Family.SpouseOf(member.Id));
+        Assert.Single(state.Family.RegisteredMembers);
+        Assert.False(state.Economy.Treasury.Loan.Principal.IsPositive);
+
+        // 恰好付得起（现金 == 托媒费 + 聘礼）时照常成婚
+        var exact = State(
+            Difficulty.Normal,
+            Origin.Artisan,
+            expectedFee + expectedGift,
+            false,
+            RulesHarness.Member(1, Gender.Male, 20));
+        var exactOutcome = LifecycleEntry.TryMatchmake(
+            exact,
+            exact.Family.TryGet(exact.Family.HeadId!.Value)!,
+            MarriageDirection.BrideInto,
+            new ScriptedRandom(SuccessRoll, RollIn(MarriageClass.Official, WeightsOf(exact))),
+            new FixedNameGenerator());
+
+        Assert.True(exactOutcome.Accepted);
+        Assert.Equal(-expectedGift, TotalOf(exact, LedgerCategory.BetrothalGiftPaid));
+    }
+
+    /// <summary>本家嫁妆不足 ⇒ 整单失败：不外嫁归档、无婚嫁条目、托媒费不退。</summary>
+    [Fact]
+    public void 嫁妆付不起时整单失败且不外嫁归档()
+    {
+        var member = RulesHarness.Official(1, MarriagePolicy.PressureHighestLevel, gender: Gender.Female, age: 20);
+        var state = State(
+            Difficulty.Normal,
+            Origin.Artisan,
+            RulesHarness.Guan(MarriagePolicy.MatchmakerFeeGuan),
+            true,
+            member);
+        var random = new ScriptedRandom(SuccessRoll, RollIn(MarriageClass.Commoner, WeightsOf(state)));
+
+        var expectedFee = LifecycleQueries.MatchmakerFee(state);
+        var expectedDowry = LifecycleQueries.OwnDowryAmount(state, member);
+        Assert.True(expectedDowry.Guan > expectedFee.Guan);
+
+        var outcome = LifecycleEntry.TryMatchmake(
+            state,
+            member,
+            MarriageDirection.GroomOut,
+            random,
+            new FixedNameGenerator());
+
+        Assert.False(outcome.Accepted);
+        Assert.Equal(LifecycleRejectReason.InsufficientFunds, outcome.RejectReason);
+        Assert.Equal(expectedFee, outcome.Amount);
+        Assert.Equal(0, CountOf(state, LedgerCategory.DowryPaid));
+        Assert.Equal(0, CountOf(state, LedgerCategory.BetrothalGiftReceived));
+        Assert.Equal(0, CountOf(state, LedgerCategory.DegreeMarriageDowryReceived));
+        Assert.Equal(0, CountOf(state, LedgerCategory.MemberMarriedOut));
+
+        Assert.False(member.Status.HasFlag(StatusFlag.MarriedOut));
+        Assert.Contains(member, state.Family.RegisteredMembers);
+        Assert.Null(state.Family.SpouseOf(member.Id));
+        Assert.False(state.Economy.Treasury.Loan.Principal.IsPositive);
+    }
+
+    /// <summary>接受提亲时聘礼付不起 ⇒ 整单失败、提议已被消耗（名额不返还）。</summary>
+    [Fact]
+    public void 接受提亲时付不起聘礼则整单失败且提议已消耗()
+    {
+        var member = RulesHarness.Member(1, Gender.Male, 20);
+        var state = State(
+            Difficulty.Normal,
+            Origin.Artisan,
+            RulesHarness.Guan(1m),
+            false,
+            member);
+
+        var gift = LifecycleQueries.GiftAmount(state, MarriageClass.Official);
+        state.Family.Lifecycle.SetProposal(new MarriageProposal
+        {
+            Kind = MarriageProposalKind.Matchmaker,
+            OurMemberId = member.Id,
+            CandidateName = "苏州沈氏",
+            CandidateGender = Gender.Female,
+            CandidateAge = 18,
+            TalentAgriculture = 50,
+            TalentCommerce = 50,
+            TalentScholar = 50,
+            TalentCraft = 50,
+            CandidateStudy = 30,
+            CandidateHealth = 85,
+            CandidateLifespan = 60,
+            CandidateDegree = DegreeLevel.BaiShen,
+            Class = MarriageClass.Official,
+            BetrothalGift = gift,
+            Dowry = LifecycleQueries.DowryAmount(state, MarriageClass.Official),
+            ProposedAt = RulesHarness.Date,
+        });
+
+        Assert.NotNull(LifecycleQueries.PendingProposal(state.Family, RulesHarness.Date));
+
+        var outcome = LifecycleEntry.RespondToProposal(
+            state,
+            accept: true,
+            new ScriptedRandom(),
+            new FixedNameGenerator());
+
+        Assert.False(outcome.Accepted);
+        Assert.Equal(LifecycleRejectReason.InsufficientFunds, outcome.RejectReason);
+        Assert.Equal(0, CountOf(state, LedgerCategory.BetrothalGiftPaid));
+        Assert.Equal(0, CountOf(state, LedgerCategory.DowryReceived));
+        Assert.Equal(0, CountOf(state, LedgerCategory.MarriageFormed));
+        Assert.Null(state.Family.SpouseOf(member.Id));
+        Assert.Null(LifecycleQueries.PendingProposal(state.Family, RulesHarness.Date));
+        Assert.False(state.Economy.Treasury.Loan.Principal.IsPositive);
+    }
+
     // ------------------------------------------------------------------ 基座
 
     /// <summary>托媒成功判定必过的骰值（小于成功率）。</summary>
