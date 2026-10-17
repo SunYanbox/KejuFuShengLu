@@ -141,15 +141,15 @@ public sealed class SaveFailureTests
         AssertFailurePreserves(path, corrupted, held, reference);
     }
 
-    /// <summary>FR-015：头记录版本不为 3（旧版 2 与更新版 4 同样拒）⇒ <c>UnsupportedVersion</c>。</summary>
+    /// <summary>FR-015：头记录版本不为本版本（旧版 2 与更新版 +1 同样拒）⇒ <c>UnsupportedVersion</c>。</summary>
     /// <param name="format">格式。</param>
     /// <param name="version">写进头里的非本版本版本号。</param>
     [Theory]
     [InlineData(SaveFormat.Binary, 2)]
     [InlineData(SaveFormat.Json, 2)]
-    [InlineData(SaveFormat.Binary, 4)]
-    [InlineData(SaveFormat.Json, 4)]
-    public void 头版本不为三时报UnsupportedVersion(SaveFormat format, int version)
+    [InlineData(SaveFormat.Binary, SaveFileFormat.Version + 1)]
+    [InlineData(SaveFormat.Json, SaveFileFormat.Version + 1)]
+    public void 头版本不为本版本时报UnsupportedVersion(SaveFormat format, int version)
     {
         using var sandbox = new SaveTestSandbox();
         var service = sandbox.CreateService();
@@ -172,8 +172,8 @@ public sealed class SaveFailureTests
     [Theory]
     [InlineData(SaveFormat.Binary, 2)]
     [InlineData(SaveFormat.Json, 2)]
-    [InlineData(SaveFormat.Binary, 4)]
-    [InlineData(SaveFormat.Json, 4)]
+    [InlineData(SaveFormat.Binary, SaveFileFormat.Version + 1)]
+    [InlineData(SaveFormat.Json, SaveFileFormat.Version + 1)]
     public void 版本闸门早于主体解析(SaveFormat format, int version)
     {
         using var sandbox = new SaveTestSandbox();

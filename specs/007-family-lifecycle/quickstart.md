@@ -21,25 +21,29 @@ dotnet test  KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProc
 `US1~US5 / FR-006~FR-010 / SC-001`
 
 ```powershell
-dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~家庭生命周期子步次序"
+dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~FamilyLifecycleTests"
 ```
 
 **期望**：`MonthlySettlementEngine` 的步骤清单含十项，`PopulationAdvance.Run` 的八个子步按
 ⑧-a → ⑧-h 各执行一次；⑧ 内死亡的成员在 ⑨ 的考生集合里**不存在**；
-`SettlementResult` 的公开属性恰 **21** 个（`SettlementEngineTests.cs:315-345` 同步改过）。
+`SettlementResult` 的公开属性恰 **21** 个（`SettlementEngineTests.cs:319-342` 同步改过）。
 
 ## 场景 2：连续 120 月逐字段可复现
 
 `FR-048 / SC-002`
 
 ```powershell
-dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~连续120月"
+dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~DeterminismTests|FullyQualifiedName~连续落盘二十四个月"
 ```
 
 **期望**：同一种子跑两遍，逐月 `SettlementResult` 与 `GameState` 的每个字段 `diff == 0`；
 存档往返（`MessagePackSaveFormat` → `SaveStateMapper.ToDomain`）后继续 12 个月仍一致。
-**反例检查**：把 `IllnessSeverityBasisPoints` 换成 `double` 实现，本用例在 JSON 存档上应变红
-（这是 R-03 选整数的原因）。
+**反例检查（2026-10-17 实测结论）**：原稿假设「把 `IllnessSeverityBasisPoints` 换成 `double` 后本用例在
+JSON 存档上应变红」。实测**不成立**——`System.Text.Json` 以「最短可往返」形式写出 `double`，任意双精度值
+序列化后原样回读（一次性探针验证后已删除）。故整数口径（万分之）的理由是**派生运算的确定性**：
+`s` 经 `2 + 8s`、`0.05 + 0.45s`、`体质 × m_q` 等链条反复参与金额与扣减，浮点在长序列下会累积尾差，
+而整数磅值使同一 `s` 在任何月份、任何难度下都得到**逐位相同**的扣减与药费。R-03 的结论（用整数）不变，
+仅理由更正；本条不构成行为偏离。
 
 ## 场景 3：遗传公式逐点
 
@@ -117,7 +121,7 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProce
 `US5 / FR-039~FR-041 / FR-047 / SC-006 / SC-010`
 
 ```powershell
-dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~PurchaseTests|FullyQualifiedName~SaveVersion"
+dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false --filter "FullyQualifiedName~PurchaseTests|FullyQualifiedName~SaveFailureTests"
 ```
 
 **期望**：

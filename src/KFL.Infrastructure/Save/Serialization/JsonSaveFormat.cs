@@ -178,20 +178,22 @@ public sealed class JsonSaveFormat : ISaveFormat
     /// <param name="element">当前 JSON 元素。</param>
     /// <param name="type">该元素对应的声明类型。</param>
     /// <param name="path">用于失败信息的成员路径（<c>SaveStateDto.Family.Members[0].Talents</c>）。</param>
-    private static void EnsureRequiredMembersPresent(JsonElement element, Type type, string path)
+    private static void EnsureRequiredMembersPresent(JsonElement element, Type type, string path, bool required = true)
     {
         var underlying = Nullable.GetUnderlyingType(type) ?? type;
 
         // 契约十 §5 条款 3：任一字段的缺失 MUST 被检出，MUST NOT 静默默认化。
         // JSON 的 null 不属于「值合法」的任何一种：值类型里只有 Nullable<T> 收 null，
-        // 引用成员（字符串 / 集合 / 嵌套 DTO）在本版本全都有非空默认值——null 必须按
-        // 「必需成员缺失」拒掉，否则 null 集合会被复原期的 ?? [] 静默吞成空、null 元素
-        // 会在复原期炸成未分类的 NullReferenceException（契约十 §6 第 ⑥ 步）。
+        // 引用成员（字符串 / 集合 / 嵌套 DTO）在本版本除 [JsonRequired] 缺省者外全都有非空
+        // 默认值——null 必须按「必需成员缺失」拒掉，否则 null 集合会被复原期的 ?? [] 静默
+        // 吞成空、null 元素会在复原期炸成未分类的 NullReferenceException（契约十 §6 第 ⑥ 步）。
+        // 唯一例外：未标 [JsonRequired] 的引用成员（007 的 FamilyLifecycleDto.Proposal），
+        // 其 null 是本版本明确允许的语义取值；缺键仍按必需成员处理。
         if (element.ValueKind == JsonValueKind.Null)
         {
-            if (Nullable.GetUnderlyingType(type) is not null)
+            if (Nullable.GetUnderlyingType(type) is not null || !required)
             {
-                return;   // 可空成员（Guid? / int? / 枚举?）的 null 是本版本允许的取值
+                return;   // 可空成员（Guid? / int? / 枚举?）与显式可缺省的引用成员收 null
             }
 
             throw InvalidStructure(
@@ -236,7 +238,11 @@ public sealed class JsonSaveFormat : ISaveFormat
                 continue;
             }
 
-            EnsureRequiredMembersPresent(child, property.PropertyType, $"{path}.{name}");
+            EnsureRequiredMembersPresent(
+                child,
+                property.PropertyType,
+                $"{path}.{name}",
+                required: property.GetCustomAttribute<JsonRequiredAttribute>() is not null);
         }
     }
 

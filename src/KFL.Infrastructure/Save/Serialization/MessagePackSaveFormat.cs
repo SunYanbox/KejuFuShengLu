@@ -44,19 +44,31 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     private const int SaveStateMemberCount = 8;
 
     /// <summary>嵌套 DTO 的成员数（契约十 §4 键表；全部按 <c>[Key(0..n-1)]</c> 连续编号）。</summary>
-    private const int FamilyMemberCount = 8;
+    private const int FamilyMemberCount = 9;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
-    private const int PersonMemberCount = 28;
+    private const int PersonMemberCount = 29;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
     private const int TalentMemberCount = 4;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
-    private const int StatusTimersMemberCount = 4;
+    private const int StatusTimersMemberCount = 6;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
     private const int DegreeRecordMemberCount = 6;
+
+    /// <inheritdoc cref="FamilyMemberCount"/>
+    private const int FamilyLifecycleMemberCount = 6;
+
+    /// <inheritdoc cref="FamilyLifecycleMemberCount"/>
+    private const int PendingBirthMemberCount = 4;
+
+    /// <inheritdoc cref="FamilyLifecycleMemberCount"/>
+    private const int CoupleKeyMemberCount = 2;
+
+    /// <inheritdoc cref="FamilyLifecycleMemberCount"/>
+    private const int MarriageProposalMemberCount = 19;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
     private const int FamilyEconomyMemberCount = 7;
@@ -247,6 +259,41 @@ public sealed class MessagePackSaveFormat : ISaveFormat
         Skip(ref reader, 1);                        // 6 自动报名（005）
 
         EnsureJournalShape(ref reader, $"{path}.PunishmentJournal");   // 7 惩罚日志（006）
+
+        EnsureLifecycleShape(ref reader, $"{path}.Lifecycle");         // 8 生命周期簿记（007）
+    }
+
+    /// <summary>
+    /// 核对家族生命周期簿记、待分娩记录、夫妇键与提议的成员数（007-family-lifecycle；契约二十 §5）。
+    /// </summary>
+    /// <param name="reader">读取器。</param>
+    /// <param name="path">诊断用路径。</param>
+    private static void EnsureLifecycleShape(ref MessagePackReader reader, string path)
+    {
+        EnsureArrayHeader(ref reader, FamilyLifecycleMemberCount, path);
+        Skip(ref reader, 2);                        // 0 本年购人数 / 1 购人年份
+
+        var births = reader.ReadArrayHeader();      // 2 待分娩记录
+        for (var index = 0; index < births; index++)
+        {
+            EnsureArrayHeader(ref reader, PendingBirthMemberCount, $"{path}.PendingBirths[{index}]");
+            Skip(ref reader, PendingBirthMemberCount);
+        }
+
+        var couples = reader.ReadArrayHeader();     // 3 已申请本年生育的夫妇
+        for (var index = 0; index < couples; index++)
+        {
+            EnsureArrayHeader(ref reader, CoupleKeyMemberCount, $"{path}.AppliedBirthCouples[{index}]");
+            Skip(ref reader, CoupleKeyMemberCount);
+        }
+
+        Skip(ref reader, 1);                        // 4 生育申请年份
+
+        if (!reader.TryReadNil())                   // 5 待应答提议（可为空）
+        {
+            EnsureArrayHeader(ref reader, MarriageProposalMemberCount, $"{path}.Proposal");
+            Skip(ref reader, MarriageProposalMemberCount);
+        }
     }
 
     /// <summary>
@@ -306,7 +353,7 @@ public sealed class MessagePackSaveFormat : ISaveFormat
             Skip(ref reader, DegreeRecordMemberCount);
         }
 
-        Skip(ref reader, 6);                        // 22..27 解试失败数/省试失败数/报名级别（005）/三个行贿计数（006）
+        Skip(ref reader, 7);                        // 22..28 解试失败数/省试失败数/报名级别（005）/三个行贿计数（006）/延名师（007）
     }
 
     private static void EnsureEconomyShape(ref MessagePackReader reader, string path)

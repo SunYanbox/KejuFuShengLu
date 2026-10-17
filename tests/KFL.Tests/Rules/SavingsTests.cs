@@ -27,15 +27,22 @@ public class SavingsTests
     {
         var state = NewState(January, Origin.Scholar, cash: Guan(1000m), savings: Guan(100m));
 
-        // 随机槽位：米价（1 月）→ 储蓄利率（1 月）→ 米价（2~12 月）→ 米价（次年 1 月）→ 储蓄利率（次年 1 月）。
-        var values = new List<double> { 0.0d, 0.0d };
+        // 随机槽位（007 起每月末尾还有 ⑧-a 提亲骰与 ⑧-c 感染骰，本夹具只有一名 8 岁成员）：
+        // 1 月：米价 → 储蓄利率 → ⑧-a → ⑧-c；2~12 月：米价 → ⑧-a → ⑧-c；
+        // 次年 1 月：米价 → 储蓄利率 → ⑧-a → ⑧-c。
+        var values = new List<double> { 0.0d, 0.0d, 0.5d, 0.5d };  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
-        for (var index = 0; index < 12; index++)
+        for (var index = 0; index < 11; index++)
         {
-            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）2~12 月米价
+            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）2~12 月 ⑧-a
+            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）2~12 月 ⑧-c
         }
 
+        values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）次年 1 月米价
         values.Add(double.MaxValue);
+        values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）次年 1 月 ⑧-a
+        values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）次年 1 月 ⑧-c
 
         var engine = new MonthlySettlementEngine(new FixedRandomService(values.ToArray()), new GameStateClock(state), new FixedNameGenerator());
         var first = engine.Settle(state);

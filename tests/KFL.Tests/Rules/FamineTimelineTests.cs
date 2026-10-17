@@ -287,7 +287,12 @@ public class FamineTimelineTests
         for (var index = 0; index < count; index++)
         {
             // 儿童档：无收入来源、无被指派资格，故生活费之外的现金流为 0。
-            members.Add(RulesHarness.Member(95 + index, Gender.Male, 8));
+            var child = RulesHarness.Member(95 + index, Gender.Male, 8);
+
+            // 007 起 ⑧-e 会在饥馑严重期每人每月扣 10 点体质，体质归零即登记死亡；
+            // 本夹具关注的是阶段机，故让成员带上正常体质（否则 0 点体质会在进入严重期的当月即死）。
+            child.Health = (int)AttributePolicy.HealthMean;
+            members.Add(child);
         }
 
         return RulesHarness.FamilyOf(members.ToArray());

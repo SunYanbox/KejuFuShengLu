@@ -30,10 +30,16 @@ public class DeterminismTests
     private const int Seed = 20261006;
 
     /// <summary>复跑月数：跨两个年度，覆盖 1 月利率 roll、12 月年度项与贷款计息节点。</summary>
-    private const int RunMonths = 24;
+    private const int RunMonths = 120;
 
     /// <summary>非 1 月的月份：该月没有储蓄利率 roll，随机槽位最少。</summary>
     private static readonly GameDate December = new(80, 12);
+
+    /// <summary>
+    /// 中性随机取值 0.5：同时高于提亲概率上限（`ProposalBaseChance × NegativeEventFactor ≤ 0.07`）
+    /// 与感染率上限（体质 1 时 `0.40 × m_p ≤ 0.44`）⇒ ⑧-a 与 ⑧-c 都**不命中**、不额外消费随机数。
+    /// </summary>
+    private const double NeutralRoll = 0.5d;  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
     [Fact]
     public void 同种子同初始状态同月份序列两次运行逐位相同()
@@ -168,59 +174,91 @@ public class DeterminismTests
     [Fact]
     public void 未命中的计息节点不消耗随机数()
     {
-        // 同一取值队列：命中计息的那次会取走第 2 个取值，未命中的那次把它留给了下个月的米价。
-        var due = RunMonthsFrom(December, 2, InterestPolicy.InterestPeriodMonths - 1, 0.0d, 1.0d, 0.0d);
-        var missed = RunMonthsFrom(December, 2, 0, 0.0d, 1.0d, 0.0d);
+        // 取值一律走中性常量（固定替身用尽后恒返 NeutralRoll）：⑧-a 提亲骰与 ⑧-c 感染骰都不命中、
+        // 不额外消费，于是两次同构运行的逐月消费次数只差那一个「计息 roll」。
+        var due = RunMonthsFrom(December, 2, InterestPolicy.InterestPeriodMonths - 1);
+        var missed = RunMonthsFrom(December, 2, 0);
 
-        // 首月：两侧的米价都取第 1 个取值；只有命中侧计息（本金 × 区间上限）。
-        Assert.Equal(GrainPricePolicy.Walk(GrainPricePolicy.Initial, 0.0d), due.Results[0].GrainPriceIndexAfter);
-        Assert.Equal(GrainPricePolicy.Walk(GrainPricePolicy.Initial, 0.0d), missed.Results[0].GrainPriceIndexAfter);
-
+        // 首月：两侧的米价都取同一个中性取值；只有命中侧计息（本金 × 区间上限）。
+        Assert.Equal(GrainPricePolicy.Walk(GrainPricePolicy.Initial, NeutralRoll), due.Results[0].GrainPriceIndexAfter);
+        Assert.Equal(GrainPricePolicy.Walk(GrainPricePolicy.Initial, NeutralRoll), missed.Results[0].GrainPriceIndexAfter);
         Assert.True(due.Results[0].LoanInterestAccrued.IsPositive);
         Assert.Equal(Money.Zero, missed.Results[0].LoanInterestAccrued);
 
-        // 次月：命中侧消费了第 3 个取值，未命中侧消费的是被让出来的第 2 个取值——两者必然不同。
-        Assert.Equal(
-            GrainPricePolicy.Walk(due.Results[0].GrainPriceIndexAfter, 0.0d),
-            due.Results[1].GrainPriceIndexAfter);
-        Assert.Equal(
-            GrainPricePolicy.Walk(missed.Results[0].GrainPriceIndexAfter, 1.0d),
-            missed.Results[1].GrainPriceIndexAfter);
-        Assert.NotEqual(due.Results[1].GrainPriceIndexAfter, missed.Results[1].GrainPriceIndexAfter);
+        // 未命中的节点 MUST 消费 0 次：命中侧首月恰多 1 次，次月两侧回到相同槽位。
+        Assert.Equal(missed.DoublesPerMonth[0] + 1, due.DoublesPerMonth[0]);
+        Assert.Equal(missed.DoublesPerMonth[1], due.DoublesPerMonth[1]);
 
-        // 「是否命中」只由 Loan.MonthsSinceInterest 决定，与随机取值无关：
-        // 同一个月序列 + 同一计时 → 两次**不同种子**的运行消耗的随机数个数相同。
-        Assert.Equal(
-            CountDoubles(December, 6, InterestPolicy.InterestPeriodMonths - 1, Seed),
-            CountDoubles(December, 6, InterestPolicy.InterestPeriodMonths - 1, Seed + 1));
+        // ⚠️ 旧口径「同月序 + 同计时 ⇒ 不同种子消耗的随机数总个数相同」在 007 起**作废**：
+        // ⑧-c 的感染命中会额外消费一次「程度骰」，不同种子会走进不同的命中路径。
+        // 「计息与否只由 Loan.MonthsSinceInterest 决定」已由上面的「命中侧恰多 1 次」直接证明
+        // （常量取值下命中侧与未命中侧的其余槽位逐月相同）。
     }
 
     [Fact]
     public void 随机消费次序固定为米价储蓄利率再计息()
     {
         // 007 起 ⑧（人口与健康推进）会按在册成员数量消费随机数，故本用例一律用**常量随机源**
-        // （FixedRandomService 用尽后恒返回 0.5）消去取值相关性：0.5 高于感染率上限、低于提亲概率，
+        // （FixedRandomService 用尽后恒返回 0.5）消去取值相关性：0.5 高于感染率上限、高于提亲概率，
         // 于是 ⑧ 的消费次数只由「在册且 AgeAt>=3 的人数」决定，逐月可比。
-        // 已结清的贷款：任何月份都不进入计息节点，故随机槽位只有米价与 1 月的储蓄利率。
-        var settled = FixedCounts(January, 12, settings: SettledLoan());
+        // 家族刻意取「单成员 + 寿数远超窗口 + 正常体质」：⑧-f 的寿终与 ⑧-c 的因病归零都不会在窗口内
+        // 减员——否则成员数变化会盖住本用例要测的零随机子步（年龄档跨越每年都在发生）。
+        var settled = SingleMemberCounts(January, 12, due: false);
 
         for (var index = 1; index < settled.Count; index++)
         {
             // 相对口径：MUST NOT 写死绝对次数（007 起 ⑧ 的槽位随成员数变化）；
             // 只断言「1 月恰比其余月份多一次储蓄利率 roll」。
             // 这也一并覆盖 ⑧-d（成长）/ ⑧-g（死亡落账）/ ⑧-h（家主继任）三类**零随机**子步：
-            // 它们若消费了随机数，12 个月里逐月的消费次数就不再相等（年龄档跨越每年都在发生）。
+            // 它们若消费了随机数，12 个月里逐月的消费次数就不再相等。
             Assert.Equal(settled[0] - 1, settled[index]);
         }
 
         // 首次结算月即命中计息节点：该月比同月未命中者恰多消费一次
         // （次序为米价 → 储蓄利率 → 计息利率，故计息利率排在 ⑧ 之前）。
-        var due = FixedCounts(January, 2, settings: DueLoan());
+        var due = SingleMemberCounts(January, 2, due: true);
 
         Assert.Equal(settled[0] + 1, due[0]);
 
         // 次月未命中计息节点，两侧回到相同槽位。
         Assert.Equal(settled[1], due[1]);
+    }
+
+    /// <summary>
+    /// 单成员家族（40 岁、寿数 70、体质 = <see cref="AttributePolicy.HealthMean"/>）在常量随机源下的逐月
+    /// <c>NextDouble()</c> 次数；<paramref name="due"/> 决定首月是否恰逢贷款计息节点。
+    /// </summary>
+    private static List<int> SingleMemberCounts(GameDate from, int months, bool due)
+    {
+        var member = RulesHarness.Member(1, Gender.Male, 40);
+        member.Health = (int)AttributePolicy.HealthMean;
+        var family = RulesHarness.FamilyOf(member);
+        var treasury = new Treasury(Money.FromGuan(2_000m));
+
+        if (due)
+        {
+            treasury.Loan.Principal = Money.FromGuan(1_000m);
+            treasury.Loan.MonthsSinceInterest = InterestPolicy.InterestPeriodMonths - 1;
+        }
+
+        var economy = new FamilyEconomy(
+            LivingCostTable.InitialStandard,
+            new GrainPriceIndex(GrainPricePolicy.Initial),
+            treasury,
+            new Holdings());
+        var state = new GameState(StateId, from, Difficulty.Normal, Origin.Scholar, family, economy);
+        var random = new CountingRandomService(new FixedRandomService());
+        var engine = new MonthlySettlementEngine(random, new GameStateClock(state), new FixedNameGenerator());
+        var counts = new List<int>();
+
+        for (var index = 0; index < months; index++)
+        {
+            var before = random.DoublesRequested;
+            engine.Settle(state);
+            counts.Add(random.DoublesRequested - before);
+        }
+
+        return counts;
     }
 
     /// <summary>常量随机源下的逐月 <c>NextDouble()</c> 次数（次序断言的直接观测口，取值无关）。</summary>
@@ -635,6 +673,13 @@ public class DeterminismTests
         var examinee = RulesHarness.Member(1, Gender.Male, 20);
         var spouse = RulesHarness.Member(2, Gender.Female, 20);
         var second = RulesHarness.Member(3, Gender.Male, 22);
+
+        // 夹具成员 MUST 有正常体质：RulesHarness.Member 默认不设 Health（为 0），而 007 起 ⑧-c 会让
+        // 0 体质者在患病当月就归零死亡 ⇒ 服刑者被划出在册成员 ⇒ PrisonerCount 恒为 0、链路断在「服刑」段。
+        examinee.Health = (int)AttributePolicy.HealthMean;
+        spouse.Health = (int)AttributePolicy.HealthMean;
+        second.Health = (int)AttributePolicy.HealthMean;
+
         var family = RulesHarness.FamilyOf(examinee, spouse, second);
         family.Marry(examinee.Id, spouse.Id);
 

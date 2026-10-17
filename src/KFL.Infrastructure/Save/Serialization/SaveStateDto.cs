@@ -130,6 +130,12 @@ public sealed class FamilyDto
     [JsonPropertyName("punishmentJournal")]
     [JsonRequired]
     public PunishmentJournalDto PunishmentJournal { get; set; } = new();
+
+    /// <summary>家族生命周期簿记（007-family-lifecycle；契约二十 §5、data-model §3.1）。</summary>
+    [Key(8)]
+    [JsonPropertyName("lifecycle")]
+    [JsonRequired]
+    public FamilyLifecycleDto Lifecycle { get; set; } = new();
 }
 
 /// <summary>
@@ -313,4 +319,10 @@ public sealed class PersonDto
     [JsonPropertyName("dianShiBribeCount")]
     [JsonRequired]
     public int DianShiBribeCount { get; set; }
+
+    /// <summary>是否延请名师（007-family-lifecycle；影响 ⑧-d 的学业加成与月费）。</summary>
+    [Key(28)]
+    [JsonPropertyName("isTutoredByMaster")]
+    [JsonRequired]
+    public bool IsTutoredByMaster { get; set; }
 }

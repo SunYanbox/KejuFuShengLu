@@ -47,10 +47,13 @@ public class SettlementEngineTests
         var state = NewState(RulesHarness.FamilyOf(RulesHarness.Member(62, Gender.Male, 40)));
 
         // US3 接入后，1 月的结算在「米价」之后还要消费 1 次「当年储蓄利率」roll
-        // （契约三 §4 的固定次序：米价 → 储蓄利率（仅 1 月）→ 贷款计息利率），
-        // 故首个取值的槽位依次是：米价（1 月）、储蓄利率（1 月）、米价（2 月）、米价（3 月）。
+        // （契约三 §4 的固定次序：米价 → 储蓄利率（仅 1 月）→ 贷款计息利率）；
+        // 007 起每月末尾还要消费 1 次 ⑧-a 提亲骰（成人未婚者才可能命中，本夹具无此人 ⇒ 恰 1 次）
+        // 与 1 次 ⑧-c 感染骰（唯一成员 40 岁、未命中 ⇒ 恰 1 次）。
+        // 故首个取值的槽位依次是：米价（1 月）、储蓄利率（1 月）、⑧-a（1 月）、⑧-c（1 月）、
+        // 米价（2 月）、⑧-a（2 月）、⑧-c（2 月）、米价（3 月）、⑧-a（3 月）、⑧-c（3 月）。
         var engine = new MonthlySettlementEngine(
-            new FixedRandomService(0.0d, 0.5d, 0.999_999d, 0.0d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
+            new FixedRandomService(0.0d, 0.5d, 0.5d, 0.5d, 0.999_999d, 0.5d, 0.5d, 0.0d, 0.5d, 0.5d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         var first = engine.Settle(state);
 

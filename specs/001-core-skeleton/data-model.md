@@ -192,8 +192,10 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    `AppliedExam`（005 新增）、`JieShiBribeCount`（006 新增）、`ShengShiBribeCount`（006 新增）、
    `DianShiBribeCount`（006 新增）——均为只读属性，**不存在公开 setter**
    （FR-005、FR-007、FR-008、§4.4；005 FR-023；006 契约十六）。
-   **`Person` 自持的可写属性**只有十个：`Name`、`Study`、`Health`、`Rank`、`Merit`、
-   `Status`、`Timers`、`Occupation`、`MonthsInOffice`（003 新增）、`EntryTrack`（003 新增）。
+   **`Person` 自持的可写属性**只有十一个：`Name`、`Study`、`Health`、`Rank`、`Merit`、
+   `Status`、`Timers`、`Occupation`、`MonthsInOffice`（003 新增）、`EntryTrack`（003 新增）、
+   `IsTutoredByMaster`（007 新增，布尔标志「是否延请名师」，与 `TutorFee` 支出同源；复原走
+   `internal RestoreTutoring(bool)`，唯一程序集面为 `InternalsVisibleTo("KFL.Infrastructure")`）。
    分界依据：凡「出生即定」或「跨实体一致性」的字段一律只读——前者如 `Gender` /
    `Talents` / `Lifespan`，后者如 `SpouseId` / `FatherId` / `MotherId` / `Generation`
    （唯一入口在 `Family`，见 §2.2 不变量 4）。
@@ -223,8 +225,16 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    （服刑释放另按 `Rank is not null` 官阶 +1）；「计时非空 ⟺ 状态位为真」这一一致式由 006
    首次在产品路径上双向兑现；服刑期间待阙计时/在职计时/政绩**暂停**（006 FR-020；
    [契约十六 §1](../006-bribery-punishment/contracts/punishment.md)）。
+   **007 引用注**：007 新增的两项计时（`IllnessSeverityBasisPoints` 0~10000、`TreatmentRemainingMonths`
+   0~3）同款遵守「计时非空 ⟺ 状态位为真」：`Ill` 位 ⇔ `IllnessSeverityBasisPoints != null`；
+   `TreatmentRemainingMonths` 仅在患病期内非空、且**宽限月不落字段**（确诊当月不付药费）。
+   `Person.Status` / `Person.Timers` 的交叉校验已按此双向落地（「先置位、后写计时；先清计时、后清位」）。
+   患病与饥馑的体质扣减、成长与遗忘、寿终与夭折由 007 的 ⑧-c~⑧-f 月度驱动，007 是这些字段的
+   首个产品生产者与消费者（007 FR-041~FR-044）。
 5. **年龄不落裸字段**：`AgeAt(GameDate)` = `BirthDate.AgeInYearsAt(at)`（R-07）。
 6. 出生时辰与「已亡」时间不落字段：§4.1 未列，且 §12.1 的归档排序属界面轨 U2。
+   **007 引用注**：死因（`DeathCause`：寿终/病亡/饥馑/夭折/分娩）同样**不落 `Person` 字段、不落账本**，
+   只承载于**当月**的 `SettlementResult.Lifecycle.Deaths` 事实段（007 FR-043、[data-model §3.1](../007-family-lifecycle/data-model.md)）。
 7. `DegreeHistory` 按 `ChangedAt` **非降序**（追加式）；既有记录 MUST NOT 被改写或删除。
    `CurrentDegree` / `CurrentPlacement` MUST 由末条派生，MUST NOT 另存独立字段——否则
    §7.4 的连坐降级会让两处数据失配（见 1.5）。
@@ -244,8 +254,11 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 **明确不含**：`ChildIds`（由 `Family` 派生，见 R-08）；`IsShiIdentity`（仕身份为家族级，
 见 2.2）；`Origin`（出身为存档级，见 2.3）；逐月收支记录（R-16：账本归 `GameState`，
 属阶段②，挂到实体上会让永久归档的成员无界增长）。
-`Lifespan` **只约束下界 `>= 0`，没有上界**——天命寿数的分布（§4.2）属逻辑轨 ⑦，001 MUST NOT
+`Lifespan` **只约束下界 `>= 0`，没有上界**——天命寿数的分布（§4.2）**已由 007（⑦）交付**
+（`AttributePolicy.NextLifespan`，均值 60.7/62.3、σ = 8，只 clamp 下界），001 MUST NOT
 自设上限；「无上界」是有意留白，不是遗漏（曾因只写下界而被读成设计缺失）。
+007 交付后，本节的「成长、衰老、疾病、死亡的年龄线与概率不含」旧口径一并作废：
+年龄档跨越（⑧-d）、患病与病程（⑧-c）、饥馑体质损失（⑧-e）、寿终与夭折（⑧-f）均为产品路径。
 
 ### 2.2 `Family`（家族）
 
@@ -301,6 +314,11 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    立刻合法」；任何经 `Person.Status` 的公开写入通道自行归档在任家主的调用方，会让该不变量
    暂时失效——这是**已知且已登记**的阶段边界，不是隐藏缺陷。
    `BoughtCollateralGeneration` 在被调用时以 `HeadId` 的当前指向为准（不另行判活在册性）。
+   **007 落实（豁免失效）**：007（⑦）交付 `HeadSuccession` 并把继任判定接入月度结算的 **⑧-h**——
+   每月最多一次，在 ⑧-g 把死亡落到 `Status`/归档**之后**取候选并 `SetHead`；无候选时置 `null`
+   并标记「家主空缺」。故自 007 起「任内被归档后月底前修正」已是产品路径：
+   ⑦ **仍未**引入归档回调或事件机制，靠月度驱动的幂等式修正兑现（007 FR-041、FR-046；
+   [007 data-model §3.5](../007-family-lifecycle/data-model.md)）。
 7. 辈分的指定与变更入口唯一在 `Family`（同第 4 条）：血亲成员的辈分一经确定 MUST NOT
    变更；外来者（娶入配偶、§9.5 买来的旁系）的辈分 MUST 在其尚无子女时落定（§4.4），
    且**总共只变动两次**——落定一次 + 首次家族内成婚时对齐配偶辈分一次，此后 MUST NOT 再变更。
@@ -308,6 +326,9 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 **§17 裁决**: `HasShiStatus` 建在家族级而非成员级——§10.2 的效果（录取率 ×1.1、婚嫁规格、
 贷款划扣 20%）在本项目「一存档一家族」的模型下由家族统一承载；嫁入配偶的差异在逻辑轨 ⑦
 真正实现该效果时再细分，本阶段不预置按人标记。
+**007 落实**：⑦（007）**刻意未**按人细分仕身份——婚嫁规格、买功名婚姻与榜下捉婿的压力权重
+一律只读家族级 `HasShiStatus` 与成员级 `Rank`（[007 contracts/marriage-birth.md §1](../007-family-lifecycle/contracts/marriage-birth.md)），
+「嫁入配偶的仕身份差异」由「配偶自身的 `Rank` / 功名快照」表达，MUST NOT 新增家族声望或按人仕标记。
 
 **005 落实（首个生产者）**: `Family.HasShiStatus` 由科举季步（`ExamSeasonRunner`）在家族
 产生**首个进士**的当月置 `true`——幂等，已为 `true` 时 no-op，快照仅以
@@ -316,8 +337,10 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 存档复原路径。
 
 **家主的分期**: `Family.HeadId` 进 001——它在 001 内**有真实消费者**：§4.4 的辈分规则
-要求「买来的旁系辈分 = 家主辈分 + 1」。但**继任判定不进 001**：它由死亡推进触发，属
-逻辑轨 ⑦。001 只保证该字段存在、且「为 `null` 或指向在册成员」这一不变量可被校验。
+要求「买来的旁系辈分 = 家主辈分 + 1」。**继任判定不进 001**：它由死亡推进触发，属
+逻辑轨 ⑦——**已由 007 交付**（`HeadSuccession` + 月度结算 ⑧-h；四档候选与排序见
+[007 contracts/illness-lifespan.md §7.4](../007-family-lifecycle/contracts/illness-lifespan.md)）。
+001 只保证该字段存在、且「为 `null` 或指向在册成员」这一不变量可被校验。
 经核验，§4.4 的继任规则所需数据 001 已**全部提供**，无需为此再加字段：`Gender`、
 `BirthDate`（年龄）、`ChildrenOf`（子代数量与排序）、`Generation`、`Status`。
 
@@ -409,5 +432,22 @@ FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 to
 > `PunishmentAdvance.Run(state)` 在月末结算**第③步**逐月递减服刑/禁考/禁升计时，并在计时归零时
 > 清掉对应状态位（服刑释放另按 `Rank is not null` 官阶 +1）；006 是这些计时的首个产品生产者与
 > 递减者，见 [契约十六 §1](../006-bribery-punishment/contracts/punishment.md) 与 006 FR-020。
+
+> **007 后记（2026-10-17）**：原列于本句的**「患病与饥馑流转」「已亡归档判定」「外嫁归档」三项已由 007 交付**，
+> 全部落在月末结算的**第 ⑧ 步（人口与健康推进）**，且**接在 ⑦ 之后、⑨ 科举季之前**：
+>
+> | 状态转移 | 落点 | 触发与口径 |
+> | --- | --- | --- |
+> | 患病（`Ill` 位 + 程度/疗程两项计时） | ⑧-c `IllnessAdvance.Run` | 按体质线性插值的感染率逐人判定；命中当月经 ⑧-g 之外的路径直接置位；清除后同月不再有后续随机消费 |
+> | 分娩（新生儿注册）/ 分娩死亡 | ⑧-b `Childbirth.Run` | 消费上一月排入的待产记录；母亲死亡只登记死因，`Status` 由 ⑧-g 统一落 |
+> | 饥馑体质损失与饥馑死亡 | ⑧-e `FamineHealth.Run` | 只读 `FamineStage.Severe`；救济期与未进入饥馑时不减不掷 |
+> | 成长与遗忘 | ⑧-d `GrowthAdvance.Run` | 零随机：学业增减、体质自然恢复 |
+> | 寿终与夭折 | ⑧-f `LifespanAdvance.Run` | `AgeAt >= Lifespan` ⇒ 寿终；`AgeAt < 3` 的生日月掷夭折 |
+> | 已亡归档 | ⑧-g `DeathSettlement.Run` | 当月**唯一**置 `Deceased` 的地方；幂等，死因不落 `Person` 字段 |
+> | 外嫁归档 | `LifecycleEntry.TryMatchmake`（⑨ 之外的动作入口） | 置 `MarriedOut`、进 `ArchivedMembers`、不计口、不可科举/指派读书；数据保留供 006 连坐追及 |
+> | 家主继任 | ⑧-h `HeadSuccession` | 每月最多一次，在 ⑧-g 之后取四档候选并 `SetHead`；无候选 ⇒ `null`（不构成绝嗣） |
+>
+> 死因（`DeathCause`）只承载于**当月**的 `SettlementResult.Lifecycle.Deaths`；007 已在本文件的
+> 第 2 节不变量 4/6 分别追加了「`Ill` 位 ⇔ 程度计时」与「任内归档后由 ⑧-h 月度修正」两处引用注。
 
 唯一在本阶段成立的「转移」是构造期校验失败即拒绝——不产生非法档案，而不是先建再修。
