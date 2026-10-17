@@ -273,6 +273,12 @@ public static class LifecycleEntry
 ③`PaymentPrimitive.CanCover` → ④支付（`PaymentPrimitive.Pay`，恒不转贷款）→ ⑤掷随机 →
 ⑥写状态/账本 → ⑦返回结果。
 
+**婚嫁金额的支付能力校验（2026-10-17 追加，规格书 §17 裁决 Q7 / FR-052）**：
+`TryMatchmake` 在 ⑧「婚嫁金额」算出后追加**⑧a**：`CanCover`（娶入 = 对方阶层聘礼、嫁出 = 本家阶层嫁妆）
+不通过 ⇒ 整单失败（`InsufficientFunds`、不成婚、无婚嫁条目、状态零变更、**已付费用不退**、不转贷款）；
+`RespondToProposal` 的接受路径在支付买功名费之后、`SettleAmounts` 之前做同款校验，
+失败时**清空提议**（名额已消耗）。`SettleAmounts` 因此恒不产生贷款。
+
 ### 3.4 `Family/LifecycleQueries.cs` —— 纯查询面（FR-044/FR-045）
 
 ```csharp

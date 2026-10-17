@@ -450,7 +450,12 @@ T048 IllnessTests.cs   T049 LifespanTests.cs   T050 FamilyLifecycleTests.cs
 **本特性接管的残句**：上列三条「阶段⑧」指本特性交付的第 ⑧ 步（人口与健康推进）——由 007 交付，
 原条目不回改（它们记录当时的阶段事实）。
 
-**待裁决项（同批登记；裁决前 MUST NOT 视为已定，也不得据此新增断言）**：基础聘礼 / 嫁妆在
-「可付额不足」时的处置。当前实现（`src/KFL.Rules/Family/LifecycleEntry.cs:270-305` 的 `SettleAmounts`）
-对 `BetrothalGiftPaid` / `DowryPaid` 直接 `PaymentPrimitive.Pay`，缺口会计入 `Loan.Principal`；
-规格书 §5.4 与 §17 已登记该未决项与三项备选。**这是本特性唯一的未决口径**。
+**原待裁决项已裁决（2026-10-17，规格书 §17 裁决块 Q7 / §5.4）**：基础聘礼 / 嫁妆在
+「可付额不足」时取**备选②整单失败且托媒费不退**。实现落点：`src/KFL.Rules/Family/LifecycleEntry.cs`
+的 `TryMatchmake` ⑧a 段与 `RespondToProposal` 接受路径的支付能力校验（`PaymentPrimitive.CanCover`
+不通过即整单失败：不成婚、无婚嫁条目、状态零变更、`LifecycleRejectReason.InsufficientFunds`、
+托媒费与买功名费不退、MUST NOT 转贷款；接受提议时提议被清空 = 名额已消耗）；
+`SettleAmounts` 的文档注释已同步为「调用方 MUST 先校验，故此处 `Pay` 恒不产生贷款」。
+断言在 `tests/KFL.Tests/Rules/MarriageTests.cs` 的三例（`聘礼付不起时整单失败且托媒费不退` /
+`嫁妆付不起时整单失败且不外嫁归档` / `接受提亲时付不起聘礼则整单失败且提议已消耗`，
+另含「恰好付得起照常成婚」的边界断言）。至此本特性**不再有未决口径**。

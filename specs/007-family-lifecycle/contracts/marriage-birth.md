@@ -50,7 +50,8 @@
 ⑥ 抽对方阶层（1 次 NextDouble 的分段映射；三档权重见 §5）
 ⑦ 初始化候选者：年龄（1 次 Next）→ 性别（1 次 Next）→ 天赋 ×4（4×2 次 NextDouble）
    → 学业（2 次）→ 体质（2 次）→ 寿数（2 次）→ 姓名（INameGenerator）
-⑧ 婚嫁金额（§5）→ Family.Marry（:245）→ 账本条目 → 事件条目 MarriageFormed
+⑧ 婚嫁金额（§5）→ ⑧a CanCover(我方应付额)（不足 ⇒ 整单失败、不退费；§5 的支付能力校验）
+   → Family.Marry（:245）→ 账本条目 → 事件条目 MarriageFormed
 ⑨ 若方向为「嫁出」：归档（§6）
 ```
 
@@ -93,6 +94,8 @@
     娶入只记 `BetrothalGiftPaid`（支出对方阶层聘礼）与 `DowryReceived`（收入对方阶层嫁妆），见 §5。
   - 捉婿：只记 `DowryReceived`（对方支付的捉婿金额）。
   - 买功名婚姻：额外 `DegreeMarriageFeePaid`（§7）。
+  - **支付能力校验**（§5）：我方应付额（娶入 = 提议快照的 `BetrothalGift`、嫁出 = `Dowry`）不足
+    ⇒ `Accepted = false` + `InsufficientFunds`、**提议被清空（名额已消耗）**、不成婚、无婚嫁条目。
 
 ## 5. 婚嫁金额表（SC-007 的 24 格）
 
@@ -113,6 +116,20 @@
 
 ⇒ 24 格 = 3 阶层 × 2 方向 × 4 支出系数（0.6 / 1.0 / 1.1 / 1.3）。断言在
 `tests/KFL.Tests/Rules/MarriageTests.cs`，逐格 `Assert.Equal`。
+
+**支付能力校验（§17 裁决 2026-10-17 Q7，规格书 §5.4）**：对方阶层确定后，「我方应付额」
+（**娶入** = 对方阶层聘礼 `BetrothalGiftPaid`；**嫁出** = 本家阶层嫁妆 `DowryPaid`）MUST 先经
+`PaymentPrimitive.CanCover` 校验；不足 ⇒ **整单失败**：
+
+- `LifecycleOutcome.Accepted = false` + `LifecycleRejectReason.InsufficientFunds`；
+- **不成婚**（不写 `SpouseId`、候选者不入册、嫁出不置 `MarriedOut`）、**无婚嫁条目**、成员状态零变更；
+- **已付的托媒费与买功名费不退还**（`Outcome.Amount` 如实体现在此前的支付额上）；
+- MUST NOT 转贷款（与生育费、买人口价、药费、名师学费同一口径）；
+- `LifecycleEntry.RespondToProposal` 的接受路径同理：校验不通过则**提议被清空**（名额已消耗）。
+
+⇒ `SettleAmounts` 内部的 `PaymentPrimitive.Pay` 恒不会把缺口转成本金；查询面
+`LifecycleQueries.MatchmakeFeasibility` 的 `BetrothalGift*` / `Dowry*` 只作**金额预览**
+（可付性由调用方拿 `Treasury.Cash + Savings` 自行比较，`Available` 仍只表达资格）。
 
 **买功名婚姻的额外项**（FR-017/FR-018）：
 
