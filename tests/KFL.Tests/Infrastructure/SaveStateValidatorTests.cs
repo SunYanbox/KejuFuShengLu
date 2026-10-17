@@ -10,8 +10,8 @@ using Xunit;
 namespace KFL.Tests.Infrastructure;
 
 /// <summary>
-/// 第 ⑩ 步「十一条一致性校验」的验收测试（004-save-system；契约十 §6 第 ⑧ 步、001 R-04；
-/// 006-bribery-punishment 追加第 11、12 条）。
+/// 第 ⑩ 步「一致性校验」的验收测试（004-save-system；契约十 §6 第 ⑧ 步、001 R-04；
+/// 006-bribery-punishment 追加第 11、12 条；007-family-lifecycle 追加第 13~15 条）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -176,6 +176,153 @@ public sealed class SaveStateValidatorTests
 
         AssertInvalidStructure(dto, dto.Id);
     }
+
+    /// <summary>R-04 第 4 条（007 不变量 13）：有在册男性时家主 MUST NOT 为空。</summary>
+    /// <remarks>
+    /// 校验器承重的一条：`SetHead(null)` 在 Core 侧合法（只在「再无在册男性」时才该这么写），
+    /// 故「明明还有男性却家主空缺」只有本校验能发现。
+    /// </remarks>
+    [Fact]
+    public void 有在册男性而家主为空时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.HeadId = null;
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 5 条（007 不变量 1）：患病位与疾病程度同生同灭。</summary>
+    [Fact]
+    public void 患病位为真而疾病程度为空时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Members[0].Status |= StatusFlag.Ill;
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 5 条（007 不变量 1）：疾病程度非空时患病位 MUST 为真。</summary>
+    [Fact]
+    public void 疾病程度非空而患病位为假时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Members[0].Timers.IllnessSeverityBasisPoints = 500;
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 5 条（007 不变量 2）：疗程只在患病时非空。</summary>
+    [Fact]
+    public void 疗程非空而患病位为假时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Members[0].Timers.TreatmentRemainingMonths = 2;
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 13 条：待应答提议的我方成员 MUST 是家族成员。</summary>
+    [Fact]
+    public void 提议指向家族外成员时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Lifecycle.Proposal = ProposalFor(ForeignId);
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 13 条：待应答提议的我方成员 MUST NOT 是已身故者。</summary>
+    [Fact]
+    public void 提议指向已身故成员时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Members[0].Status = StatusFlag.Deceased;
+        dto.Family.Lifecycle.Proposal = ProposalFor(dto.Family.Members[0].Id);
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 14 条：待分娩记录 MUST ⊆ 已申请夫妇。</summary>
+    [Fact]
+    public void 待产记录不在已申请夫妇里时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Lifecycle.PendingBirths =
+        [
+            new PendingBirthDto
+            {
+                HusbandId = dto.Family.Members[0].Id,
+                WifeId = ForeignId,
+                AppliedYear = 1,
+                AppliedMonth = 1,
+            },
+        ];
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 14 条：已申请夫妇的配偶关系 MUST 双向一致。</summary>
+    [Fact]
+    public void 已申请夫妇的配偶关系非双向时报InvalidStructure()
+    {
+        var dto = Baseline();
+        var wife = DeepClone(dto.Family.Members[0]);
+        wife.Id = Guid.Parse("33333333-3333-4333-8333-333333333333");
+        wife.Gender = Gender.Female;
+        dto.Family.Members.Add(wife);
+
+        var couple = new CoupleKeyDto { HusbandId = dto.Family.Members[0].Id, WifeId = wife.Id };
+        dto.Family.Lifecycle.AppliedBirthCouples = [couple];
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 15 条：当年购人计数 MUST 与账本里的 <c>PersonPurchase</c> 条数一致。</summary>
+    [Fact]
+    public void 当年购人计数与账本不符时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Lifecycle.PurchaseYear = 1;
+        dto.Family.Lifecycle.PurchaseCount = 1;
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>R-04 第 15 条：购人年份 MUST NOT 超过当年。</summary>
+    [Fact]
+    public void 购人年份超过当年时报InvalidStructure()
+    {
+        var dto = Baseline();
+        dto.Family.Lifecycle.PurchaseYear = 2;
+
+        AssertInvalidStructure(dto, dto.Id);
+    }
+
+    /// <summary>构造一条指向 <paramref name="memberId"/> 的合法待应答提议（19 个字段全给值）。</summary>
+    /// <param name="memberId">我方成员标识。</param>
+    /// <returns>提议 DTO。</returns>
+    private static MarriageProposalDto ProposalFor(Guid memberId) => new()
+    {
+        Kind = MarriageProposalKind.Matchmaker,
+        OurMemberId = memberId,
+        CandidateName = "王氏",
+        CandidateGender = Gender.Female,
+        CandidateAge = 18,
+        TalentAgriculture = 50,
+        TalentCommerce = 50,
+        TalentScholar = 50,
+        TalentCraft = 50,
+        CandidateStudy = 50,
+        CandidateHealth = 60,
+        CandidateLifespan = 60,
+        CandidateDegree = DegreeLevel.BaiShen,
+        Class = MarriageClass.Commoner,
+        BetrothalGift = 10_000m,
+        Dowry = 20_000m,
+        ProposedYear = 1,
+        ProposedMonth = 1,
+        CandidatePlacement = null,
+    };
 
     /// <summary>干净基线：把 <c>PlainState</c> 投影成 DTO，再逐条篡改。</summary>
     private static SaveStateDto Baseline() => SaveStateMapper.ToDto(SaveFixtures.PlainState());

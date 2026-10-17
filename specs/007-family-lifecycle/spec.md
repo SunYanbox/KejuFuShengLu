@@ -504,7 +504,9 @@
   `specs/006-bribery-punishment/spec.md:47-53`）：每次尝试金额 = `5 贯 × 支出系数`，MUST 由
   **现银 + 储蓄**全额覆盖，不足即**拒绝**（状态不变、随机消费 0、MUST NOT 转贷款、MUST NOT 记 0 金额条目）；
   成功率 50%（单次 `NextDouble` 判定）；成功即按 FR-014 的阶层加权随机生成对象并**当场成婚**。
-  失败**不退费**、MUST NOT 产生对象与婚配条目；同一成员同一月内至多一次、失败后下月可再试（Assumptions）。
+  失败**不退费**、MUST NOT 产生对象与婚配条目；同一成员同一月内至多一次、失败后下月可再试（Assumptions）——
+  当月名额 MUST 落持久状态（`FamilyLifecycleState.MatchmakeApplications`，只在**扣款成功**后追加；
+  付款被拒不占名额；跨月清理发生在 ⑧-a 入口）。
 - **FR-014**: 婚配对象的**阶层抽样**（§9.1「对方阶层按**家族声望**/资产加权随机」；规格书未定义「声望」，
   按 Q1 裁决**只按家族总资产分档、MUST NOT 新增「声望」属性**）：总资产基数 MUST 复用 006 罚金所用的
   **同一「总资产基数」口径**（`specs/006-bribery-punishment/`，MUST NOT 另立新定义），三档与权重为
@@ -597,10 +599,11 @@
 - **FR-025**: **分娩死亡**：母亲 MUST 掷 **5%**（简单 2.5% / 地狱 7%，按 `GameState.Difficulty` 分档）；
   命中则母亲在**同月**的 ⑧-g 子步走死亡结算（死因「分娩」）；**新生儿 MUST 照常出生**
   （规格书未规定婴儿随母死亡）；母亲死亡 MUST 触发其配偶的 `SpouseId` 置空。
-- **FR-026**: **夭折**（§9.4「婴儿三岁内夭折率 10%（简单 5% / 地狱 12%）」，粒度按 Q3 裁决）：
-  **每年掷一次、出生当月即为第一次** ⇒ 判定时点为「出生当月（⑧-f 子步，与 ⑧-b 的出生同一月但不同子步）、
-  满 1 岁生日月、满 2 岁生日月」**共 3 次**，每次 **10%**（简单 5% / 地狱 12%，按 `GameState.Difficulty`
-  分档；单次 `NextDouble`）；**满 3 岁后 MUST NOT 再判定**；三次累计夭折率 ≈ 27.1%。
+- **FR-026**: **夭折**（§9.4「婴儿三岁内夭折率 10%（简单 5% / 普通 10% / 困难 11% / 地狱 12%）」，
+  粒度按 Q3 裁决）：**每年掷一次、出生当月即为第一次** ⇒ 判定时点为「出生当月（⑧-f 子步，与 ⑧-b 的出生同一月但不同子步）、
+  满 1 岁生日月、满 2 岁生日月」**共 3 次**，每次按难度分档 **简单 5% / 普通 10% / 困难 11% / 地狱 12%**
+  （`ChildbirthPolicy.InfantDeathFactor`，按 `GameState.Difficulty` 读；单次 `NextDouble`）；
+  **满 3 岁后 MUST NOT 再判定**；三次累计夭折率 ≈ 27.1%（普通档 `1 − 0.9³`）。
   命中即置 `Deceased`、进族谱归档（§9.4「夭折者同样入族谱归档」）、死因「夭折」、
   从 FR-026 的后续判定中移除；夭折者 MUST 计入「累计出生（含夭折）」的可聚合计数
   （§14.1「百子千孙」口径，经事件类账本条目聚合，MUST NOT 另存汇总值，§12.3）。
@@ -759,9 +762,11 @@
   ① `Person` 的「延名师」标志；② `StatusTimers` 的**疾病程度 `s` 与疗程剩余月数**（FR-029 / FR-030）；
   ③ `Family` 的本年度买人口计数与其所属年份；④ 待分娩记录（夫妇 + 申请年月）与
   本年度已申请生育的夫妇集合；⑤ 待应答提亲提议（含榜下捉婿，FR-019 / FR-020）；
+  ⑥ **当月托媒申请**（成员 + 年月；FR-013 的「同一成员同一月至多一次」载体，T093）；
   `SaveFileFormat.Version` MUST 由 **3 升至 4**（`specs/004-save-system/contracts/save-format.md:150`），
   并同步 `PersonDto`（现 28 键）、`FamilyDto`（现 8 键）、`StatusTimersDto`（现 4 键，
-  `save-format.md:77/:78/:80`）的键表与 `:151-153` 的成员数常量；
+  `save-format.md:77/:78/:80`）与 007 新增的 `FamilyLifecycleDto`（**7 键**，含 `matchmakeApplications`）
+  的键表与 `:151-153` 的成员数常量（另加 `FamilyLifecycleMemberCount = 7` / `MatchmakeApplicationMemberCount = 3`）；
   MUST NOT 引入旧格式迁移路径（沿用 004 的既有裁决，`specs/004-save-system/spec.md:306-307`）。
 - **FR-048**: **确定性**：同一存档 + 同一动作序列 MUST 逐字段可复现（含成员集合、属性、辈分、
   家主、账本、饥馑与患病计时）；MUST NOT 使用全局 `Random`、`DateTime.Now`、`Guid.NewGuid`

@@ -374,6 +374,7 @@ public sealed class SaveFormatContractTests
             ("FamilyLifecycleMemberCount", typeof(FamilyLifecycleDto)),
             ("PendingBirthMemberCount", typeof(PendingBirthDto)),
             ("CoupleKeyMemberCount", typeof(CoupleKeyDto)),
+            ("MatchmakeApplicationMemberCount", typeof(MatchmakeApplicationDto)),
             ("MarriageProposalMemberCount", typeof(MarriageProposalDto)),
         ];
 
@@ -437,12 +438,13 @@ public sealed class SaveFormatContractTests
             ["date", "subject", "outcome", "relative", "degreeBefore", "degreeAfter"]),
         (typeof(ReleaseFactDto), ["date", "subject", "newRankLevel"]),
 
-        // 007-family-lifecycle：家族生命周期簿记与一条待应答提议（键均自 0 连续）。
+        // 007-family-lifecycle：家族生命周期簿记、一条待应答提议与一条当月托媒名额（键均自 0 连续）。
         (typeof(FamilyLifecycleDto),
             ["purchaseCount", "purchaseYear", "pendingBirths", "appliedBirthCouples", "birthApplicationYear",
-                "proposal"]),
+                "proposal", "matchmakeApplications"]),
         (typeof(PendingBirthDto), ["husbandId", "wifeId", "appliedYear", "appliedMonth"]),
         (typeof(CoupleKeyDto), ["husbandId", "wifeId"]),
+        (typeof(MatchmakeApplicationDto), ["memberId", "appliedYear", "appliedMonth"]),
         (typeof(MarriageProposalDto),
             [
                 "kind", "ourMemberId", "candidateName", "candidateGender", "candidateAge",
@@ -564,13 +566,43 @@ public sealed class SaveFormatContractTests
         "family.autoExamApplication",
         "family.hasShiStatus",
         "family.headId",
-        // 007：夹具没有待产记录 / 已申请夫妇 / 待应答提议，故 JSON 里只有空集合与 null 三个成员；
-        //      四个新 DTO 的内部键位由上面的 BinaryKeyTables 与 walker 常量表钉死。
+        // 007：夹具的厚状态把五组生命周期状态与当月托媒名额都填成非空，故集合元素与嵌套提议的
+        //      每个键都会实际出现在 JSON 里；四个新 DTO 的内部键位另由上面的 BinaryKeyTables 与
+        //      walker 常量表钉死。
         "family.lifecycle",
         "family.lifecycle.appliedBirthCouples",
+        "family.lifecycle.appliedBirthCouples[].husbandId",
+        "family.lifecycle.appliedBirthCouples[].wifeId",
         "family.lifecycle.birthApplicationYear",
+        "family.lifecycle.matchmakeApplications",
+        "family.lifecycle.matchmakeApplications[].appliedMonth",
+        "family.lifecycle.matchmakeApplications[].appliedYear",
+        "family.lifecycle.matchmakeApplications[].memberId",
         "family.lifecycle.pendingBirths",
+        "family.lifecycle.pendingBirths[].appliedMonth",
+        "family.lifecycle.pendingBirths[].appliedYear",
+        "family.lifecycle.pendingBirths[].husbandId",
+        "family.lifecycle.pendingBirths[].wifeId",
         "family.lifecycle.proposal",
+        "family.lifecycle.proposal.betrothalGift",
+        "family.lifecycle.proposal.candidateAge",
+        "family.lifecycle.proposal.candidateDegree",
+        "family.lifecycle.proposal.candidateGender",
+        "family.lifecycle.proposal.candidateHealth",
+        "family.lifecycle.proposal.candidateLifespan",
+        "family.lifecycle.proposal.candidateName",
+        "family.lifecycle.proposal.candidatePlacement",
+        "family.lifecycle.proposal.candidateStudy",
+        "family.lifecycle.proposal.class",
+        "family.lifecycle.proposal.dowry",
+        "family.lifecycle.proposal.kind",
+        "family.lifecycle.proposal.ourMemberId",
+        "family.lifecycle.proposal.proposedMonth",
+        "family.lifecycle.proposal.proposedYear",
+        "family.lifecycle.proposal.talentAgriculture",
+        "family.lifecycle.proposal.talentCommerce",
+        "family.lifecycle.proposal.talentCraft",
+        "family.lifecycle.proposal.talentScholar",
         "family.lifecycle.purchaseCount",
         "family.lifecycle.purchaseYear",
         "family.marriageAlignedOutsiders",

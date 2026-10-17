@@ -263,6 +263,91 @@ public class MarriageTests
         Assert.Equal(0, random.IntsRequested);
     }
 
+    /// <summary>FR-013：同一成员同一月至多一次——首次失败也占用名额，再次托媒被拒且 0 次随机、0 次支付。</summary>
+    [Fact]
+    public void 同一成员同月再次托媒被拒且不消费随机()
+    {
+        var member = RulesHarness.Member(1, Gender.Male, 20);
+        var state = State(Difficulty.Normal, Origin.Artisan, RulesHarness.Guan(MarriagePolicy.ClassWealthThresholdLow * 2m), false, member);
+
+        // 首次：成功判定失败（托媒费照扣 ⇒ 当月名额已用）。
+        var first = new ScriptedRandom((double)MarriagePolicy.MatchmakerSuccessChance);
+        var firstOutcome = LifecycleEntry.TryMatchmake(
+            state, member, MarriageDirection.BrideInto, first, new FixedNameGenerator());
+
+        Assert.False(firstOutcome.Accepted);
+        Assert.Equal(LifecycleRejectReason.None, firstOutcome.RejectReason);
+        Assert.True(state.Family.Lifecycle.HasAppliedForMatchmaking(member.Id, state.CurrentDate));
+        Assert.Single(state.Family.Lifecycle.MatchmakeApplications);
+
+        var cashBefore = state.Economy.Treasury.Cash;
+        var entriesBefore = state.Economy.Ledger.Entries.Count;
+
+        var second = new ScriptedRandom();
+        var secondOutcome = LifecycleEntry.TryMatchmake(
+            state, member, MarriageDirection.BrideInto, second, new FixedNameGenerator());
+
+        Assert.False(secondOutcome.Accepted);
+        Assert.Equal(LifecycleRejectReason.AlreadyAppliedThisMonth, secondOutcome.RejectReason);
+        Assert.Equal(0, second.DoublesRequested);
+        Assert.Equal(0, second.IntsRequested);
+        Assert.Equal(Money.Zero, secondOutcome.Amount);
+        Assert.Equal(cashBefore, state.Economy.Treasury.Cash);
+        Assert.Equal(entriesBefore, state.Economy.Ledger.Entries.Count);
+        Assert.Null(member.SpouseId);
+
+        // 查询面同口径：灰置按钮复用同一个拒绝原因（FR-045）。
+        var feasibility = LifecycleQueries.MatchmakeFeasibility(state, member, MarriageDirection.BrideInto);
+        Assert.False(feasibility.Available);
+        Assert.Equal(LifecycleRejectReason.AlreadyAppliedThisMonth, feasibility.RejectReason);
+    }
+
+    /// <summary>FR-013：失败后下月可再试——名额按月判定，旧月记录跨月失效。</summary>
+    [Fact]
+    public void 托媒名额跨月释放()
+    {
+        var member = RulesHarness.Member(1, Gender.Male, 20);
+        var state = State(Difficulty.Normal, Origin.Artisan, RulesHarness.Guan(MarriagePolicy.ClassWealthThresholdLow * 2m), false, member);
+
+        var first = new ScriptedRandom((double)MarriagePolicy.MatchmakerSuccessChance);
+        Assert.False(LifecycleEntry.TryMatchmake(
+            state, member, MarriageDirection.BrideInto, first, new FixedNameGenerator()).Accepted);
+        var appliedAt = state.CurrentDate;
+
+        state.AdvanceMonth();
+
+        // 次月 ⑧-a 先跑：清掉旧月名额记录（本用例走提亲未命中路径，无副作用）。
+        MarriageMarket.Run(state, new ScriptedRandom(), new FixedNameGenerator());
+        Assert.DoesNotContain(
+            state.Family.Lifecycle.MatchmakeApplications,
+            application => application.AppliedAt == appliedAt);
+
+        var feasibility = LifecycleQueries.MatchmakeFeasibility(state, member, MarriageDirection.BrideInto);
+        Assert.True(feasibility.Available);
+        Assert.Equal(LifecycleRejectReason.None, feasibility.RejectReason);
+
+        var second = new ScriptedRandom(SuccessRoll, RollIn(MarriageClass.Commoner, WeightsOf(state)));
+        var outcome = LifecycleEntry.TryMatchmake(
+            state, member, MarriageDirection.BrideInto, second, new FixedNameGenerator());
+
+        Assert.True(outcome.Accepted);
+        Assert.True(state.Family.Lifecycle.HasAppliedForMatchmaking(member.Id, state.CurrentDate));
+    }
+
+    /// <summary>FR-013：付款失败（拒绝）时不占名额——记录只在扣款成功后写入。</summary>
+    [Fact]
+    public void 托媒付款失败时不占当月名额()
+    {
+        var member = RulesHarness.Member(1, Gender.Male, 20);
+        var state = State(Difficulty.Normal, Origin.Artisan, Money.Zero, false, member);
+
+        var outcome = LifecycleEntry.TryMatchmake(
+            state, member, MarriageDirection.BrideInto, new ScriptedRandom(), new FixedNameGenerator());
+
+        Assert.Equal(LifecycleRejectReason.InsufficientFunds, outcome.RejectReason);
+        Assert.Empty(state.Family.Lifecycle.MatchmakeApplications);
+    }
+
     // ------------------------------------------------------------------ 提亲（⑧-a 后半）
 
     /// <summary>提亲概率 = 基础概率 × 负面事件系数（四难度 2.5% / 5% / 6.5% / 7%）。</summary>
@@ -296,6 +381,49 @@ public class MarriageTests
         Assert.Null(state.Family.Lifecycle.Proposal);
         Assert.Single(state.Family.RegisteredMembers);
         Assert.Empty(state.Economy.Ledger.Entries);
+    }
+
+    /// <summary>FR-020：候选集合只保留「本家族付得起该方向应付额」者——付不起时不出提议且不抽人。</summary>
+    [Fact]
+    public void 提亲剔除付不起聘礼的候选成员()
+    {
+        var member = RulesHarness.Member(1, Gender.Male, 20);
+        var state = State(Difficulty.Normal, Origin.Artisan, Money.Zero, false, member);
+        var random = new ScriptedRandom((double)MarriagePolicy.ProposalBaseChance / 2d);
+
+        var market = MarriageMarket.Run(state, random, new FixedNameGenerator());
+
+        Assert.Null(market.MatchmakerProposal);
+        Assert.Null(state.Family.Lifecycle.Proposal);
+
+        // 只有概率骰：候选集合为空 ⇒ 既不分段也不抽人。
+        Assert.Equal(1, random.DoublesRequested);
+        Assert.Equal(0, random.IntsRequested);
+        Assert.Empty(state.Economy.Ledger.Entries);
+    }
+
+    /// <summary>FR-020：命中后在可支付候选集合内均匀抽 1 名（恰 1 次 <c>Next(0, 候选数)</c>）。</summary>
+    [Fact]
+    public void 提亲命中后在候选集合内均匀抽一名()
+    {
+        var male = RulesHarness.Member(1, Gender.Male, 20);
+        var female = RulesHarness.Member(2, Gender.Female, 22);
+        var state = State(Difficulty.Normal, Origin.Artisan, RulesHarness.Guan(MarriagePolicy.ClassWealthThresholdLow * 2m), false, male, female);
+
+        // 候选取人的随机消费量：用独立探针量出候选属性 roll 的次数（与取谁无关）。
+        var probe = new ScriptedRandom();
+        MarriageMarket.CreateCandidate(state, probe, new FixedNameGenerator(), Gender.Female, 20, 1, DegreeLevel.BaiShen, state.CurrentDate);
+
+        var random = new ScriptedRandom((double)MarriagePolicy.ProposalBaseChance / 2d);
+        var market = MarriageMarket.Run(state, random, new FixedNameGenerator());
+
+        var proposal = Assert.IsType<MarriageProposal>(market.MatchmakerProposal);
+        Assert.Equal(MarriageProposalKind.Matchmaker, proposal.Kind);
+
+        // 取人 1 次 Next + 候选年龄 1 次；概率骰 1 次 NextDouble + 候选属性 16 次。
+        Assert.Equal(1 + probe.IntsRequested, random.IntsRequested);
+        Assert.Equal(1 + probe.DoublesRequested, random.DoublesRequested);
+        Assert.Equal(male.Id, proposal.OurMemberId);
     }
 
     // ------------------------------------------------------------------ 阶层抽样（三段资产档）

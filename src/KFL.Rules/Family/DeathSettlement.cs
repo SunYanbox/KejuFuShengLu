@@ -11,9 +11,10 @@ namespace KFL.Rules.FamilyLifecycle;
 /// <para>
 /// 当月**唯一**置 <see cref="StatusFlag.Deceased"/> 的处所；按 <see cref="Person.Id"/> 升序对
 /// 登记表去重后，每人：置位 <see cref="StatusFlag.Deceased"/>（归档由
-/// <c>Family.ArchivedMembers</c> 派生，无需另写入）→ 落 1 条
-/// <see cref="LedgerCategory.MemberDeceased"/> 事件条目（金额 0）。已含
-/// <see cref="StatusFlag.Deceased"/> 者幂等跳过。
+/// <c>Family.ArchivedMembers</c> 派生，无需另写入）→ 若有配偶则经
+/// <see cref="Family.EndMarriage"/> 终止婚姻（亡者 <c>SpouseId</c> 置空、双方 <c>FormerSpouseIds</c>
+/// 追加，FR-021）→ 落 1 条 <see cref="LedgerCategory.MemberDeceased"/> 事件条目（金额 0）。
+/// 已含 <see cref="StatusFlag.Deceased"/> 者幂等跳过（故同日双亡时第二人不再触发终止）。
 /// </para>
 /// <para>
 /// 「死亡原因」（<see cref="DeathCause"/>）只随返回值进入当月事实段，
@@ -43,6 +44,14 @@ public static class DeathSettlement
             }
 
             person.Status |= StatusFlag.Deceased;
+
+            // FR-021：丧偶 MUST 经 Family.EndMarriage——配偶 SpouseId 置空、双方 FormerSpouseIds 追加。
+            // 夫妻同日双亡时先处理者已清空两人的 SpouseId，后者自然跳过（幂等）。
+            if (person.SpouseId is { } spouseId && state.Family.TryGet(spouseId) is not null)
+            {
+                state.Family.EndMarriage(person.Id);
+            }
+
             state.Economy.Apply(LedgerCategory.MemberDeceased, person.Id, Money.Zero, date);
 
             facts.Add(new DeathFact(person.Id, cause));

@@ -60,6 +60,12 @@ public static class LifecycleEntry
             return LifecycleOutcome.Rejected(LifecycleRejectReason.NotMarriageable);
         }
 
+        // ①a 月度名额（FR-013：同一成员同一月至多一次，下月可再试）：0 随机、0 付款、零状态变化
+        if (family.Lifecycle.HasAppliedForMatchmaking(member.Id, month))
+        {
+            return LifecycleOutcome.Rejected(LifecycleRejectReason.AlreadyAppliedThisMonth);
+        }
+
         // ② 金额：托媒费 + （可选的）买功名费
         var fee = LifecycleQueries.MatchmakerFee(state);
         var spouseDegree = buyDegreeMarriage
@@ -101,7 +107,11 @@ public static class LifecycleEntry
             ? economy.Ledger.Entries[entryCount]
             : (LedgerEntry?)null;
 
-        // ⑤ 成功判定（恰 1 次 NextDouble；失败不退费、Lifecycle 无变化）
+        // ④a 登记当月名额（FR-013）：**扣费成功后**才落持久记录——成功判定的失败也消耗名额，
+        //     但资金不足 / 无更低功名的拒绝不消耗（上面两处已返回）。
+        family.Lifecycle.RecordMatchmakeApplication(member.Id, month);
+
+        // ⑤ 成功判定（恰 1 次 NextDouble；失败不退费，除 ④a 的当月名额记录外 Lifecycle 无变化）
         if (random.NextDouble() >= (double)MarriagePolicy.MatchmakerSuccessChance)
         {
             return new LifecycleOutcome

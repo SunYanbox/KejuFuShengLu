@@ -59,10 +59,13 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     private const int DegreeRecordMemberCount = 6;
 
     /// <inheritdoc cref="FamilyMemberCount"/>
-    private const int FamilyLifecycleMemberCount = 6;
+    private const int FamilyLifecycleMemberCount = 7;
 
     /// <inheritdoc cref="FamilyLifecycleMemberCount"/>
     private const int PendingBirthMemberCount = 4;
+
+    /// <inheritdoc cref="FamilyLifecycleMemberCount"/>
+    private const int MatchmakeApplicationMemberCount = 3;
 
     /// <inheritdoc cref="FamilyLifecycleMemberCount"/>
     private const int CoupleKeyMemberCount = 2;
@@ -293,6 +296,16 @@ public sealed class MessagePackSaveFormat : ISaveFormat
         {
             EnsureArrayHeader(ref reader, MarriageProposalMemberCount, $"{path}.Proposal");
             Skip(ref reader, MarriageProposalMemberCount);
+        }
+
+        var applications = reader.ReadArrayHeader(); // 6 本月已托媒的成员记录
+        for (var index = 0; index < applications; index++)
+        {
+            EnsureArrayHeader(
+                ref reader,
+                MatchmakeApplicationMemberCount,
+                $"{path}.MatchmakeApplications[{index}]");
+            Skip(ref reader, MatchmakeApplicationMemberCount);
         }
     }
 

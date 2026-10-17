@@ -44,7 +44,7 @@ MUST NOT 增删、MUST NOT 穿插、MUST NOT 把某个子步拆成「结算前 /
 | ⑧-d | `GrowthAdvance.Run` | 同 ⑧-c 的集合 | **0 次** | `Study`/`Health`、`TutorFee` 条目 |
 | ⑧-e | `FamineHealth.Run` | 计口（`CountedMembers.Counted`） | 严重期每人 1 次（5% 死亡判定）；非严重期 0 次 | 死亡登记表、`Health` |
 | ⑧-f | `LifespanAdvance.Run` | **在册 + 外嫁**（外嫁只承载寿数判定） | 每人 1 次（夭折 10%）；`AgeAt >= 3` 者 0 次 | 死亡登记表 |
-| ⑧-g | `DeathSettlement.Run` | 当月死亡登记表（按 `PersonId` 升序） | **0 次** | `Status \|= Deceased`、归档、`MemberDeceased` 条目 |
+| ⑧-g | `DeathSettlement.Run` | 当月死亡登记表（按 `PersonId` 升序） | **0 次** | `Status \|= Deceased`、归档、`MemberDeceased` 条目；有配偶者另经 `Family.EndMarriage`（亡者 `SpouseId` 置空、双方 `FormerSpouseIds` 追加，FR-021） |
 | ⑧-h | `HeadSuccession.Run` | 死亡/外嫁处理完毕后的在册男性 | **0 次** | `Family.SetHead`、`NewHeadId`/`HeadBecameVacant` |
 
 ### 2.1 ⑧-a 的候选抽样次序（R-25）
@@ -53,8 +53,9 @@ MUST NOT 增删、MUST NOT 穿插、MUST NOT 把某个子步拆成「结算前 /
    否则「每月至多 1 次提亲」的名额语义会随捉婿结果漂移）。
 2. 捉婿命中后写 `Lifecycle.Proposal`（`Kind = ImperialProposal`）；随后提亲若也命中，
    **MUST NOT 覆盖**已有的捉婿提议——名额已消耗，提亲不落地（只掷骰，不改状态）。
-3. 提亲命中后按阶层加权三档抽一个阶层，再在该阶层的候选集合里**均匀抽 1**。
-   整个抽样过程**不再消耗额外随机**（复用同一次 `NextDouble` 的分段映射）。
+3. 提亲命中后按阶层加权三档抽一个阶层（复用同一次概率值分段，**0 次额外随机**），再在本家
+   **付得起应付聘礼/嫁妆**的候选成员里，以 `Next(0, 候选数)` **均匀抽 1**（**1 次额外随机**，
+   FR-020）；候选集合为空则提议不落地（概率值已消费、状态不变）。
 4. 提议**当月未应答即失效**：不做任何清理动作，只由 `LifecycleQueries.PendingProposal` 以
    「`ProposedAt` 的年月 ≠ 当月 ⇒ 返回 `null`」表达（Assumption 11）。
 
@@ -91,7 +92,7 @@ internal sealed class DeathRegister
 → 考课掷骰（④-d，逐人升序）
 → 储蓄利率（仅 1 月，⑤）
 → 贷款计息利率（⑦，命中才掷）
-→ 婚配事件（⑧-a：捉婿 1 次 + 命中金额 1 次；提亲 1 次 + 命中抽样 0 次）
+→ 婚配事件（⑧-a：捉婿 1 次 + 命中金额 1 次；提亲 1 次 + 命中后阶层分段复用该值 + 候选取人 1 次 `Next(0, 候选数)`）
 → 分娩（⑧-b，逐对升序：分娩死亡 1 + 新生儿包）
 → 患病与病程（⑧-c，逐人升序：旧病清除 / 新感染 + 程度）
 → 成长（⑧-d）—— 0 次

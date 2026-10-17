@@ -27,6 +27,8 @@
    `AgeBracketPolicy.IsAdult(gender, AgeAt(date))`（`src/KFL.Rules/Config/AgeBracketPolicy.cs:42-50`，男 12 / 女 14）。
 2. 对象：年龄与成员年龄之差 `<= MarriagePolicy.CandidateAgeSpread`（5），且成年判据同上。
 3. 一夫一妻：`SpouseId != null` 者不可再婚；丧偶（`FormerSpouseIds` 非空且 `SpouseId == null`）**可以**再婚。
+   丧偶的终止动作由 ⑧-g `DeathSettlement` 对**一切死因**统一施加（`Family.EndMarriage`，FR-021），
+   与具体死因（患病/寿终/饥馑/分娩/处死）无关。
 4. 家族内部婚配**只**允许「买来的旁系（`Person.IsOutsider`）× 家族内成员」；
    血亲之间 MUST NOT 成婚（用 `FatherId`/`MotherId` 相同或互为亲子判定，禁止祖先/同胞）。
 5. `Lifecycle.Proposal` 非空且未过期时，`TryMatchmake` MUST 返回 `NotMarriageable`
@@ -39,13 +41,15 @@
 | 费用 | `MarriagePolicy.MatchmakerFeeGuan`（5 贯）`× DifficultyRates.ExpenseFactor(Difficulty)` |
 | 支付 | 现银 + 储蓄**全额**；不足 ⇒ 拒绝（`InsufficientFunds`），**随机 0 次**、不转贷款、不记 0 金额条目 |
 | 成功率 | `MarriagePolicy.MatchmakerSuccessChance`（50%），承接方向**不影响**成功率（Assumption 16） |
-| 失败 | 不退费；`Lifecycle` 无任何变化；同一成员同一月至多一次（MUST 记在 `LifecycleOutcome` 的 `Accepted = false` 分支上，不落持久字段） |
+| 失败 | 不退费；除 ④a 的当月名额记录外 `Lifecycle` 无变化；同一成员同一月至多一次（名额落 `FamilyLifecycleState.MatchmakeApplications`，只在扣款成功后追加；下次尝试自然落在下月） |
 
 **动作次序（固定）**
 
 ```
 ① 校验资格（纯，失败即返回；0 次随机）
+①a 当月名额（`Lifecycle.HasAppliedForMatchmaking`，命中 ⇒ AlreadyAppliedThisMonth；0 次随机、0 次支付）
 ② 算托媒费 → ③ CanCover → ④ Pay(MatchmakerFee)          // 现银+储蓄，恒不转贷款
+④a RecordMatchmakeApplication（扣款成功后即占名额，成败一律占）
 ⑤ 掷成功判定（1 次 NextDouble）—— 失败 ⇒ 返回 Accepted=false（不退费）
 ⑥ 抽对方阶层（1 次 NextDouble 的分段映射；三档权重见 §5）
 ⑦ 初始化候选者：年龄（1 次 Next）→ 性别（1 次 Next）→ 天赋 ×4（4×2 次 NextDouble）
@@ -68,7 +72,7 @@
 | --- | --- |
 | 频率 | **每月至多 1 次** |
 | 概率 | `MarriagePolicy.ProposalBaseChance`（5%）`× DifficultyRates.NegativeEventFactor(Difficulty)`（简单 2.5% / 普通 5% / 困难 6.5% / 地狱 7%） |
-| 候选集合 | 我方全部满足 §2 第 1 条的成员 × 全部可成婚阶层；命中后先抽阶层（§5 权重），再在该阶层候选里**均匀抽 1**（不额外消费随机） |
+| 候选集合 | 我方全部满足 §2 第 1 条的成员，**先按 §5 权重抽阶层**（复用 ⑤ 的同一次概率值分段，0 次额外随机），再在「该阶层下、本家付得起其应付额」的子集（娶入 = 对方阶层聘礼、嫁出 = 本家阶层嫁妆）里均匀抽 1（`Next(0, 候选数)`，1 次额外随机）；子集为空则不提议（概率值已消费、状态不变） |
 | 生效 | 只写 `Lifecycle.Proposal`，**不改任何 `Person` 状态**；当月未应答即失效 |
 
 ### 4.2 榜下捉婿（`Kind = ImperialProposal`）
@@ -179,6 +183,8 @@
    但只要当月出生就不可能在「已亡儿子的后代」档外胜出——真正的排除来自「不判已亡者」，
    故不额外加年龄条件）。
 2. 夭折判定在**同月 ⑧-f 的不同子步**（出生当月即第一次判定）；MUST NOT 在 ⑧-b 内判定。
+   概率按难度分档 **简单 5% / 普通 10% / 困难 11% / 地狱 12%**（`ChildbirthPolicy.InfantDeathFactor`，
+   规格书 §9.4 与 §17 Q3；详见 [illness-lifespan.md](./illness-lifespan.md) §7.2）。
 3. `PendingBirths` 在 ⑧-b 处理完毕后 MUST 清空（`ConsumeBirths`）。
 
 ## 8. 买人口（`LifecycleEntry.BuyPerson`）

@@ -121,7 +121,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | 5 | `MarriageAlignedOutsiders` | `marriageAlignedOutsiders` | 数组 / 数组 | 同上 | 同上 |
 | 6 | `AutoExamApplication` | `autoExamApplication` | `bool` / 布尔 | `Family.AutoExamApplication`（**005 新增**，持续报考开关） | 公开 setter（默认 `false`，与 `HasShiStatus` 同款） |
 | 7 | `PunishmentJournal` | `punishmentJournal` | 数组 / 对象 | `Family.PunishmentJournal`（**006 新增**，只追加的每月惩罚事实缓冲） | `PunishmentJournal.Restore(...)`（**006 新增 `internal`**，独立一步；见 §3.11 第 ⑦′ 步） |
-| 8 | `Lifecycle` | `lifecycle` | 数组 / 对象 | `Family.Lifecycle`（**007 新增**，买人口计数、待产记录与待应答提议） | `FamilyLifecycleState.RestoreBookkeeping(...)`（**007 新增 `internal`**，独立一步；见 §3.11 第 ⑦″ 步） |
+| 8 | `Lifecycle` | `lifecycle` | 数组 / 对象 | `Family.Lifecycle`（**007 新增**，买人口计数、待产记录、待应答提议与当月托媒名额） | `FamilyLifecycleState.RestoreBookkeeping(...)`（**007 新增 `internal`**，独立一步，T093 起为**七参**；见 §3.11 第 ⑦″ 步） |
 
 > 归档**不是删除**（§12.1）：`Members` MUST 涵盖「在册」与「已归档（已亡 / 外嫁）」两类，
 > 故 `Members.Count == 在册数 + 归档数`；`Person` 的 `status` 里保留 `Deceased` / `MarriedOut` 位。
@@ -224,7 +224,8 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | --- | --- | --- | --- | --- |
 | `TalentDto` | 0~3 | `Agriculture` / `Commerce` / `Officialdom` / `Craft` | `agriculture` / `commerce` / `officialdom` / `craft` | `TalentSet` 四成员；`new TalentSet(...)`（0~100 被校验） |
 | `StatusTimersDto` | 0~5 | `SentenceRemainingMonths` / `ExamBanRemainingMonths` / `PromotionBanRemainingMonths` / `AwaitingPostRemainingMonths` / `IllnessSeverityBasisPoints` / `TreatmentRemainingMonths` | `sentenceRemainingMonths` / … / `illnessSeverityBasisPoints` / `treatmentRemainingMonths` | `StatusTimers` 六成员（**007 新增后两路**）；`new StatusTimers(...)`（剩余月数非负、疾病程度 0~10000 被校验） |
-| `FamilyLifecycleDto` | 0~5 | `PurchaseCount` / `PurchaseYear` / `PendingBirths` / `AppliedBirthCouples` / `BirthApplicationYear` / `Proposal` | `purchaseCount` / `purchaseYear` / `pendingBirths` / `appliedBirthCouples` / `birthApplicationYear` / `proposal` | **007 新增**；`FamilyLifecycleState.RestoreBookkeeping(...)`（买人口名次与年份、待产记录、本年已申请夫妇、至多一条待应答提议） |
+| `FamilyLifecycleDto` | 0~6 | `PurchaseCount` / `PurchaseYear` / `PendingBirths` / `AppliedBirthCouples` / `BirthApplicationYear` / `Proposal` / `MatchmakeApplications` | `purchaseCount` / `purchaseYear` / `pendingBirths` / `appliedBirthCouples` / `birthApplicationYear` / `proposal` / `matchmakeApplications` | **007 新增**（末项 T093 追加）；`FamilyLifecycleState.RestoreBookkeeping(...)`（买人口名次与年份、待产记录、本年已申请夫妇、至多一条待应答提议、当月托媒名额） |
+| `MatchmakeApplicationDto` | 0~2 | `MemberId` / `AppliedYear` / `AppliedMonth` | `memberId` / `appliedYear` / `appliedMonth` | **007 新增（T093）**；`new MatchmakeApplication(new PersonId(...), new GameDate(y, m))`（FR-013 的当月名额载体） |
 | `PendingBirthDto` | 0~3 | `HusbandId` / `WifeId` / `AppliedYear` / `AppliedMonth` | `husbandId` / `wifeId` / `appliedYear` / `appliedMonth` | **007 新增**；`new PendingBirth(new CoupleKey(...), new GameDate(y, m))`（键数 = Core 记录成员数，逐一对应） |
 | `CoupleKeyDto` | 0~1 | `HusbandId` / `WifeId` | `husbandId` / `wifeId` | **007 新增**；`new CoupleKey(...)`（有序、夫在前） |
 | `MarriageProposalDto` | 0~18 | `Kind` / `OurMemberId` / `CandidateName` / `CandidateGender` / `CandidateAge` / 四项天赋 / `CandidateStudy` / `CandidateHealth` / `CandidateLifespan` / `CandidateDegree` / `Class` / `BetrothalGift` / `Dowry` / `ProposedYear` / `ProposedMonth` / `CandidatePlacement` | `kind` / `ourMemberId` / `candidateName` / … / `proposedYear` / `proposedMonth` / `candidatePlacement` | **007 新增**；`new MarriageProposal { ... }`（`ProposedAt` 拆年月两整数；金额以「文」存 `decimal`；`CandidatePlacement` 可空）；**可空成员**，JSON 侧 MUST NOT 标 `[JsonRequired]` |
@@ -275,7 +276,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | ⑦′ | `family.PunishmentJournal.Restore(familyBanDeclared, …六个事实集合…)` | 日志**每行**都引用 `PersonId`，故 MUST 在全部成员已在册之后；它不依赖经济状态，故先于 ⑧（**006 新增的独立一步**） |
 | ⑧ | 建 `Treasury`（三池 + 贷款 + 利率，**先年份后利率**）、`Holdings`、`Ledger`（逐条 `Append`）、`Famine` | `Treasury` 的利率交叉校验 |
 | ⑨ | 建 `FamilyEconomy`（生活费档位 + 米价系数 + 三个子聚合）→ 建 `GameState`（identifier / 年月 / 难度 / 出身） | `LivingStandard` 与 `GrainPriceIndex` 是构造必需参数 |
-| ⑩ | 跑 `SaveStateValidator`（**R-04 的十四条**） | 不自洽 ⇒ `InvalidStructure` |
+| ⑩ | 跑 `SaveStateValidator`（**R-04 的十五条**） | 不自洽 ⇒ `InvalidStructure` |
 
 > **005 注**：`PersonDto` 的 22~24 三个键（`jieShiFailureCount` / `shengShiFailureCount` / `appliedExam`）
 > 由 ② 步的 `Person.RestoreExamProgress` **一次性**写回——它是唯一的复原入口
@@ -308,7 +309,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | `ISaveFormat` + `MessagePackSaveFormat` / `JsonSaveFormat` | `Save/Serialization/` | `Write(header, dto) → byte[]` / `Read(byte[]) → (header, dto)`；编解码选项的唯一出处（R-08/R-09） |
 | `SaveStateDto` 及其子 DTO | `Save/Serialization/*Dto.cs` | 线上形状的唯一真源（§3；R-02） |
 | `SaveStateMapper` | `Save/Serialization/SaveStateMapper.cs` | `ToDto(GameState)` / `ToDomain(SaveStateDto)`，逐字段显式（§3；R-02/R-12） |
-| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` | R-04 的十四条一致性校验（005 的十条 + 006 新增两条 + 007 新增两条：提议引用在册未婚成员、待产记录 ⊆ 已申请夫妇） |
+| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` | R-04 的十五条一致性校验（005 的十条 + 006 新增两条 + 007 新增三条：提议引用在册未婚成员、待产记录 ⊆ 已申请夫妇且夫妇互指、生命周期计数与年份合法；另第 ④ / ⑤ 条加严） |
 | `SaveService` | `Save/SaveService.cs` | `ISaveService` 的实现：装配 `SaveName`/`SaveCatalog`/`AtomicFileWriter`/`ISaveFormat` |
 
 ---
@@ -356,7 +357,7 @@ CompletedTurnsAt(current) = (current.Year − EpochYear) × 12 + (current.Month 
 | ⑤ | 主体文本/字节可解析 | `Malformed` |
 | ⑥ | 必需成员齐备（`[JsonRequired]` / MessagePack 数组长度） | `InvalidStructure` |
 | ⑦ | 沿 `Core` 校验路径逐字段复原（§3.11） | `InvalidStructure` |
-| ⑧ | `SaveStateValidator` 十四条 | `InvalidStructure` |
+| ⑧ | `SaveStateValidator` 十五条 | `InvalidStructure` |
 
 **不变量 11（失败无副作用）**：`Load` 失败 MUST NOT 修改存档文件、MUST NOT 返回默认状态或部分状态、
 MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
@@ -514,10 +515,10 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 | §2.2、§2.3、§4 | `SaveFileFormat.Version` 由 `3` 升为 **`4`**；版本闸门的接受谓词为 `FormatVersion == 4`（**任何 ≠ 4 的值**一律 `UnsupportedVersion`，判定在任何正文解析之前；**无迁移路径**） |
 | §3.2 | `FamilyDto` 8 → **9** 成员（末尾追加 `Lifecycle` / `lifecycle`） |
 | §3.8 | `PersonDto` 28 → **29** 成员（末尾追加 `IsTutoredByMaster` / `isTutoredByMaster`）；既有成员的序号与键名不变 |
-| §3.8 子 DTO 表 | `StatusTimersDto` 4 → **6** 成员（末尾追加 `IllnessSeverityBasisPoints` / `TreatmentRemainingMonths`）；新增 `FamilyLifecycleDto`（6 键）、`PendingBirthDto`（4 键展开式）、`CoupleKeyDto`（2 键）、`MarriageProposalDto`（**19 键**，`ProposedAt` 拆 `proposedYear` + `proposedMonth`）；`MarriageProposalDto` 是**可空成员**，JSON 侧 MUST NOT 标 `[JsonRequired]` |
-| §3.11 | 复原次序第 ② 步并入 `Person.RestoreTutoring(bool)`（`internal`）、第 ④ 步的 `Timers` 补两路计时；新增**独立**第 ⑦″ 步——`FamilyLifecycleState.RestoreBookkeeping(...)`（`internal`，位于 ⑦′ 之后、⑧ 之前） |
-| §4、§6.2、§3.11 | `SaveStateValidator` 由「十二条」变「**十四条**」；第 13 条 = 提议的 `OurMemberId` ∈ `Family.Members` 且在册未婚，第 14 条 = `PendingBirths ⊆ AppliedBirthCouples` 且双方 ∈ `Family.Members` |
-| §7、§8 | 线上成员计数 84 → **91**（`FamilyDto` +1、`PersonDto` +1、`StatusTimersDto` +2、四个新 DTO +31）；新增不变量 20/21 |
+| §3.8 子 DTO 表 | `StatusTimersDto` 4 → **6** 成员（末尾追加 `IllnessSeverityBasisPoints` / `TreatmentRemainingMonths`）；新增 `FamilyLifecycleDto`（**7 键**，`matchmakeApplications` 由 T093 追加）、`MatchmakeApplicationDto`（3 键，T093）、`PendingBirthDto`（4 键展开式）、`CoupleKeyDto`（2 键）、`MarriageProposalDto`（**19 键**，`ProposedAt` 拆 `proposedYear` + `proposedMonth`）；`MarriageProposalDto` 是**可空成员**，JSON 侧 MUST NOT 标 `[JsonRequired]` |
+| §3.11 | 复原次序第 ② 步并入 `Person.RestoreTutoring(bool)`（`internal`）、第 ④ 步的 `Timers` 补两路计时；新增**独立**第 ⑦″ 步——`FamilyLifecycleState.RestoreBookkeeping(...)`（`internal`，位于 ⑦′ 之后、⑧ 之前；T093 起为**七参**） |
+| §4、§6.2、§3.11 | `SaveStateValidator` 由「十二条」变「**十五条**」；第 13 条 = 提议的 `OurMemberId` ∈ `Family.Members` 且在册未婚，第 14 条 = `PendingBirths ⊆ AppliedBirthCouples` 且双方 ∈ `Family.Members` 并互指 `SpouseId`，第 15 条 = 生命周期计数与年份合法（当年购人价严格递增，T093/T100） |
+| §7、§8 | 线上成员计数 84 → **91**（`FamilyDto` +1、`PersonDto` +1、`StatusTimersDto` +2、007 四个新 DTO +31；逐 DTO 明细见 §3.8 表）；T093 追加 `FamilyLifecycleDto` 1 键（6 → 7）与 `MatchmakeApplicationDto` 3 键 ⇒ 相对 007 基线再 **+4**；新增不变量 20/21 |
 
 **边界**：007 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`≠ 4` 的旧档一律 `UnsupportedVersion`）；
 三处新状态的领域语义真源是 [007 data-model.md §4](../../007-family-lifecycle/data-model.md)，

@@ -29,7 +29,8 @@ public sealed record MatchmakerResult(MarriageProposal? ImperialProposal, Marria
 /// <remarks>
 /// <para>
 /// **随机消费**（契约十八 §3 的次序表）：捉婿对每名合格成员掷 1 次概率、命中再掷 1 次金额；
-/// 提亲每月恰掷 1 次概率，命中后**复用该值**分段映射阶层并在候选里均匀取人（0 次额外随机）。
+/// 提亲每月恰掷 1 次概率，命中后复用该值分段映射阶层（0 次额外随机），再以
+/// <c>Next(0, 候选数)</c> 在**可支付候选集合**内均匀取人（1 次额外随机，FR-020）。
 /// 两处命中后的候选者初始化按契约十九 §3 ⑦ 的口径消费（年龄 1 次 Next、属性 16 次 NextDouble、
 /// 姓名 0 次随机）；未命中 MUST NOT 消费这些值。
 /// </para>
@@ -54,6 +55,9 @@ public static class MarriageMarket
         var negativeEventFactor = DifficultyRates.NegativeEventFactor(state.Difficulty);
         var pressure = OfficialPressure.Compute(family);
 
+        // 上月及更早的托媒名额记录过期（当月仍有效，故用严格早于当月）。
+        family.Lifecycle.ConsumeMatchmakeApplications(month);
+
         var imperial = DrawImperialProposal(state, random, names, month, negativeEventFactor, pressure);
         if (imperial is not null)
         {
@@ -69,7 +73,7 @@ public static class MarriageMarket
         return new MatchmakerResult(imperial, matchmaker);
     }
 
-    /// <summary>按本家总资产档抽取对方阶层，并给出该阶层在本档权重里的区间（供复用同一次抽样值取人）。</summary>
+    /// <summary>按本家总资产档抽取对方阶层，并给出该阶层在本档权重里的区间。</summary>
     /// <param name="state">游戏状态。</param>
     /// <param name="roll">已抽取的 <c>[0,1)</c> 值。</param>
     /// <returns>阶层与区间。</returns>
@@ -292,8 +296,30 @@ public static class MarriageMarket
             return null;
         }
 
-        var (counterpartClass, lower, upper) = Segment(state, roll);
-        var picked = PickByPosition(members, roll, lower, upper);
+        // 阶层分段仍复用同一次概率抽样值（0 次额外随机）：只决定对方阶层与金额。
+        var (counterpartClass, _, _) = Segment(state, roll);
+
+        // FR-020 / FR-052：候选集合只保留「本家族付得起该方向应付额」者——
+        // 娶入应付对方阶层聘礼、嫁出应付本家阶层嫁妆。付不起的成员 MUST NOT 被抽中。
+        var eligible = new List<Person>(members.Count);
+        foreach (var member in members)
+        {
+            var obligation = LifecycleQueries.DirectionOf(member.Gender) == MarriageDirection.BrideInto
+                ? LifecycleQueries.GiftAmount(state, counterpartClass)
+                : LifecycleQueries.OwnDowryAmount(state, member);
+            if (!obligation.IsPositive || PaymentPrimitive.CanCover(state.Economy, obligation))
+            {
+                eligible.Add(member);
+            }
+        }
+
+        if (eligible.Count == 0)
+        {
+            return null;
+        }
+
+        // FR-020：在可支付候选集合内均匀抽 1 名（恰 1 次 Next(0, 候选数)）。
+        var picked = eligible[random.Next(0, eligible.Count)];
         var direction = LifecycleQueries.DirectionOf(picked.Gender);
         var degree = picked.CurrentDegree == DegreeLevel.BaiShen
             ? DegreeLevel.BaiShen
@@ -352,23 +378,6 @@ public static class MarriageMarket
         }
 
         return null;
-    }
-
-    private static Person PickByPosition(
-        IReadOnlyList<Person> members,
-        double roll,
-        double lower,
-        double upper)
-    {
-        var span = upper - lower;
-        var local = span <= 0d ? 0d : (roll - lower) / span;
-        var index = (int)(local * members.Count);
-        if (index >= members.Count)
-        {
-            index = members.Count - 1;
-        }
-
-        return members[index < 0 ? 0 : index];
     }
 
     private static IReadOnlyList<decimal> WeightsOf(GameState state)

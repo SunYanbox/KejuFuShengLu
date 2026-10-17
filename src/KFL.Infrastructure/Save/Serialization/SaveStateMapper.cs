@@ -270,8 +270,8 @@ public static class SaveStateMapper
                 new PersonId(fact.Subject),
                 fact.NewRankLevel))]);
 
-        // ⑦″ 家族生命周期簿记（007-family-lifecycle）：购人计数、待分娩记录、已申请生育的夫妇与待应答提议。
-        //     只搬运盘上事实，引用完整性由第 ⑩ 步的一致性校验裁决。
+        // ⑦″ 家族生命周期簿记（007-family-lifecycle）：购人计数、待分娩记录、已申请生育的夫妇、
+        //     待应答提议与当月托媒名额。只搬运盘上事实，引用完整性由第 ⑩ 步的一致性校验裁决。
         var lifecycleDto = Required(familyDto.Lifecycle, "lifecycle");
         family.Lifecycle.RestoreBookkeeping(
             lifecycleDto.PurchaseCount,
@@ -283,7 +283,11 @@ public static class SaveStateMapper
                 new PersonId(couple.HusbandId),
                 new PersonId(couple.WifeId)))],
             lifecycleDto.BirthApplicationYear,
-            lifecycleDto.Proposal is { } proposal ? ToDomain(proposal) : null);
+            lifecycleDto.Proposal is { } proposal ? ToDomain(proposal) : null,
+            [.. Required(lifecycleDto.MatchmakeApplications, "matchmakeApplications").Select(application =>
+                new MatchmakeApplication(
+                    new PersonId(application.MemberId),
+                    new GameDate(application.AppliedYear, application.AppliedMonth)))]);
 
         // ⑧⑨ 经济聚合与存档级字段。
         var economyDto = Required(dto.Economy, nameof(dto.Economy));
@@ -461,6 +465,12 @@ public static class SaveStateMapper
         })],
         BirthApplicationYear = lifecycle.BirthApplicationYear,
         Proposal = lifecycle.Proposal is { } proposal ? ToDto(proposal) : null,
+        MatchmakeApplications = [.. lifecycle.MatchmakeApplications.Select(application => new MatchmakeApplicationDto
+        {
+            MemberId = application.MemberId.Value,
+            AppliedYear = application.AppliedAt.Year,
+            AppliedMonth = application.AppliedAt.Month,
+        })],
     };
 
     /// <summary>把待应答提议映射成瞬态 DTO（007-family-lifecycle；契约二十 §5、data-model §2.2）。</summary>

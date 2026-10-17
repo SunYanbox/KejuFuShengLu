@@ -99,7 +99,7 @@
 | `InheritanceSigmaBase` | 5 | int | §4.2 | `σ = abs(父 − 母) / 2 + 5` |
 | `StudyMeanHalving` | 0.5m | decimal | §4.2 | 学业均值折半 |
 | `InheritedHealthFloor` | 20 | int | §4.2 | 遗传体质下限 |
-| `InfantDeathChance` | 0.10m | decimal | §9.4 Q3 | 单次夭折（简单 0.05 / 地狱 0.12） |
+| `InfantDeathChance` | 0.10m | decimal | §9.4 Q3 | 单次夭折基数（难度分档见 `InfantDeathFactor`：简单 0.05 / 普通 0.10 / 困难 0.11 / 地狱 0.12） |
 | `InfantCheckCount` | 3 | int | §9.4 Q3 | 出生当月 + 1 岁 + 2 岁 |
 | `InfantExemptAge` | 3 | int | §9.4 Q3 | 满 3 岁不再判定 |
 

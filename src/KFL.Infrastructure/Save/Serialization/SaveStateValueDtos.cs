@@ -638,7 +638,7 @@ public sealed class PunishmentJournalDto
 }
 
 /// <summary>
-/// 一对夫妇（007-family-lifecycle；契约二十 §5、data-model §3.2）。**有序**：夫在前。
+/// 一对夫妇（007-family-lifecycle；契约十九 §7.1、契约十 §4.2 键表、data-model §7）。**有序**：夫在前。
 /// </summary>
 [MessagePackObject]
 public sealed class CoupleKeyDto
@@ -657,7 +657,7 @@ public sealed class CoupleKeyDto
 }
 
 /// <summary>
-/// 一条待分娩记录（007-family-lifecycle；契约二十 §5、data-model §3.3）。
+/// 一条待分娩记录（007-family-lifecycle；契约十九 §7.1、契约十 §4.2 键表、data-model §7）。
 /// </summary>
 /// <remarks>
 /// 键自 0 连续，与 <c>PendingBirth</c> 的成员<b>逐一对应</b>（<c>Couple</c> 在 DTO 里展开为夫/妻两键，
@@ -692,7 +692,7 @@ public sealed class PendingBirthDto
 }
 
 /// <summary>
-/// 一条待应答的婚配提议（007-family-lifecycle；契约二十 §5、data-model §2.2）。
+/// 一条待应答的婚配提议（007-family-lifecycle；契约十九 §4、契约十 §4.2 键表、data-model §7）。
 /// </summary>
 /// <remarks>
 /// 键自 0 连续、与 <c>MarriageProposal</c> 的成员<b>逐一对应</b>（年月拆两个键、
@@ -817,11 +817,41 @@ public sealed class MarriageProposalDto
 }
 
 /// <summary>
-/// 家族生命周期簿记（007-family-lifecycle；契约二十 §5、data-model §3.1）。
+/// 一条托媒申请记录（007-family-lifecycle；契约十九 §3、契约十 §4.2 键表、data-model §7）。
+/// </summary>
+/// <remarks>
+/// 键自 0 连续，与 <c>MatchmakeApplication</c> 的成员<b>逐一对应</b>（年月拆成两个整数）。
+/// 记录在**扣费成功后**追加，用于 FR-013 的「同一成员同一月至多一次」。
+/// </remarks>
+[MessagePackObject]
+public sealed class MatchmakeApplicationDto
+{
+    /// <summary>提出托媒的我方成员标识。</summary>
+    [Key(0)]
+    [JsonPropertyName("memberId")]
+    [JsonRequired]
+    public Guid MemberId { get; set; }
+
+    /// <summary>申请年份。</summary>
+    [Key(1)]
+    [JsonPropertyName("appliedYear")]
+    [JsonRequired]
+    public int AppliedYear { get; set; }
+
+    /// <summary>申请月份（1~12）。</summary>
+    [Key(2)]
+    [JsonPropertyName("appliedMonth")]
+    [JsonRequired]
+    public int AppliedMonth { get; set; }
+}
+
+/// <summary>
+/// 家族生命周期簿记（007-family-lifecycle；契约十 §4.2 键表、data-model §7）。
 /// </summary>
 /// <remarks>
 /// 键自 0 连续、与 <c>FamilyLifecycleState</c> 的持久面<b>逐一对应</b>：
-/// 0 本年购人数、1 购人年份、2 待分娩记录、3 已申请本年生育的夫妇、4 生育申请年份、5 待应答提议。
+/// 0 本年购人数、1 购人年份、2 待分娩记录、3 已申请本年生育的夫妇、4 生育申请年份、
+/// 5 待应答提议、6 本月已托媒的成员记录。
 /// </remarks>
 [MessagePackObject]
 public sealed class FamilyLifecycleDto
@@ -867,4 +897,10 @@ public sealed class FamilyLifecycleDto
     [Key(5)]
     [JsonPropertyName("proposal")]
     public MarriageProposalDto? Proposal { get; set; }
+
+    /// <summary>本月已提出托媒的成员记录，**按登记顺序**。</summary>
+    [Key(6)]
+    [JsonPropertyName("matchmakeApplications")]
+    [JsonRequired]
+    public List<MatchmakeApplicationDto> MatchmakeApplications { get; set; } = [];
 }
