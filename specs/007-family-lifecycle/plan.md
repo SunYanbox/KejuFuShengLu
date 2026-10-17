@@ -29,9 +29,9 @@
 - `KFL.Core`：`StatusTimers` 尾部 +2 项（疾病程度、疗程剩余月数）、`Person.IsTutoredByMaster`、
   `Family.Lifecycle`（新聚合）、`DeathCause` / `LedgerCategory` 16 个新取值、`MarriageProposal` 等值对象。
 - `KFL.Rules`：十步引擎插 ⑧、`PopulationAdvance` + 八个子步执行器、`LifecycleEntry`（玩家动作）、
-  `LifecycleQueries`（纯查询面）、六个新配置类 + `GameConfig` 六个转发视图。
+  `LifecycleQueries`（纯查询面）、五个新配置类 + `GameConfig` 六个转发视图（配置类计数见勘误 E-05）。
 - `KFL.Infrastructure`：`SaveFileFormat.Version` 3 → 4、`PersonDto` 28 → 29、`FamilyDto` 8 → 9、
-  `StatusTimersDto` 4 → 6、新增 `FamilyLifecycleDto`/`PendingBirthDto`/`MarriageProposalDto`、
+  `StatusTimersDto` 4 → 6、新增 `FamilyLifecycleDto`/`PendingBirthDto`/`CoupleKeyDto`/`MarriageProposalDto`（四个）、
   `MessagePackSaveFormat` 的成员数常量与 `Skip` 序列、`SaveStateValidator` 增两条结构校验。
 
 本特性**不做**：界面轨 U1~U5、成就与绝嗣判定（⑧）、难度启动装配（⑨）、族谱排序绘制（U2）、
@@ -59,7 +59,7 @@
 - `Person.Study`/`Person.Health` 的 setter 是**抛异常守卫**而非静默 clamp ⇒ 调用方 MUST 自己先 clamp。
 - `KFL.Core/AssemblyInfo.cs:13` 只放行 `KFL.Infrastructure` ⇒ 新增持久字段的复原通道只能用 internal + Infrastructure 落盘。
 **Scale/Scope**：单家族；成员数典型 3~200；新增 ~14 个产品文件、~8 个测试文件、16 个 `LedgerCategory` 取值、
-6 个配置类、3 个新存档 DTO。
+5 个配置类、4 个新存档 DTO。
 
 ## Constitution Check
 
@@ -105,18 +105,20 @@
 | E-02 | `src/KFL.Rules/Exam/ExamSeasonRunner.cs:17` | 自述「本步是第 ⑦ 步」 | 引擎与契约口径均为第 ⑨ 步（⑦ 贷款、⑧ 人口健康）；实现不读该编号，只在注释层订正 | `MonthlySettlementEngine.cs:22-32` |
 | E-03 | `src/KFL.Rules/Config/GameConfig.cs:24-27` | 「明确不含：买人口递增计价、成长衰老疾病死亡的年龄线与概率」 | 本特性交付后该注释**失真**，MUST 改为「已由 ⑦ 交付，见 `Growth`/`Illness`/`Marriage`/`Childbirth`/`Purchase`」 | FR-001 |
 | E-04 | `src/KFL.Rules/Settlement/SettlementResult.cs:15-19` | `LivingCostLine`/`IncomeLine` 用位置参数式 `record`（无 `required`），与其余子段风格不一 | 本特性新增子段一律 `public required … { get; init; }`；**不回改**既有两行（历史形状，改则扰动 002 契约） | 006 风格；`SettlementResult.cs:48` |
+| E-05 | 本文件自身 | Complexity Tracking 写「六配置类 + 六 `GameConfig` 转发视图」、`:62` 写「6 个配置类、3 个新存档 DTO」、`:142` 写 quickstart「8 个场景」 | 实为 **5 个配置类 + 6 个转发视图**（`data-model.md` §3.7）、**4 个新存档 DTO**（含 `CoupleKeyDto`）、**9 个场景**；`GameConfig.Lifecycle` 若确无成员可转发，MUST 在 `tasks.md` 的回写范围登记中记录 | 本文件 Project Structure、`data-model.md` §3.7、`quickstart.md` |
+| E-06 | `src/KFL.Rules/Config/GameConfig.cs:203-220` | 002 已为饥馑**时间线**建了门面 `GameConfig.Famine`（`MonthsUntilRelief` / `ReliefMonthsUntilSevere` / `ReliefExpenseDiscount` / `LimitMonths` / `RemainingMonths`） | ⑦ 的饥馑**健康影响**数值（`FamineHealthLossPerMonth = 10` / `FamineDeathChance = 0.05m`）**留在 `GrowthPolicy` 并经 `GameConfig.Growth` 暴露**——`FamineHealth.Run` 属 ⑧-e 健康子步，与成长/恢复同域；两个门面职责不同（时间线 vs 健康影响），MUST NOT 视为同一领域的重复门面 | FR-031；`contracts/config-registry.md` §1 |
 
 ## 回写义务清单（AGENTS.md「铁律」+ FR-050 的落地）
 
 先说结论：本特性在公开面上确实做了跨特性形状变更——① 月度结算 **九步 → 十步**；② `SettlementResult`
 **+1 必填子段**；③ `StatusTimers` **+2 项**（4 → 6）；④ `Person` **+1 可写属性**；⑤ `Family` **+1 聚合属性**；
-⑥ `LedgerCategory` **+16 取值**（22 → 38）；⑦ 存档 `Version 3 → 4`（三个 DTO 扩键 + 三个新 DTO）。
+⑥ `LedgerCategory` **+16 取值**（22 → 38）；⑦ 存档 `Version 3 → 4`（三个 DTO 扩键 + 四个新 DTO）。
 下表的**行号为回写前的原位**。
 
 | # | 目标工件（活工件） | 回写内容（锚点） | 依据 |
 | --- | --- | --- | --- |
 | 1 | `科举浮生录规格书.md` | §4.3 的「病程 2~4 月」「固定 −10 体质/月」整体替换为 Q2；「患病概率 16 岁以上 2.5%/月…封顶 20%」替换为 Q4 + Q5 + Q6；§9.1/§9.2 补提亲 5%、捉婿 `30%÷(1+P)`、金额 `×(1+P)`、功名分档阈值 1/3、可拒绝、阶层加权三档；§9.4 补夭折粒度；§17 块标注裁决日期 2026-10-17 | FR-050 ① |
-| 2 | `specs/001-core-skeleton/data-model.md` | `:188-225` 不变量 4 与「无写入通道成员全集 19 → 21 项」（`IsTutoredByMaster` + `StatusTimers` 两项并入 Timers）；`:244-248` 删除「成长衰老疾病死亡的年龄线与概率不含」的口径；`:293-303` 不变量 6 补「由 ⑧-h 月度驱动修正」；`:318-322` 继任判定改为「已由 ⑦ 交付」；`:402-406` 状态转移表补患病/归档/外嫁/继任四行；`:227` 补「死因只落当月事实段」 | FR-050 ② |
+| 2 | `specs/001-core-skeleton/data-model.md` | `:188-225` 不变量 4 追加 ⑦ 引用注（`Ill` 位 ⇔ `IllnessSeverityBasisPoints != null`）；**「无写入通道成员全集 19 项」保持不变**，改的是 `:195-196` 的「`Person` 自持可写属性十个」→ **十一个**（追加 `IsTutoredByMaster`；`StatusTimers` 的两项在 `Timers` 内，不构成 `Person` 成员）；`:244-248` 删除「成长衰老疾病死亡的年龄线与概率不含」的口径；`:293-303` 不变量 6 补「由 ⑧-h 月度驱动修正」；`:308-310` 嫁入配偶的仕身份差异补 ⑦ 落实注；`:318-322` 继任判定改为「已由 ⑦ 交付」；`:402-406` 状态转移表补患病/归档/外嫁/继任四行；`:227` 补「死因只落当月事实段」 | FR-050 ② |
 | 3 | `specs/001-core-skeleton/contracts/injection-seams.md` | `:91-99` 维持「`IEventBus`/`IAchievementStore` 至今未定义」——本特性**不新增接缝**（快进暂停信号走 `SettlementResult.Lifecycle` + `LifecycleQueries`），只补一段「⑦ 未新增接缝」的确认 | FR-045、FR-050 ③ |
 | 4 | `specs/002-monthly-settlement-economy/contracts/monthly-settlement.md` | `:13-23` 步骤表九行 → 十行（插 ⑧，原 ⑧/⑨ → ⑨/⑩）；`:41-42` 随机次序式补 ⑧-a~⑧-f；`:51-52` 两条从「MUST NOT 存在」改为「已由 ⑦ 交付」；`:85`/`:88-96` 次序式与映射表补本特性条目；`:222` 饥馑 −10 与 5% 判定的归属改为「⑦ 已交付」；`:229-239` 明确不包含节删去已交付项 | FR-050 ④ |
 | 5 | `specs/003-opening-assets-officialdom/data-model.md` + `contracts/new-game-setup.md` | `data-model.md:163-164` 与 `new-game-setup.md:106-110` 补「无父母参照者分布（`N(60,20)`/`N(30,15)`/`N(85,10)`）被 ⑦ 复用于买人口与婚配对象」 | FR-050 ⑤ |
@@ -139,12 +141,12 @@ specs/007-family-lifecycle/
 ├── plan.md              # 本文件
 ├── research.md          # 阶段 0：R-01~R-25 技术抉择（25 项全部有结论，未决事项 = 无）
 ├── data-model.md        # 阶段 1：层分布 / 新增类型 / 形状变更 / 状态转移 / 不变量 / 持久化
-├── quickstart.md        # 阶段 1：8 个可执行验证场景
+├── quickstart.md        # 阶段 1：9 个可执行验证场景（0 前置 + 场景 1~9）
 ├── contracts/
 │   ├── lifecycle.md     # 契约十八：十步结算与 ⑧ 的八个子步、随机次序、事实段形状
 │   ├── marriage-birth.md# 契约十九：婚配、生育、买人口的资格/金额/随机次序
 │   ├── illness-lifespan.md # 契约二十：患病/痊愈/疗程/饥馑/寿数/夭折的公式与短路
-│   └── config-registry.md  # 契约二十一：数值登记表（六配置类 + 门面转发 + 字面量守卫）
+│   └── config-registry.md  # 契约二十一：数值登记表（五配置类 + 门面转发 + 字面量守卫）
 ├── spec.md              # 已存在（1018 行，sole source of intent）
 └── checklists/
     └── requirements.md  # 已存在（16/16，历史记录类）
