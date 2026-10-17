@@ -206,7 +206,7 @@ U1 的「贿赂入口在快进期间置灰」只消费查询面（场景 6）。
    （FR-032：MUST NOT 实现旧→新迁移）；
 3. 键表与成员数常量同步：`PersonDto` **25 → 28**、`FamilyDto` **7 → 8**、新增
    `PunishmentJournalDto`（7 键），且「二进制 walker 的成员数常量与 DTO 键数逐一相等」全绿
-   （含 `MessagePackSaveFormat.cs:254` 的尾随 `Skip` 代数）；
+   （含 `MessagePackSaveFormat.cs:309` 的尾随 `Skip` 代数）；
 4. 读回后继续结算与「从未落盘」的基线逐字段相同；
 5. `SaveStateValidator` 的第 ⑪ 条（三个计数 `>= 0`）与第 ⑫ 条（日志行的 `PersonId` 必须存在于
    `Family.Members`）各有一条反例断言。

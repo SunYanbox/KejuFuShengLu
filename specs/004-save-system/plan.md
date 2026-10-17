@@ -228,7 +228,7 @@ specs/004-save-system/
 ├── plan.md                        # 本文件
 ├── spec.md                        # 规格（Q1~Q3 已裁决并回写规格书 §14）
 ├── research.md                    # 阶段 0：25 项抉择（R-01~R-25，全部有结论；含依赖实测表）
-├── data-model.md                  # 阶段 1：文件布局 / 80 个线上成员 / 存储侧与规则侧类型 / 状态转移 / 需求映射
+├── data-model.md                  # 阶段 1：文件布局 / 84 个线上成员 / 存储侧与规则侧类型 / 状态转移 / 需求映射
 ├── quickstart.md                  # 阶段 1：8 个可运行的人工验收场景
 ├── contracts/
 │   ├── save-service.md            # 契约九：ISaveService 入口、失败矩阵、原子性、命名、唯一性、改名、备份
@@ -280,7 +280,7 @@ src/
 │   │       ├── SaveStateDto.cs          # 【新】主体根 DTO + 家族/人物/经济子 DTO（契约十 §4）
 │   │       ├── SaveStateValueDtos.cs    # 【新】天赋 / 计时 / 功名记录 / 资金 / 贷款 / 资产 / 账本 / 饥馑 DTO
 │   │       ├── SaveStateMapper.cs       # 【新】逐字段双向映射（R-02、R-12；data-model §3.11 的次序）
-│   │       └── SaveStateValidator.cs    # 【新】十条一致性校验（R-04）
+│   │       └── SaveStateValidator.cs    # 【新】十二条一致性校验（R-04）
 │   └── KFL.Infrastructure.csproj        # 【改】PackageReference MessagePack 2.5.305
 ├── KFL.Rules/                           # net10.0
 │   ├── Config/

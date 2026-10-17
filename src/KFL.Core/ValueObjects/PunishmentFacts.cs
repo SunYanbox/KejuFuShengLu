@@ -81,8 +81,8 @@ public readonly record struct FineFact(
 /// 「全族禁考禁升 48 月」逐人落地（此时两者皆为 48）。
 /// </remarks>
 /// <param name="Date">事实发生的年月。</param>
-/// <param name="Subject">被施加禁考 / 禁升的亲属本人。</param>
-/// <param name="Relative">触发本次连带的当事人。</param>
+/// <param name="Subject">触发本次惩罚的**当事人**（被抓的行贿者）。</param>
+/// <param name="Relative">被写入禁考 / 禁升计时的成员（相关亲属；全族禁令时可为当事人本人）。</param>
 /// <param name="ExamBanMonths">本次写入的禁考月数（<c>&gt; 0</c>）。</param>
 /// <param name="PromotionBanMonths">本次写入的禁升月数；<c>null</c> = **只**禁考。</param>
 public readonly record struct RelativeBanFact(
@@ -106,9 +106,9 @@ public readonly record struct RelativeBanFact(
 /// </para>
 /// </remarks>
 /// <param name="Date">事实发生的年月。</param>
-/// <param name="Subject">被连坐的亲属本人（可能是已归档的外嫁女儿）。</param>
+/// <param name="Subject">触发本次连坐的**当事人**（被抓的行贿者）。</param>
 /// <param name="Outcome">后果分支。</param>
-/// <param name="Relative">触发本次连坐的当事人。</param>
+/// <param name="Relative">被连坐的亲属本人（可能是已归档的外嫁女儿）。</param>
 /// <param name="DegreeBefore">降级前的功名；仅降级分支非空。</param>
 /// <param name="DegreeAfter">降级后的功名；仅降级分支非空。</param>
 public readonly record struct CollectivePunishmentFact(

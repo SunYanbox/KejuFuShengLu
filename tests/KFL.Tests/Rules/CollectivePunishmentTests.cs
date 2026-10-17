@@ -74,6 +74,14 @@ public class CollectivePunishmentTests
         Assert.Equal(PunishmentPolicy.FamilyWideBanMonths, kin.Father.Timers.PromotionBanRemainingMonths);
         Assert.True(kin.Father.Status.HasFlag(StatusFlag.ExamBanned | StatusFlag.PromotionBanned));
 
+        // ③′ 有官职者走的是全族覆盖，但契约十六 §6.2 要求**逐人**落 `RelativeBanFact(48, 48)`，
+        //     且施加结果与日志投影为**同一份**快照（`PunishmentImposer.cs:18-19`）——即时快照 MUST NOT 漏报。
+        Assert.Contains(
+            snapshot.RelativeBans,
+            fact => fact.Relative == kin.Father.Id
+                && fact.ExamBanMonths == PunishmentPolicy.FamilyWideBanMonths
+                && fact.PromotionBanMonths == PunishmentPolicy.FamilyWideBanMonths);
+
         // 每条事实行的 Subject（当事人）都在家族成员集合里（含归档）。
         Assert.All(
             snapshot.CollectivePunishments,
@@ -157,6 +165,25 @@ public class CollectivePunishmentTests
 
         Assert.True(kin.Subject.Status.HasFlag(StatusFlag.Deceased));
         Assert.False(kin.Son.Status.HasFlag(StatusFlag.Deceased));
+    }
+
+    [Fact]
+    public void 免死例外不扩展到未成年非子女亲属()
+    {
+        // 当事人的配偶有官职、当事人的母亲**未成年**——但母亲不是当事人的孩子。
+        // 规格书 §7.4 与 §17 ③：免死例外的判据 = 「配偶有官职 ∧ **该孩子**未成年」，
+        // **只适用于孩子**、不扩展到配偶以外的亲属，故母亲 MUST 被处死。
+        var kin = Kin.Build(
+            spouse: true,
+            motherAge: AgeBracketPolicy.FemaleAdulthoodAge - 1);
+        kin.Spouse.Rank = new OfficialRank(10);
+
+        var snapshot = Apply(kin.Family, kin.Subject);
+
+        Assert.True(kin.Mother.Status.HasFlag(StatusFlag.Deceased));
+        Assert.Contains(
+            snapshot.CollectivePunishments,
+            fact => fact.Relative == kin.Mother.Id && fact.Outcome == CollectiveOutcome.Executed);
     }
 
     [Fact]
@@ -306,6 +333,7 @@ public class CollectivePunishmentTests
         /// <param name="grandchild">是否加入当事人的孙辈。</param>
         /// <param name="daughterInLaw">是否加入当事人的姻亲（儿媳）。</param>
         /// <param name="marriedOutDaughter">是否加入当事人的已出嫁女儿。</param>
+        /// <param name="motherAge">当事人母亲的年龄（用于「未成年非子女亲属」一例）。</param>
         public static Kin Build(
             bool spouse = true,
             bool son = true,
@@ -313,12 +341,13 @@ public class CollectivePunishmentTests
             bool brother = false,
             bool grandchild = false,
             bool daughterInLaw = false,
-            bool marriedOutDaughter = false)
+            bool marriedOutDaughter = false,
+            int motherAge = 58)
         {
             var family = new Family("地狱");
 
             var father = family.AddFoundingMember(Founding(2, Gender.Male, 60));
-            var mother = family.AddFoundingMember(Founding(3, Gender.Female, 58));
+            var mother = family.AddFoundingMember(Founding(3, Gender.Female, motherAge));
             family.Marry(father.Id, mother.Id);
 
             var subject = family.AddChild(Blood(1, Gender.Male, 30, father.Id, mother.Id, generation: 1));

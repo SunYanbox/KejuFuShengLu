@@ -23,39 +23,63 @@ namespace KFL.Rules.Bribery;
 public static class BribeRules
 {
     /// <summary>
-    /// 判断某日期是否落在某级别考试的**行贿窗口**内（窗口 = 该级别考试当月及其前一月）。
+    /// 判断某日期是否落在某级别考试的**行贿窗口**内
+    /// （窗口 = 该级别考试当月及其前 <see cref="BribePolicy.WindowPreviousMonths"/> 个月）。
     /// </summary>
     /// <param name="date">待判定的月份。</param>
     /// <param name="level">考试级别。殿试窗口覆盖省试月本身（两者的窗口相邻且重叠一月）。</param>
     /// <returns>在窗口内为 <see langword="true"/>。</returns>
     /// <remarks>
-    /// 判据等价于「本月即该级别考试月」或「下月即该级别考试月」——两个方向都取同一处
-    /// <see cref="ExamCalendar.LevelOf"/>，因此不存在第二份考期表。
+    /// 判据等价于「本月即该级别考试月」或「其后 <see cref="BribePolicy.WindowPreviousMonths"/> 个月内有该级别的
+    /// 考试月」——各方向都取同一处 <see cref="ExamCalendar.LevelOf"/>，因此不存在第二份考期表；
+    /// 窗口宽度只由 <see cref="BribePolicy.WindowPreviousMonths"/> 决定（MUST NOT 内联字面量）。
     /// </remarks>
-    public static bool IsWithinWindow(GameDate date, ExamLevel level) =>
-        ExamCalendar.LevelOf(date) == level || ExamCalendar.LevelOf(NextMonth(date)) == level;
+    public static bool IsWithinWindow(GameDate date, ExamLevel level)
+    {
+        var probe = date;
+        for (var offset = 0; offset <= BribePolicy.WindowPreviousMonths; offset++)
+        {
+            if (ExamCalendar.LevelOf(probe) == level)
+            {
+                return true;
+            }
+
+            probe = NextMonth(probe);
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// 取某日期所在（或其后最近）的该级别行贿窗口的**首月**。
     /// </summary>
     /// <param name="date">参考月份。</param>
     /// <param name="level">考试级别。</param>
-    /// <returns>窗口首月：在窗口内时为该窗口的首月（考试当月的前一月），否则为下一个窗口的首月。</returns>
+    /// <returns>
+    /// 窗口首月：在窗口内时为该窗口的首月（考试当月的前 <see cref="BribePolicy.WindowPreviousMonths"/> 个月），
+    /// 否则为下一个窗口的首月。
+    /// </returns>
     /// <exception cref="InvalidOperationException">三个科举年内没有该级别的考试月（不可能发生）。</exception>
     public static GameDate WindowStartOf(GameDate date, ExamLevel level)
     {
-        if (IsWithinWindow(date, level))
-        {
-            return ExamCalendar.LevelOf(date) == level ? PreviousMonth(date) : date;
-        }
-
         var probe = date;
-        for (var step = 0; step < 3; step++)
+        for (var offset = 0; offset <= BribePolicy.WindowPreviousMonths; offset++)
         {
-            probe = ExamCalendar.NextExamMonth(probe);
             if (ExamCalendar.LevelOf(probe) == level)
             {
-                return PreviousMonth(probe);
+                return SubtractMonths(probe, BribePolicy.WindowPreviousMonths);
+            }
+
+            probe = NextMonth(probe);
+        }
+
+        var cursor = date;
+        for (var step = 0; step < 3; step++)
+        {
+            cursor = ExamCalendar.NextExamMonth(cursor);
+            if (ExamCalendar.LevelOf(cursor) == level)
+            {
+                return SubtractMonths(cursor, BribePolicy.WindowPreviousMonths);
             }
         }
 
@@ -243,4 +267,15 @@ public static class BribeRules
 
     private static GameDate PreviousMonth(GameDate date) =>
         date.Month == 1 ? new GameDate(date.Year - 1, 12) : new GameDate(date.Year, date.Month - 1);
+
+    private static GameDate SubtractMonths(GameDate date, int months)
+    {
+        var result = date;
+        for (var step = 0; step < months; step++)
+        {
+            result = PreviousMonth(result);
+        }
+
+        return result;
+    }
 }

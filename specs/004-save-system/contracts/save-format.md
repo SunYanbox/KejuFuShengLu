@@ -129,7 +129,7 @@
 ⑤ 主体可解析？         否 ⇒ Malformed
 ⑥ 必需成员齐备？       否 ⇒ InvalidStructure
 ⑦ 逐字段复原（Core 校验）？ 否 ⇒ InvalidStructure
-⑧ 一致性校验（十条）？ 否 ⇒ InvalidStructure
+⑧ 一致性校验（十二条）？ 否 ⇒ InvalidStructure
 ```
 
 | 条款 | 要求 |
@@ -141,12 +141,13 @@
 | 5 | 读取 MUST 只读该文件本身；MUST NOT 依赖任何外部状态（无时钟、无环境变量、无网络） |
 | 6 | **枚举的失败落点由线上形态决定**：JSON 写枚举**名**，不认得的名字在 ⑤ 就失败 ⇒ `Malformed`；二进制写**原值整数**，越界整数与未登记状态位都读得出来、但在 ⑦ 被拒 ⇒ `InvalidStructure`（data-model §3.9、§3.10） |
 | 7 | **第 ⑩ 条校验（005 新增）**：`appliedExam` 非空 ⇒ MUST ∈ { `JieShi`, `ShengShi` }（`Enum.IsDefined` 拒绝 `0` 与 `> 3`；殿试 `DianShi` 不是合法报名态）；`jieShiFailureCount` 与 `shengShiFailureCount` MUST `>= 0`。二进制写原值整数 ⇒ 越界整数在 ⑦ 被拒 ⇒ `InvalidStructure`；JSON 写枚举名 ⇒ 不认得的名字在 ⑤ 就读不出 ⇒ `Malformed`（与条款 6 同口径） |
+| 8 | **第 ⑪ / ⑫ 条校验（006 新增）**：三个行贿计数 `jieShiBribeCount` / `shengShiBribeCount` / `dianShiBribeCount` MUST `>= 0`（⑪）；惩罚日志六类事实行的**全部 8 个引用位置**（`Bribes.Examinee`、`Sentences.Subject`、`Fines.Subject`、`RelativeBans.Subject`/`.Relative`、`CollectivePunishments.Subject`/`.Relative`、`Releases.Subject`）MUST 指向 `Family.Members` 中的成员（**含归档者**）（⑫）。两条都在 ⑦ 逐字段复原之后判定 ⇒ 失败为 `InvalidStructure` |
 
 ## 7. 常量登记、依赖与验证物
 
 | 常量 | 声明处 | 依据 | 断言锚点 |
 | --- | --- | --- | --- |
-| 文件格式版本 **3** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2`，006 由 `2` 升为 `3` | 版本闸门的用例（`3` 及以上拒绝、`2` 拒绝、`1` 拒绝） |
+| 文件格式版本 **3** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2`，006 由 `2` 升为 `3` | 版本闸门的用例（**`≠ 3` 一律拒绝**：`4` 拒绝、`2` 拒绝——与 §6 ④ 的谓词 `FormatVersion == 3` 同口径） |
 | `FamilyMemberCount` = **8**、`PersonMemberCount` = **28** | `MessagePackSaveFormat`（二进制 walker 的成员数常量） | 键表 §4.2；006 各 +1 / +3（`punishmentJournal` 与三个行贿计数） | `SaveFormatContractTests` 的键数断言 |
 | `PunishmentJournalMemberCount` = **7** | `MessagePackSaveFormat` | 键表 §4.2；`PunishmentJournalDto` 键数 7 | 同上 |
 | `BribeFactMemberCount` = **7**、`SentenceFactMemberCount` = **3**、`FineFactMemberCount` = **5**、`RelativeBanFactMemberCount` = **5**、`CollectivePunishmentFactMemberCount` = **6**、`ReleaseFactMemberCount` = **3** | `MessagePackSaveFormat` | 键表 §4.2；六类事实行 DTO 的键数 = 对应 `KFL.Core` 记录的成员数（逐一对应） | 同上 |
