@@ -29,7 +29,7 @@ public sealed class SaveCadenceTests
     {
         var state = SaveFixtures.PlainState();
         var recorder = new RecordingSaveService();
-        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"));
+        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"), new FixedNameGenerator());
 
         for (var turn = 0; turn < 12; turn++)
         {
@@ -50,7 +50,7 @@ public sealed class SaveCadenceTests
     {
         var state = SaveFixtures.PlainState();
         var recorder = new RecordingSaveService();
-        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"));
+        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"), new FixedNameGenerator());
 
         Assert.Equal(0, SaveCadencePolicy.CompletedTurnsAt(state.CurrentDate));
 
@@ -69,7 +69,7 @@ public sealed class SaveCadenceTests
     {
         var state = BrokenSavingsState();
         var recorder = new RecordingSaveService();
-        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"));
+        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"), new FixedNameGenerator());
 
         Assert.Throws<ArgumentOutOfRangeException>(() => runner.Advance(state));
 
@@ -83,7 +83,7 @@ public sealed class SaveCadenceTests
     {
         var state = SaveFixtures.PlainState();
         var recorder = new RecordingSaveService();
-        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"));
+        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"), new FixedNameGenerator());
 
         runner.Advance(state);
         runner.Advance(state);
@@ -104,7 +104,7 @@ public sealed class SaveCadenceTests
     {
         var state = SaveFixtures.PlainState();
         var recorder = new RecordingSaveService();
-        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"));
+        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("自动档"), new FixedNameGenerator());
 
         runner.Advance(state);
         runner.Advance(state);
@@ -128,8 +128,8 @@ public sealed class SaveCadenceTests
         var recorded = new RecordingSaveService();
         var withSave = SaveFixtures.PlainState();
 
-        var offRunner = new TurnRunner(new SeededRandomService(Seed), saveService: null, new SaveSlot("自动档"));
-        var onRunner = new TurnRunner(new SeededRandomService(Seed), recorded, new SaveSlot("自动档"));
+        var offRunner = new TurnRunner(new SeededRandomService(Seed), saveService: null, new SaveSlot("自动档"), new FixedNameGenerator());
+        var onRunner = new TurnRunner(new SeededRandomService(Seed), recorded, new SaveSlot("自动档"), new FixedNameGenerator());
 
         for (var turn = 0; turn < 6; turn++)
         {
@@ -149,7 +149,7 @@ public sealed class SaveCadenceTests
     {
         var state = SaveFixtures.PlainState();
         var recorder = new RecordingSaveService();
-        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("手动档"));
+        var runner = new TurnRunner(new SeededRandomService(Seed), recorder, new SaveSlot("手动档"), new FixedNameGenerator());
 
         runner.Advance(state);
         runner.SaveOnExit(state);

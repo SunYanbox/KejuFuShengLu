@@ -331,7 +331,7 @@ public class NewGameSetupTests
             setup.State.Id, setup.StartDate, Difficulty.Normal, Origin.Artisan, setup.State.Family, economy);
 
         var engine = new MonthlySettlementEngine(
-            new FixedRandomService(0.5d), new GameStateClock(state));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+            new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         SettlementResult? last = null;
 

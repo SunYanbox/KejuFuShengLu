@@ -20,17 +20,22 @@ public static class LedgerCategoryMetadata
     /// <summary>取类别的条目种类（资金类 / 事件类）。</summary>
     /// <param name="category">账本类别。</param>
     /// <returns>该类别所属的条目种类。</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 22 个已登记取值内。</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 38 个已登记取值内。</exception>
     public static LedgerEntryKind KindOf(LedgerCategory category) => category switch
     {
-        // 事件类：不引起资金池变动（饥馑四类阶段迁移 + 贷款计息入欠息）。
+        // 事件类：不引起资金池变动（饥馑四类阶段迁移 + 贷款计息入欠息 + 007 的五项家族事件）。
         LedgerCategory.LoanInterestAccrued => LedgerEntryKind.Event,
         LedgerCategory.FamineEntered => LedgerEntryKind.Event,
         LedgerCategory.FamineReliefEntered => LedgerEntryKind.Event,
         LedgerCategory.FamineSevereEntered => LedgerEntryKind.Event,
         LedgerCategory.FamineResolved => LedgerEntryKind.Event,
+        LedgerCategory.ChildBorn => LedgerEntryKind.Event,
+        LedgerCategory.MemberDeceased => LedgerEntryKind.Event,
+        LedgerCategory.MarriageFormed => LedgerEntryKind.Event,
+        LedgerCategory.MemberMarriedOut => LedgerEntryKind.Event,
+        LedgerCategory.PersonBought => LedgerEntryKind.Event,
 
-        // 资金类：其余 17 个类别全部引起资金池变动。
+        // 资金类：其余 28 个类别全部引起资金池变动。
         LedgerCategory.LivingCost => LedgerEntryKind.Treasury,
         LedgerCategory.SelfFarmingIncome => LedgerEntryKind.Treasury,
         LedgerCategory.LandRentIncome => LedgerEntryKind.Treasury,
@@ -48,9 +53,20 @@ public static class LedgerCategoryMetadata
         LedgerCategory.ExamTravelCost => LedgerEntryKind.Treasury,
         LedgerCategory.BribeExpense => LedgerEntryKind.Treasury,
         LedgerCategory.Fine => LedgerEntryKind.Treasury,
+        LedgerCategory.MatchmakerFee => LedgerEntryKind.Treasury,
+        LedgerCategory.TutorFee => LedgerEntryKind.Treasury,
+        LedgerCategory.BetrothalGiftPaid => LedgerEntryKind.Treasury,
+        LedgerCategory.DowryPaid => LedgerEntryKind.Treasury,
+        LedgerCategory.DegreeMarriageFeePaid => LedgerEntryKind.Treasury,
+        LedgerCategory.ChildbirthExpense => LedgerEntryKind.Treasury,
+        LedgerCategory.MedicineExpense => LedgerEntryKind.Treasury,
+        LedgerCategory.PersonPurchase => LedgerEntryKind.Treasury,
+        LedgerCategory.BetrothalGiftReceived => LedgerEntryKind.Treasury,
+        LedgerCategory.DowryReceived => LedgerEntryKind.Treasury,
+        LedgerCategory.DegreeMarriageDowryReceived => LedgerEntryKind.Treasury,
 
         _ => throw new ArgumentOutOfRangeException(
-            nameof(category), category, "未登记的账本类别（data-model §2.1 共 22 个取值）。"),
+            nameof(category), category, "未登记的账本类别（data-model §2.1 共 38 个取值）。"),
     };
 
     /// <summary>取类别在**正额**入账时的目标池。</summary>
@@ -58,10 +74,10 @@ public static class LedgerCategoryMetadata
     /// <returns>
     /// 目标池；<c>null</c> = 该类别没有正额入账目标（恒为负的支出类，或事件类）。
     /// </returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 22 个已登记取值内。</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 38 个已登记取值内。</exception>
     public static LedgerCreditTarget? CreditTargetOf(LedgerCategory category) => category switch
     {
-        // 正额入现金（9 类）。
+        // 正额入现金（12 类）。
         LedgerCategory.SelfFarmingIncome => LedgerCreditTarget.Cash,
         LedgerCategory.LandRentIncome => LedgerCreditTarget.Cash,
         LedgerCategory.FarmingWageIncome => LedgerCreditTarget.Cash,
@@ -71,11 +87,14 @@ public static class LedgerCategoryMetadata
         LedgerCategory.ShopRentIncome => LedgerCreditTarget.Cash,
         LedgerCategory.ArtisanBonus => LedgerCreditTarget.Cash,
         LedgerCategory.AssetSale => LedgerCreditTarget.Cash,
+        LedgerCategory.BetrothalGiftReceived => LedgerCreditTarget.Cash,
+        LedgerCategory.DowryReceived => LedgerCreditTarget.Cash,
+        LedgerCategory.DegreeMarriageDowryReceived => LedgerCreditTarget.Cash,
 
         // 正额入储蓄（1 类，§5.4：储蓄利息并入储蓄本金）。
         LedgerCategory.SavingsInterest => LedgerCreditTarget.Savings,
 
-        // 恒为负的支出类（7 类）：没有正额入账目标。
+        // 恒为负的支出类（15 类）：没有正额入账目标。
         LedgerCategory.LivingCost => null,
         LedgerCategory.LoanPrincipalRepaid => null,
         LedgerCategory.LoanInterestRepaid => null,
@@ -83,15 +102,28 @@ public static class LedgerCategoryMetadata
         LedgerCategory.ExamTravelCost => null,
         LedgerCategory.BribeExpense => null,
         LedgerCategory.Fine => null,
+        LedgerCategory.MatchmakerFee => null,
+        LedgerCategory.TutorFee => null,
+        LedgerCategory.BetrothalGiftPaid => null,
+        LedgerCategory.DowryPaid => null,
+        LedgerCategory.DegreeMarriageFeePaid => null,
+        LedgerCategory.ChildbirthExpense => null,
+        LedgerCategory.MedicineExpense => null,
+        LedgerCategory.PersonPurchase => null,
 
-        // 事件类（5 类）：金额是该事件自身的语义，不指示任何入账目标。
+        // 事件类（10 类）：金额是该事件自身的语义，不指示任何入账目标。
         LedgerCategory.LoanInterestAccrued => null,
         LedgerCategory.FamineEntered => null,
         LedgerCategory.FamineReliefEntered => null,
         LedgerCategory.FamineSevereEntered => null,
         LedgerCategory.FamineResolved => null,
+        LedgerCategory.ChildBorn => null,
+        LedgerCategory.MemberDeceased => null,
+        LedgerCategory.MarriageFormed => null,
+        LedgerCategory.MemberMarriedOut => null,
+        LedgerCategory.PersonBought => null,
 
         _ => throw new ArgumentOutOfRangeException(
-            nameof(category), category, "未登记的账本类别（data-model §2.1 共 22 个取值）。"),
+            nameof(category), category, "未登记的账本类别（data-model §2.1 共 38 个取值）。"),
     };
 }

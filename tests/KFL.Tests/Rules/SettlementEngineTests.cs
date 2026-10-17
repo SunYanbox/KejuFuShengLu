@@ -50,7 +50,7 @@ public class SettlementEngineTests
         // （契约三 §4 的固定次序：米价 → 储蓄利率（仅 1 月）→ 贷款计息利率），
         // 故首个取值的槽位依次是：米价（1 月）、储蓄利率（1 月）、米价（2 月）、米价（3 月）。
         var engine = new MonthlySettlementEngine(
-            new FixedRandomService(0.0d, 0.5d, 0.999_999d, 0.0d), new GameStateClock(state));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+            new FixedRandomService(0.0d, 0.5d, 0.999_999d, 0.0d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         var first = engine.Settle(state);
 
@@ -168,7 +168,7 @@ public class SettlementEngineTests
         var state = NewState(fixture.Family, holdings: fixture.Economy.Holdings, cash: Money.FromGuan(250m));
 
         var engine = new MonthlySettlementEngine(
-            new FixedRandomService(0.5d, 0.5d, 0.5d), new GameStateClock(state));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+            new FixedRandomService(0.5d, 0.5d, 0.5d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         for (var month = 0; month < 3; month++)
         {
@@ -302,9 +302,10 @@ public class SettlementEngineTests
     [Fact]
     public void 引擎公开面只有唯一编排入口且快照字段恰为本阶段交付物()
     {
-        // FR-020：随机事件、属性成长与衰老、疾病与死亡、绝嗣判定等越界步骤 MUST NOT 存在。
-        // 005 起科举季（ExamSeason）已正式成为第 ⑧ 步；006 起惩罚推进（Punishment）成为第 ③ 步，
-        // 两者都是本快照的交付物。以公开面作可证断言：多一个越界入口或越界字段就会红。
+        // FR-020：越界步骤（随机事件、绝嗣判定、结局与成就、存档写入）MUST NOT 存在。
+        // 005 起科举季（ExamSeason）成为第 ⑨ 步；006 起惩罚推进（Punishment）成为第 ③ 步；
+        // 007 起人口与健康推进（Lifecycle，第 ⑧ 步）正式接管属性成长 / 衰老 / 疾病 / 死亡判定，
+        // 三者都是本快照的交付物。以公开面作可证断言：多一个越界入口或越界字段就会红。
         var engineEntries = typeof(MonthlySettlementEngine)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(method => method.Name)
@@ -334,6 +335,7 @@ public class SettlementEngineTests
             nameof(SettlementResult.Career),
             nameof(SettlementResult.Punishment),
             nameof(SettlementResult.ExamSeason),
+            nameof(SettlementResult.Lifecycle),
         }.Order(StringComparer.Ordinal).ToArray();
 
         var actualProperties = typeof(SettlementResult)
@@ -367,7 +369,7 @@ public class SettlementEngineTests
     }
 
     private static SettlementResult Settle(GameState state) =>
-        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state)).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
     /// <summary>在 12 月（不消费储蓄利率 roll）以指定米价系数与难度的单次结算。</summary>
     /// <param name="family">家族。</param>
@@ -382,7 +384,7 @@ public class SettlementEngineTests
             grain: grain,
             date: new GameDate(RulesHarness.Date.Year, 12));
 
-        return new MonthlySettlementEngine(new FixedRandomService(walk), new GameStateClock(state)).Settle(state);
+        return new MonthlySettlementEngine(new FixedRandomService(walk), new GameStateClock(state), new FixedNameGenerator()).Settle(state);
     }
 
     /// <summary>按给定米价系数与难度复算某次结算的应付生活费（档位与饥馑阶段取结算的默认口径）。</summary>

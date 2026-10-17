@@ -3,6 +3,7 @@ using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Rules.Career;
 using KFL.Rules.Exam;
+using KFL.Rules.FamilyLifecycle;
 using KFL.Rules.Punishment;
 
 namespace KFL.Rules.Settlement;
@@ -113,8 +114,16 @@ public sealed record SettlementResult
     public required CareerAdvanceResult Career { get; init; }
 
     /// <summary>
-    /// 本次结算**第⑧步（科举季）**的增量快照（自动报名 / 弃考 / 免解 / 判定 / 及第入仕 / 特奏名询问）。
+    /// 本次结算**第⑨步（科举季）**的增量快照（自动报名 / 弃考 / 免解 / 判定 / 及第入仕 / 特奏名询问）。
     /// 它是增量、不是第二真源（契约十三 §9）。
     /// </summary>
     public required ExamSeasonSnapshot ExamSeason { get; init; }
+
+    /// <summary>
+    /// 本次结算**第⑧步（人口与健康推进）**的当月事实段（婚配 / 分娩 / 患病与痊愈 / 成长跨档 /
+    /// 饥馑与寿终 / 死亡结算 / 家主继任）。它是**当月事实的只读投影**、不是第二真源，
+    /// 也**不回写** <c>GameState</c>（契约十八 §4）——死亡原因只活在这里，
+    /// <c>Person</c> 字段与账本条目 MUST NOT 承载 <c>DeathCause</c>。
+    /// </summary>
+    public required LifecycleSnapshot Lifecycle { get; init; }
 }

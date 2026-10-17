@@ -309,7 +309,7 @@ public class FamineTimelineTests
     }
 
     private static MonthlySettlementEngine NewEngine(GameState state) =>
-        new(new FixedRandomService(0.5d), new GameStateClock(state));  // arch-guard:allow 夹具金额与随机取值（非规则数值副本）
+        new(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具金额与随机取值（非规则数值副本）
 
     private static Money TreasuryDelta(IReadOnlyList<LedgerEntry> entries)
     {

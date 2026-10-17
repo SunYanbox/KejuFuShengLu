@@ -196,7 +196,7 @@ public class LedgerTests
 
         var state = new GameState(
             StateId, fixture.Date, Difficulty.Normal, Origin.Artisan, fixture.Family, fixture.Economy);
-        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state), new FixedNameGenerator());
         var step = Settle(engine, state);
         var ledger = state.Economy.Ledger;
 
@@ -265,7 +265,7 @@ public class LedgerTests
     {
         // ① 饥馑四类迁移：付不起时不落生活费条目，只落**事件类**条目。
         var famine = NewFamineState();
-        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine));
+        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine), new FixedNameGenerator());
         var steps = new List<MonthStep>();
 
         var monthsToSevere = FamineTimeline.MonthsUntilRelief + FamineTimeline.ReliefMonthsUntilSevere - 1;
@@ -344,7 +344,7 @@ public class LedgerTests
 
         // 事件类条目允许 0 元（饥馑迁移一律 0），且仍入账可读——与资金类的不变量形成对照。
         var famine = NewFamineState();
-        Settle(new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine)), famine);
+        Settle(new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine), new FixedNameGenerator()), famine);
 
         var entered = Assert.Single(
             famine.Economy.Ledger.Entries, e => e.Category == LedgerCategory.FamineEntered);
@@ -553,7 +553,7 @@ public class LedgerTests
         var fixture = EconomyFixtures.Create(settings ?? new EconomyFixtureSettings());
         var state = new GameState(
             StateId, fixture.Date, Difficulty.Normal, origin, fixture.Family, fixture.Economy);
-        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state), new FixedNameGenerator());
         var steps = new List<MonthStep>();
 
         for (var index = 0; index < months; index++)

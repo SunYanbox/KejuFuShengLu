@@ -47,6 +47,7 @@ public sealed class Person
     private PersonId? _spouseId;
     private StatusFlag _status;
     private StatusTimers _timers;
+    private bool _tutoredByMaster;
 
     /// <summary>构造并校验出生即定与构造期可校验的字段。</summary>
     /// <param name="id">成员标识。</param>
@@ -376,6 +377,8 @@ public sealed class Person
             EnsureStatusFlagBacksTimers(value, StatusFlag.ExamBanned, _timers.ExamBanRemainingMonths, nameof(value));
             EnsureStatusFlagBacksTimers(value, StatusFlag.PromotionBanned, _timers.PromotionBanRemainingMonths, nameof(value));
             EnsureStatusFlagBacksTimers(value, StatusFlag.AwaitingPost, _timers.AwaitingPostRemainingMonths, nameof(value));
+            EnsureStatusFlagBacksTimers(value, StatusFlag.Ill, _timers.IllnessSeverityBasisPoints, nameof(value));
+            EnsureStatusFlagBacksTimers(value, StatusFlag.Ill, _timers.TreatmentRemainingMonths, nameof(value));
             EnsureStatusFlagBacksEntryTrack(value, _entryTrack, nameof(value));
             _status = value;
         }
@@ -392,12 +395,27 @@ public sealed class Person
             EnsureTimerBackedByStatus(_status, StatusFlag.ExamBanned, value.ExamBanRemainingMonths, nameof(value));
             EnsureTimerBackedByStatus(_status, StatusFlag.PromotionBanned, value.PromotionBanRemainingMonths, nameof(value));
             EnsureTimerBackedByStatus(_status, StatusFlag.AwaitingPost, value.AwaitingPostRemainingMonths, nameof(value));
+            EnsureTimerBackedByStatus(_status, StatusFlag.Ill, value.IllnessSeverityBasisPoints, nameof(value));
+            EnsureTimerBackedByStatus(_status, StatusFlag.Ill, value.TreatmentRemainingMonths, nameof(value));
             _timers = value;
         }
     }
 
     /// <summary>职业指派。</summary>
     public Occupation Occupation { get; set; }
+
+    /// <summary>
+    /// 是否已延请名师（007 新增，规格书 §4.3）。
+    /// </summary>
+    /// <remarks>
+    /// 纯布尔、无范围校验。名师月费**付不起**时本标记**保持**为真，当月只按普通速度成长
+    /// （不入贷款、不自动解除）。
+    /// </remarks>
+    public bool IsTutoredByMaster
+    {
+        get => _tutoredByMaster;
+        set => _tutoredByMaster = value;
+    }
 
     /// <summary>
     /// 在职月数（自授官起算），<c>&gt;= 0</c>；默认 <c>0</c>（FR-013、FR-015、FR-017）。
@@ -566,6 +584,14 @@ public sealed class Person
         _shengShiBribeCount = shengShiBribeCount;
         _dianShiBribeCount = dianShiBribeCount;
     }
+
+    /// <summary>复原「是否已延请名师」标记（**仅供存档层调用**，data-model §7.3）。</summary>
+    /// <param name="tutoredByMaster">落盘值。</param>
+    /// <remarks>
+    /// 本标记本就有公开 setter，故这里只是一条与其它复原通道对称的显式入口，
+    /// 不承担任何语义校验。
+    /// </remarks>
+    internal void RestoreTutoring(bool tutoredByMaster) => _tutoredByMaster = tutoredByMaster;
 
     /// <summary>设置辈分。**仅供 <see cref="Family"/> 调用**：血亲不可变更，外来者须尚无子女。</summary>
     internal void SetGeneration(int generation)

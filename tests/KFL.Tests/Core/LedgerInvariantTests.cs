@@ -78,6 +78,22 @@ public class LedgerInvariantTests
     [InlineData(LedgerCategory.ExamTravelCost, LedgerEntryKind.Treasury, null)]
     [InlineData(LedgerCategory.BribeExpense, LedgerEntryKind.Treasury, null)]
     [InlineData(LedgerCategory.Fine, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.MatchmakerFee, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.TutorFee, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.BetrothalGiftPaid, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.DowryPaid, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.DegreeMarriageFeePaid, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.ChildbirthExpense, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.MedicineExpense, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.PersonPurchase, LedgerEntryKind.Treasury, null)]
+    [InlineData(LedgerCategory.BetrothalGiftReceived, LedgerEntryKind.Treasury, LedgerCreditTarget.Cash)]
+    [InlineData(LedgerCategory.DowryReceived, LedgerEntryKind.Treasury, LedgerCreditTarget.Cash)]
+    [InlineData(LedgerCategory.DegreeMarriageDowryReceived, LedgerEntryKind.Treasury, LedgerCreditTarget.Cash)]
+    [InlineData(LedgerCategory.ChildBorn, LedgerEntryKind.Event, null)]
+    [InlineData(LedgerCategory.MemberDeceased, LedgerEntryKind.Event, null)]
+    [InlineData(LedgerCategory.MarriageFormed, LedgerEntryKind.Event, null)]
+    [InlineData(LedgerCategory.MemberMarriedOut, LedgerEntryKind.Event, null)]
+    [InlineData(LedgerCategory.PersonBought, LedgerEntryKind.Event, null)]
     public void 类别元数据逐行一致(
         LedgerCategory category, LedgerEntryKind kind, LedgerCreditTarget? creditTarget)
     {
@@ -86,17 +102,22 @@ public class LedgerInvariantTests
     }
 
     [Fact]
-    public void 类别全集恰为二十二个取值且无买人口聘礼贿赂()
+    public void 类别全集恰为三十八个取值且新增婚配生育买卖类别()
     {
         string[] expected =
         [
-            "ArtisanBonus", "AssetPurchase", "AssetSale", "BribeExpense", "CraftingIncome",
-            "ExamTravelCost",
+            "ArtisanBonus", "AssetPurchase", "AssetSale",
+            "BetrothalGiftPaid", "BetrothalGiftReceived", "BribeExpense",
+            "ChildBorn", "ChildbirthExpense", "CraftingIncome",
+            "DegreeMarriageDowryReceived", "DegreeMarriageFeePaid",
+            "DowryPaid", "DowryReceived", "ExamTravelCost",
             "FamineEntered", "FamineReliefEntered", "FamineResolved", "FamineSevereEntered",
             "FarmingWageIncome", "Fine", "LandRentIncome", "LivingCost",
             "LoanInterestAccrued", "LoanInterestRepaid", "LoanPrincipalRepaid",
-            "OfficialSalary", "SavingsInterest", "SelfFarmingIncome", "ShopRentIncome",
-            "TradeIncome",
+            "MarriageFormed", "MatchmakerFee", "MedicineExpense",
+            "MemberDeceased", "MemberMarriedOut", "OfficialSalary",
+            "PersonBought", "PersonPurchase", "SavingsInterest",
+            "SelfFarmingIncome", "ShopRentIncome", "TradeIncome", "TutorFee",
         ];
 
         var actual = Enum.GetNames<LedgerCategory>()
@@ -105,13 +126,23 @@ public class LedgerInvariantTests
 
         Assert.Equal(expected, actual);
 
-        // FR-028：本阶段 MUST NOT 存在「买人口 / 聘礼」一类的类别（以「无该类别」断言）。
-        string[] forbiddenFragments = ["Buy", "Slave", "Bride", "Dowry", "Betroth"];
+        // FR-043 / SC-009：007 起「买人口 / 聘礼嫁妆 / 婚配 / 生育」等类别**正向存在**
+        // （006 时期以「无该类别」表达的负向断言，自本特性起由本正向断言等价替代）。
+        string[] addedByLifecycle =
+        [
+            "MatchmakerFee", "TutorFee",
+            "BetrothalGiftPaid", "DowryPaid", "DegreeMarriageFeePaid",
+            "ChildbirthExpense", "MedicineExpense", "PersonPurchase",
+            "BetrothalGiftReceived", "DowryReceived", "DegreeMarriageDowryReceived",
+            "ChildBorn", "MemberDeceased", "MarriageFormed", "MemberMarriedOut", "PersonBought",
+        ];
 
-        foreach (var fragment in forbiddenFragments)
+        foreach (var category in addedByLifecycle)
         {
-            Assert.DoesNotContain(actual, name => name.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(category, actual);
         }
+
+        Assert.Equal(38, actual.Length);
 
         // 006 起「贿赂」相关类别**只允许**这两个：行贿支出与被抓罚金（FR-027）。
         string[] bribeRelated = [.. actual.Where(
@@ -121,7 +152,7 @@ public class LedgerInvariantTests
     }
 
     [Fact]
-    public void 事件类恰为五个且KindOf与CreditTargetOf对每个取值都可求值()
+    public void 事件类恰为十个且KindOf与CreditTargetOf对每个取值都可求值()
     {
         LedgerCategory[] expectedEvents =
         [
@@ -130,6 +161,11 @@ public class LedgerInvariantTests
             LedgerCategory.FamineReliefEntered,
             LedgerCategory.FamineSevereEntered,
             LedgerCategory.FamineResolved,
+            LedgerCategory.ChildBorn,
+            LedgerCategory.MemberDeceased,
+            LedgerCategory.MarriageFormed,
+            LedgerCategory.MemberMarriedOut,
+            LedgerCategory.PersonBought,
         ];
 
         var categories = Enum.GetValues<LedgerCategory>();
@@ -141,7 +177,7 @@ public class LedgerInvariantTests
 
         Assert.Equal(expectedEvents.OrderBy(category => category), events);
 
-        // 全覆盖无遗漏：22 个取值逐个可求值（未登记的取值会抛，见下一条）。
+        // 全覆盖无遗漏：38 个取值逐个可求值（未登记的取值会抛，见下一条）。
         foreach (var category in categories)
         {
             var kind = LedgerCategoryMetadata.KindOf(category);
@@ -150,7 +186,7 @@ public class LedgerInvariantTests
             _ = LedgerCategoryMetadata.CreditTargetOf(category);
         }
 
-        // 无正额入账目标 = 7 个恒负支出类 + 5 个事件类。
+        // 无正额入账目标 = 15 个恒负支出/买入类 + 10 个事件类。
         LedgerCategory[] expectedWithoutCreditTarget =
         [
             LedgerCategory.LivingCost,
@@ -160,11 +196,24 @@ public class LedgerInvariantTests
             LedgerCategory.ExamTravelCost,
             LedgerCategory.BribeExpense,
             LedgerCategory.Fine,
+            LedgerCategory.MatchmakerFee,
+            LedgerCategory.TutorFee,
+            LedgerCategory.BetrothalGiftPaid,
+            LedgerCategory.DowryPaid,
+            LedgerCategory.DegreeMarriageFeePaid,
+            LedgerCategory.ChildbirthExpense,
+            LedgerCategory.MedicineExpense,
+            LedgerCategory.PersonPurchase,
             LedgerCategory.LoanInterestAccrued,
             LedgerCategory.FamineEntered,
             LedgerCategory.FamineReliefEntered,
             LedgerCategory.FamineSevereEntered,
             LedgerCategory.FamineResolved,
+            LedgerCategory.ChildBorn,
+            LedgerCategory.MemberDeceased,
+            LedgerCategory.MarriageFormed,
+            LedgerCategory.MemberMarriedOut,
+            LedgerCategory.PersonBought,
         ];
 
         var withoutCreditTarget = categories
@@ -280,6 +329,14 @@ public class LedgerInvariantTests
             LedgerCategory.ExamTravelCost,   // 005：省试路费恒为负（I-5）
             LedgerCategory.BribeExpense,     // 006：行贿支出恒为负（FR-027）
             LedgerCategory.Fine,             // 006：罚金恒为负（FR-027）
+            LedgerCategory.MatchmakerFee,            // 007：托媒费恒为负（§9.1）
+            LedgerCategory.TutorFee,                 // 007：延名师月费恒为负（§4.2）
+            LedgerCategory.BetrothalGiftPaid,        // 007：娶入聘礼恒为负（§9.1）
+            LedgerCategory.DowryPaid,                // 007：嫁出嫁妆恒为负（§9.1）
+            LedgerCategory.DegreeMarriageFeePaid,    // 007：买功名婚姻费恒为负（§9.1）
+            LedgerCategory.ChildbirthExpense,        // 007：分娩费恒为负（§9.2）
+            LedgerCategory.MedicineExpense,          // 007：药费恒为负（§4.3）
+            LedgerCategory.PersonPurchase,           // 007：买人口恒为负（§9.4）
         ];
 
         foreach (var category in alwaysNegative)

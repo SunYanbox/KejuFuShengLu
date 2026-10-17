@@ -28,7 +28,7 @@ namespace KFL.Tests.Rules;
 public class SpecAnchorTests
 {
     /// <summary>固定随机替身使用的常量取值（非规则数值，只是夹具输入）。</summary>
-    private const double ConstantRoll = 0.3d;
+    private const double ConstantRoll = 0.3d;  // arch-guard:allow 随机替身的夹具输入（非规则数值副本）
 
     /// <summary>
     /// SC-002：四出身的初始资产与规格书 §10.1 的表格**逐格**一致（现金 / 田 / 宅 / 商本）。
