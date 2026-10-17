@@ -18,7 +18,7 @@ namespace KFL.Infrastructure.Save;
 /// （它不校验内容是否被篡改，只回答「字节够不够」）。
 /// </para>
 /// </remarks>
-/// <param name="FormatVersion">文件格式版本；本版本恒为 2。</param>
+/// <param name="FormatVersion">文件格式版本；本版本恒为 3。</param>
 /// <param name="PayloadLength">主体（payload）的字节数。</param>
 /// <param name="SaveId">存档标识；MUST 等于主体里 <c>GameState.Id</c>。</param>
 public readonly record struct SaveFileHeader(int FormatVersion, int PayloadLength, Guid SaveId);

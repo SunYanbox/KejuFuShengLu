@@ -229,11 +229,18 @@ public static PaymentResult Pay(
 | ④ | `int PrisonerCount(Family family, GameDate date)` | 某月在册服刑人数（构造「同月 3 人服刑」时返回 3） |
 | 附加 | `bool IsBribeWindowOpen(...)` | 见 [契约十五 §6](./bribery.md#6-派生查询面fr-029-fr-030) |
 | 附加 | `bool WasBribeFreeAtImperialPass(Person)` | 「清白传家」的派生事实 |
+| 附加 | `bool WasExecutedByState(Person)` | 「身首异处」的派生事实：**当事人本人**被处死（见下方条款） |
 | 附加 | `int FamilyCumulativeBribes(Family)` | 「投石问路 / 暗度陈仓 / 权钱交易 / 只手遮天 / 买断功名」 |
 
 **条款**：全部为**纯函数**（不改状态、不消费随机）；U1/U2/U4 与 ⑧ MUST 只经该查询面取值；
-⑧ 要求的其余事实（死刑、连坐致亲属死亡或降级、外嫁女儿被追及、全族禁考禁升触发、某月服刑 ≥ 3 人、
-服刑期满释放）经 [§9](#9-快照与断言面fr-028fr-030) 的当月快照消费。本特性 MUST **NOT** 自行解锁任何成就。
+⑧ 要求的其余事实（连坐致亲属死亡或降级、外嫁女儿被追及、全族禁考禁升触发、某月服刑 ≥ 3 人、
+服刑期满释放）经 [§9](#9-快照与断言面fr-028fr-030) 的当月快照消费。
+
+**「当事人本人的死刑」的口径**：它**不落** §9 快照的六类事实行，而是由**状态派生**——
+`PunishmentQueries.WasExecutedByState(Person)` 读 `Person.Status` 的 `StatusFlag.Deceased`
+（配套的归档、进族谱与死亡结算同时成立）。依据：规格书 §7.5 死刑**立即执行**、无「已判未决」
+持久状态，故状态位即事实；`CollectivePunishmentFact.Outcome == Executed` 只覆盖**被连坐的亲属**。
+⑧ 与 U2 MUST 经该入口取值，MUST NOT 自行读 `Person.Status` 判成就。本特性 MUST **NOT** 自行解锁任何成就。
 
 ---
 
@@ -248,6 +255,10 @@ public required PunishmentSnapshot Punishment { get; init; }
 `PunishmentSnapshot`（`KFL.Rules.Punishment`）含：`Month`、`Bribes`、`Sentences`、`Fines`、
 `RelativeBans`、`CollectivePunishments`、`Releases`（六类事实行）、`FamilyBanDeclared`、`PrisonerCount`。
 
+**「当事人本人的死刑」不经本快照**：它由 `Person.Status` 的已亡位派生（见 [§8](#8-查询面fr-029-fr-030)
+的 `WasExecutedByState`）——快照的六类事实行里**没有**、也 MUST NOT 新增「当事人本人被处死」这一类；
+`CollectivePunishmentFact.Outcome == Executed` 只表达**被连坐的亲属**。
+
 **条款**：
 
 1. 它是**增量、只读**的当月快照：只含本月发生的事，MUST NOT 回写 `GameState`、MUST NOT 成为与 `Person`
@@ -257,8 +268,9 @@ public required PunishmentSnapshot Punishment { get; init; }
    `PrisonerCount` 仍按当月在册服刑人数如实给出（FR-029④）。
 4. **罚金金额既进快照也进账本**是允许的（`Entries` 含 `Fine` 条目，快照含 `FineFact`）；但
    **服刑事件不进账本**——FR-027 明令新增账本类别只有资金类两个（plan.md 勘误 #1）。
-5. 快照 MUST 足以让 ⑧ 解锁 §14.1 的诸项；本特性 MUST NOT 自行解锁（判据 = 事件与计数齐备，
-   不判成就、不判绝嗣）。
+5. 快照 MUST 足以让 ⑧ 解锁 §14.1 的诸项（**唯一例外**是「当事人本人的死刑（身首异处）」，
+   它经 §8 的 `WasExecutedByState` 状态派生，不经本快照；见上）；本特性 MUST NOT 自行解锁
+   （判据 = 事件与计数齐备，不判成就、不判绝嗣）。
 
 ---
 
