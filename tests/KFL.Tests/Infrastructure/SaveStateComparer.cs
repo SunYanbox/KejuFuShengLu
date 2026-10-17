@@ -73,6 +73,7 @@ internal static class SaveStateComparer
         Assert.Equal(expected.ArchivedMembers.Count, actual.ArchivedMembers.Count);
 
         AssertJournal(expected.PunishmentJournal, actual.PunishmentJournal);
+        AssertLifecycle(expected.Lifecycle, actual.Lifecycle);
     }
 
     private static void AssertPerson(Person expected, Person actual)
@@ -110,6 +111,60 @@ internal static class SaveStateComparer
         // 派生值也要一致（履历顺序错了，这里会先亮）。
         Assert.Equal(expected.CurrentDegree, actual.CurrentDegree);
         Assert.Equal(expected.CurrentPlacement, actual.CurrentPlacement);
+
+        // 007-family-lifecycle：师承标记（`FamilyDto`/`PersonDto` 键 28）——漏存时默认为 false，
+        // 夹具里取 true 才能让漏存暴露。属逻辑轨 ⑧ 的「宿儒课读」状态，读回必须原样带回。
+        Assert.Equal(expected.IsTutoredByMaster, actual.IsTutoredByMaster);
+    }
+
+    /// <summary>
+    /// ㉓ 家族生命周期簿记（007-family-lifecycle；`FamilyDto` 键 8 / `FamilyLifecycleDto` 键 0~6）：
+    /// 五组状态 + 当月托媒名额逐项比对——整块漏存时默认值会让往返静默通过。
+    /// </summary>
+    /// <param name="expected">期望。</param>
+    /// <param name="actual">实际。</param>
+    private static void AssertLifecycle(FamilyLifecycleState expected, FamilyLifecycleState actual)
+    {
+        Assert.Equal(expected.PurchaseCount, actual.PurchaseCount);
+        Assert.Equal(expected.PurchaseYear, actual.PurchaseYear);
+        Assert.Equal(expected.BirthApplicationYear, actual.BirthApplicationYear);
+
+        Assert.Equal(expected.PendingBirths.Count, actual.PendingBirths.Count);
+        for (var index = 0; index < expected.PendingBirths.Count; index++)
+        {
+            Assert.Equal(expected.PendingBirths[index], actual.PendingBirths[index]);
+        }
+
+        Assert.Equal(expected.AppliedBirthCouples, actual.AppliedBirthCouples);
+        Assert.Equal(expected.MatchmakeApplications, actual.MatchmakeApplications);
+
+        var left = expected.Proposal;
+        var right = actual.Proposal;
+        Assert.Equal(left is null, right is null);
+
+        if (left is null || right is null)
+        {
+            return;
+        }
+
+        Assert.Equal(left.Kind, right.Kind);
+        Assert.Equal(left.OurMemberId, right.OurMemberId);
+        Assert.Equal(left.CandidateName, right.CandidateName);
+        Assert.Equal(left.CandidateGender, right.CandidateGender);
+        Assert.Equal(left.CandidateAge, right.CandidateAge);
+        Assert.Equal(left.TalentAgriculture, right.TalentAgriculture);
+        Assert.Equal(left.TalentCommerce, right.TalentCommerce);
+        Assert.Equal(left.TalentScholar, right.TalentScholar);
+        Assert.Equal(left.TalentCraft, right.TalentCraft);
+        Assert.Equal(left.CandidateStudy, right.CandidateStudy);
+        Assert.Equal(left.CandidateHealth, right.CandidateHealth);
+        Assert.Equal(left.CandidateLifespan, right.CandidateLifespan);
+        Assert.Equal(left.CandidateDegree, right.CandidateDegree);
+        Assert.Equal(left.Class, right.Class);
+        AssertBits(left.BetrothalGift.Wen, right.BetrothalGift.Wen);
+        AssertBits(left.Dowry.Wen, right.Dowry.Wen);
+        Assert.Equal(left.ProposedAt, right.ProposedAt);
+        Assert.Equal(left.CandidatePlacement, right.CandidatePlacement);
     }
 
     /// <summary>㉒ 惩罚日志（006-bribery-punishment）：六类事实行逐字段比对（含可空字段与金额标度）。</summary>

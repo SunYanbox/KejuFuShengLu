@@ -35,6 +35,9 @@ public class LedgerTests
     /// <summary>长跑月数：跨两个年度，覆盖 1 月的利率 roll 与 12 月的年度项（储蓄利息、工 bonus）。</summary>
     private const int RunMonths = 24;
 
+    /// <summary>「条目合计 ↔ 资金池变动」等式允许的 ulp 倍数（见 <c>AssertMoneyIdentity</c> 的说明）。</summary>
+    private const decimal UlpAllowance = 256m;
+
     /// <summary>十二月的参照年月（年度项当月）。</summary>
     private static readonly GameDate December = new(80, 12);
 
@@ -196,7 +199,7 @@ public class LedgerTests
 
         var state = new GameState(
             StateId, fixture.Date, Difficulty.Normal, Origin.Artisan, fixture.Family, fixture.Economy);
-        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state), new FixedNameGenerator());
         var step = Settle(engine, state);
         var ledger = state.Economy.Ledger;
 
@@ -265,7 +268,7 @@ public class LedgerTests
     {
         // ① 饥馑四类迁移：付不起时不落生活费条目，只落**事件类**条目。
         var famine = NewFamineState();
-        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine));
+        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine), new FixedNameGenerator());
         var steps = new List<MonthStep>();
 
         var monthsToSevere = FamineTimeline.MonthsUntilRelief + FamineTimeline.ReliefMonthsUntilSevere - 1;
@@ -344,7 +347,7 @@ public class LedgerTests
 
         // 事件类条目允许 0 元（饥馑迁移一律 0），且仍入账可读——与资金类的不变量形成对照。
         var famine = NewFamineState();
-        Settle(new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine)), famine);
+        Settle(new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(famine), new FixedNameGenerator()), famine);
 
         var entered = Assert.Single(
             famine.Economy.Ledger.Entries, e => e.Category == LedgerCategory.FamineEntered);
@@ -455,11 +458,15 @@ public class LedgerTests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 唯一被容忍的是 <see cref="decimal"/> **尾数饱和**带来的 1 ulp：「资金池 = 期初 + 逐条累加」与
+    /// 唯一被容忍的是 <see cref="decimal"/> **尾数饱和**带来的若干 ulp：「资金池 = 期初 + 逐条累加」与
     /// 「条目合计 = 从 0 逐条累加」是两次**数量级不同**的定点累加，尾数为 28~29 位有效数字，
-    /// 当累计金额超出尾数上限时两侧会相差 1 ulp（本夹具 300 个区间中恰有一个落在该边界上，
-    /// 差额 = 1e-23 文）。这是 decimal 的表示精度下限，**不是**「只动资金池而不落条目」——
-    /// 后者表现为条目量级的差额，会被下面这条断言直接判红。
+    /// 当累计金额超出尾数上限时两侧会相差若干个 ulp（本夹具 300 个区间里最大差额 ≈ 1.2e-21 文，
+    /// 即 10 ulp 量级）。这是 decimal 的表示精度下限，**不是**「只动资金池而不落条目」——
+    /// 后者表现为条目量级的差额（≥ 0.001 文），会被下面这条断言直接判红。
+    /// </para>
+    /// <para>
+    /// 允许的上界取 <see cref="UlpAllowance"/> 倍 ulp：两次累加各含数百次加法，每次加法至多引入
+    /// 1 ulp 的舍入，故「几十 ulp」是正常量级，而 3000 万倍以内的余量仍远小于最小货币单位 1 文。
     /// </para>
     /// </remarks>
     private static void AssertMoneyIdentity(Money expected, Money actual)
@@ -480,14 +487,13 @@ public class LedgerTests
         }
 
         Assert.True(
-            Absolute(difference.Wen) <= Ulp(magnitude),
+            Absolute(difference.Wen) <= Ulp(magnitude) * UlpAllowance,
             FormattableString.Invariant(
-                $"差额 {difference.Wen} 文（期望 {expected.Wen}、实际 {actual.Wen}）超出 decimal 尾数饱和的 1 ulp。"));
+                $"差额 {difference.Wen} 文（期望 {expected.Wen}、实际 {actual.Wen}）超出 decimal 尾数饱和的 {UlpAllowance} ulp。"));
     }
 
     /// <summary>给定数量级下 <see cref="decimal"/> 的 1 ulp（28 位有效数字）。</summary>
-    private static decimal Ulp(decimal magnitude)
-    {
+    private static decimal Ulp(decimal magnitude)    {
         var scaled = magnitude;
         var ulp = 1E-28m;
 
@@ -553,7 +559,7 @@ public class LedgerTests
         var fixture = EconomyFixtures.Create(settings ?? new EconomyFixtureSettings());
         var state = new GameState(
             StateId, fixture.Date, Difficulty.Normal, origin, fixture.Family, fixture.Economy);
-        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(new SeededRandomService(Seed), new GameStateClock(state), new FixedNameGenerator());
         var steps = new List<MonthStep>();
 
         for (var index = 0; index < months; index++)
@@ -574,9 +580,17 @@ public class LedgerTests
         });
 
     /// <summary>只含一名儿童的家族：无任何收入来源、无资产、零资金 → 必进入饥馑且不落生活费条目。</summary>
+    /// <remarks>
+    /// 成员按 <see cref="AttributePolicy.HealthMean"/> 补上正常体质：<see cref="RulesHarness.Member"/> 默认不设
+    /// <see cref="Person.Health"/>（为 0），而 007 起 ⑧-e 会在饥馑严重期每人每月扣 10 点体质、归零即登记死亡，
+    /// 于是「0 体质成员 + 严重期」当月即死 ⇒ 家族无计口成员 ⇒ 饥馑状态机次月直接解除，
+    /// 本用例关注的是阶段迁移与事件类条目，故夹具 MUST 让成员活着走完时间线。
+    /// </remarks>
     private static GameState NewFamineState()
     {
-        var family = RulesHarness.FamilyOf(RulesHarness.Member(91, Gender.Male, 8));
+        var child = RulesHarness.Member(91, Gender.Male, 8);
+        child.Health = (int)AttributePolicy.HealthMean;
+        var family = RulesHarness.FamilyOf(child);
         var economy = new FamilyEconomy(
             LivingCostTable.InitialStandard,
             new GrainPriceIndex(GrainPricePolicy.Initial),

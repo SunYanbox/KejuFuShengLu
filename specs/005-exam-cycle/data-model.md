@@ -184,7 +184,9 @@ public static class ExamSeasonRunner
 }
 ```
 
-调用点：`MonthlySettlementEngine.Settle` 的**第 ⑦ 步**（§4.2）。内部次序与随机消费次序逐字见
+调用点：`MonthlySettlementEngine.Settle` 的**第 ⑨ 步**（§4.2；**007 后记**：原第 ⑦ 步，因 006 插入
+③ 惩罚推进、007 插入 ⑧ 人口与健康推进而两次顺移——本步位置始终钉在「贷款之后、推进时间之前」）。
+内部次序与随机消费次序逐字见
 [契约十三 §1~§2](./contracts/exam-session.md#1-步骤位置与内部次序)。`Run` 的**可变**范围严格限定为：
 
 - `Person`：`ApplyForExam` / `ClearExamApplication` / `RecordExamFailure` / `AppendDegree`；

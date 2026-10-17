@@ -160,8 +160,17 @@ MUST NOT 同时置 `Family.HasShiStatus`（§10.2、FR-008）。
 | `NextTalent/NextStudy/NextHealth` | 取样 → **四舍五入取整** → clamp 到 `AttributeLimits.Min~Max` | spec Assumptions |
 | `NextLifespan` | 取样 → **四舍五入取整** → **只 clamp 下界 `AttributeLimits.Min`（0）**、**不设上限**（FR-006） | spec Assumptions |
 
-**明确不含**：`AttributeLimits` 的 0~100 值域（属 `KFL.Core`）、遗传公式（§4.2 的新生儿口径
-属逻辑轨 ⑦）。
+**明确不含**：`AttributeLimits` 的 0~100 值域（属 `KFL.Core`）、遗传公式的**新生儿口径**
+（§4.2 的**父母参照**公式属逻辑轨 ⑦）。
+
+**007 后记（2026-10-17）**：本节的「无父母参照者」分布与 `NextNormal` 已被 007（逻辑轨 ⑦）**复用**
+于两处非开局场景——**买人口**（`PopulationPurchasePolicy`：年龄 8~16、性别 50/50、天赋 `N(60,20)`、
+学业 `N(30,15)`、体质 `N(85,10)`、寿数照常 roll、无父母参照）与**婚配对象初始化**
+（`MarriageMarket.CreateCandidate`：同款四项属性分布、寿数照常 roll，年龄按本家成员年龄 ±
+`CandidateAgeSpread`）。两处 MUST 复用本表的常量与 `AttributePolicy.NextNormal`，
+MUST NOT 另立第二套分布字面量。见
+[007 data-model.md §3.3/§3.5](../../007-family-lifecycle/data-model.md) 与
+[007 contracts/marriage-birth.md §3](../../007-family-lifecycle/contracts/marriage-birth.md)。
 
 ### 3.3 `Config/OfficialCareerPolicy`——【新】§8.2 的单一出处
 

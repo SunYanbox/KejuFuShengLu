@@ -97,3 +97,13 @@ public interface INameGenerator
 **`ISaveService` 已由 004 定义**（2026-10-11）——签名与失败矩阵见
 [004 `contracts/save-service.md`](../004-save-system/contracts/save-service.md)；
 `IAchievementStore` 与 `IEventBus` 仍未定义（逻辑轨 ⑧ 等后续阶段）。
+
+**007 未新增接缝**（2026-10-17）：007（家族生命周期，`IllnessPolicy` / 婚姻市场 / 买人口 /
+疾病治疗抉择）**MUST NOT 自建 `IEventBus` 或 `IAchievementStore`**（007 FR-045）。决策类事件
+（提亲应答、生育决策、疾病治疗抉择）对 U1 快进栈的「暂停信号」与玩家可见性，一律经
+**结算快照** `SettlementResult.Lifecycle`（`LifecycleSnapshot` 的十段事实）与
+**纯函数查询面** `LifecycleQueries` 表达：暂停信号 = **上一月**产出的
+`LifecycleSnapshot.Illnesses` 中 `Contracted == true` 的成员（007 FR-045、
+[007 data-model §3.3/§3.4](../007-family-lifecycle/data-model.md)）。
+故本契约的接缝集合自 004 起未变：`IGameClock` / `IRandomService` / `ISaveService` /
+`INameGenerator`（003 追加）四者，007 **零新增**。

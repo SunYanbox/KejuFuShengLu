@@ -6,6 +6,7 @@ using KFL.Infrastructure.Abstractions;
 using KFL.Infrastructure.Save;
 using KFL.Infrastructure.Services;
 using KFL.Rules.Save;
+using KFL.Tests.Rules;
 using Xunit;
 
 namespace KFL.Tests.Infrastructure;
@@ -194,8 +195,8 @@ public sealed class SaveServiceTests
         var withSave = SaveFixtures.PlainState();
         var baseline = SaveFixtures.PlainState();
 
-        var recording = new TurnRunner(new SeededRandomService(Seed), service, new SaveSlot("自动档"));
-        var plain = new TurnRunner(new SeededRandomService(Seed), saveService: null, new SaveSlot("自动档"));
+        var recording = new TurnRunner(new SeededRandomService(Seed), service, new SaveSlot("自动档"), new FixedNameGenerator());
+        var plain = new TurnRunner(new SeededRandomService(Seed), saveService: null, new SaveSlot("自动档"), new FixedNameGenerator());
 
         for (var turn = 0; turn < Turns; turn++)
         {
@@ -246,8 +247,8 @@ public sealed class SaveServiceTests
         // 「从不落盘」必须逐字段一致。
         var persisted = SaveFixtures.PlainState();
         var baseline = SaveFixtures.PlainState();
-        var recording = new TurnRunner(new SeededRandomService(Seed), service, slot);
-        var plain = new TurnRunner(new SeededRandomService(Seed), saveService: null, slot);
+        var recording = new TurnRunner(new SeededRandomService(Seed), service, slot, new FixedNameGenerator());
+        var plain = new TurnRunner(new SeededRandomService(Seed), saveService: null, slot, new FixedNameGenerator());
 
         for (var month = 0; month < PersistedMonths; month++)
         {
@@ -284,7 +285,7 @@ public sealed class SaveServiceTests
         var service = sandbox.CreateService();
         var slot = new SaveSlot("自动档");
         var state = SaveFixtures.PlainState();
-        var runner = new TurnRunner(new SeededRandomService(20251011), service, slot);
+        var runner = new TurnRunner(new SeededRandomService(20251011), service, slot, new FixedNameGenerator());
 
         for (var turn = 0; turn < 12; turn++)
         {

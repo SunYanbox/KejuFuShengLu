@@ -60,6 +60,7 @@ public static class SaveStateMapper
                 MarriageAlignedOutsiders = [.. bookkeeping.MarriageAligned.Select(id => id.Value)],
                 AutoExamApplication = family.AutoExamApplication,
                 PunishmentJournal = ToDto(family.PunishmentJournal),
+                Lifecycle = ToDto(family.Lifecycle),
             },
             Economy = ToDto(state.Economy),
         };
@@ -156,6 +157,9 @@ public static class SaveStateMapper
                 memberDto.JieShiBribeCount,
                 memberDto.ShengShiBribeCount,
                 memberDto.DianShiBribeCount);
+
+            // 延名师标志（007）：唯一写入通道是 internal 的 RestoreTutoring。
+            person.RestoreTutoring(memberDto.IsTutoredByMaster);
         }
 
         // ③ 状态位 MUST 先于计时与入仕途径：Person.Status 的 setter 会拒绝「清掉某位而其计时仍在」，
@@ -182,7 +186,9 @@ public static class SaveStateMapper
                 timersDto.SentenceRemainingMonths,
                 timersDto.ExamBanRemainingMonths,
                 timersDto.PromotionBanRemainingMonths,
-                timersDto.AwaitingPostRemainingMonths);
+                timersDto.AwaitingPostRemainingMonths,
+                timersDto.IllnessSeverityBasisPoints,
+                timersDto.TreatmentRemainingMonths);
             person.EntryTrack = memberDtos[i].EntryTrack;
         }
 
@@ -263,6 +269,25 @@ public static class SaveStateMapper
                 ToDate(fact.Date),
                 new PersonId(fact.Subject),
                 fact.NewRankLevel))]);
+
+        // ⑦″ 家族生命周期簿记（007-family-lifecycle）：购人计数、待分娩记录、已申请生育的夫妇、
+        //     待应答提议与当月托媒名额。只搬运盘上事实，引用完整性由第 ⑩ 步的一致性校验裁决。
+        var lifecycleDto = Required(familyDto.Lifecycle, "lifecycle");
+        family.Lifecycle.RestoreBookkeeping(
+            lifecycleDto.PurchaseCount,
+            lifecycleDto.PurchaseYear,
+            [.. Required(lifecycleDto.PendingBirths, "pendingBirths").Select(birth => new PendingBirth(
+                new CoupleKey(new PersonId(birth.HusbandId), new PersonId(birth.WifeId)),
+                new GameDate(birth.AppliedYear, birth.AppliedMonth)))],
+            [.. Required(lifecycleDto.AppliedBirthCouples, "appliedBirthCouples").Select(couple => new CoupleKey(
+                new PersonId(couple.HusbandId),
+                new PersonId(couple.WifeId)))],
+            lifecycleDto.BirthApplicationYear,
+            lifecycleDto.Proposal is { } proposal ? ToDomain(proposal) : null,
+            [.. Required(lifecycleDto.MatchmakeApplications, "matchmakeApplications").Select(application =>
+                new MatchmakeApplication(
+                    new PersonId(application.MemberId),
+                    new GameDate(application.AppliedYear, application.AppliedMonth)))]);
 
         // ⑧⑨ 经济聚合与存档级字段。
         var economyDto = Required(dto.Economy, nameof(dto.Economy));
@@ -391,6 +416,8 @@ public static class SaveStateMapper
             ExamBanRemainingMonths = person.Timers.ExamBanRemainingMonths,
             PromotionBanRemainingMonths = person.Timers.PromotionBanRemainingMonths,
             AwaitingPostRemainingMonths = person.Timers.AwaitingPostRemainingMonths,
+            IllnessSeverityBasisPoints = person.Timers.IllnessSeverityBasisPoints,
+            TreatmentRemainingMonths = person.Timers.TreatmentRemainingMonths,
         },
         Occupation = person.Occupation,
         MonthsInOffice = person.MonthsInOffice,
@@ -414,6 +441,87 @@ public static class SaveStateMapper
         JieShiBribeCount = person.JieShiBribeCount,
         ShengShiBribeCount = person.ShengShiBribeCount,
         DianShiBribeCount = person.DianShiBribeCount,
+        IsTutoredByMaster = person.IsTutoredByMaster,
+    };
+
+    /// <summary>把家族生命周期簿记映射成瞬态 DTO（007-family-lifecycle；契约二十 §5、data-model §3.1）。</summary>
+    /// <param name="lifecycle">生命周期簿记。</param>
+    /// <returns>瞬态 DTO。</returns>
+    private static FamilyLifecycleDto ToDto(FamilyLifecycleState lifecycle) => new()
+    {
+        PurchaseCount = lifecycle.PurchaseCount,
+        PurchaseYear = lifecycle.PurchaseYear,
+        PendingBirths = [.. lifecycle.PendingBirths.Select(birth => new PendingBirthDto
+        {
+            HusbandId = birth.Couple.HusbandId.Value,
+            WifeId = birth.Couple.WifeId.Value,
+            AppliedYear = birth.AppliedAt.Year,
+            AppliedMonth = birth.AppliedAt.Month,
+        })],
+        AppliedBirthCouples = [.. lifecycle.AppliedBirthCouples.Select(couple => new CoupleKeyDto
+        {
+            HusbandId = couple.HusbandId.Value,
+            WifeId = couple.WifeId.Value,
+        })],
+        BirthApplicationYear = lifecycle.BirthApplicationYear,
+        Proposal = lifecycle.Proposal is { } proposal ? ToDto(proposal) : null,
+        MatchmakeApplications = [.. lifecycle.MatchmakeApplications.Select(application => new MatchmakeApplicationDto
+        {
+            MemberId = application.MemberId.Value,
+            AppliedYear = application.AppliedAt.Year,
+            AppliedMonth = application.AppliedAt.Month,
+        })],
+    };
+
+    /// <summary>把待应答提议映射成瞬态 DTO（007-family-lifecycle；契约二十 §5、data-model §2.2）。</summary>
+    /// <param name="proposal">提议。</param>
+    /// <returns>瞬态 DTO。</returns>
+    private static MarriageProposalDto ToDto(MarriageProposal proposal) => new()
+    {
+        Kind = proposal.Kind,
+        OurMemberId = proposal.OurMemberId.Value,
+        CandidateName = proposal.CandidateName,
+        CandidateGender = proposal.CandidateGender,
+        CandidateAge = proposal.CandidateAge,
+        TalentAgriculture = proposal.TalentAgriculture,
+        TalentCommerce = proposal.TalentCommerce,
+        TalentScholar = proposal.TalentScholar,
+        TalentCraft = proposal.TalentCraft,
+        CandidateStudy = proposal.CandidateStudy,
+        CandidateHealth = proposal.CandidateHealth,
+        CandidateLifespan = proposal.CandidateLifespan,
+        CandidateDegree = proposal.CandidateDegree,
+        Class = proposal.Class,
+        BetrothalGift = proposal.BetrothalGift.Wen,
+        Dowry = proposal.Dowry.Wen,
+        ProposedYear = proposal.ProposedAt.Year,
+        ProposedMonth = proposal.ProposedAt.Month,
+        CandidatePlacement = proposal.CandidatePlacement,
+    };
+
+    /// <summary>把瞬态 DTO 复原成待应答提议（007-family-lifecycle；契约二十 §5、data-model §2.2）。</summary>
+    /// <param name="dto">提议 DTO。</param>
+    /// <returns>领域记录。</returns>
+    private static MarriageProposal ToDomain(MarriageProposalDto dto) => new()
+    {
+        Kind = dto.Kind,
+        OurMemberId = new PersonId(dto.OurMemberId),
+        CandidateName = dto.CandidateName,
+        CandidateGender = dto.CandidateGender,
+        CandidateAge = dto.CandidateAge,
+        TalentAgriculture = dto.TalentAgriculture,
+        TalentCommerce = dto.TalentCommerce,
+        TalentScholar = dto.TalentScholar,
+        TalentCraft = dto.TalentCraft,
+        CandidateStudy = dto.CandidateStudy,
+        CandidateHealth = dto.CandidateHealth,
+        CandidateLifespan = dto.CandidateLifespan,
+        CandidateDegree = dto.CandidateDegree,
+        Class = dto.Class,
+        BetrothalGift = Money.FromWen(dto.BetrothalGift),
+        Dowry = Money.FromWen(dto.Dowry),
+        ProposedAt = new GameDate(dto.ProposedYear, dto.ProposedMonth),
+        CandidatePlacement = dto.CandidatePlacement,
     };
 
     /// <summary>把惩罚日志映射成瞬态 DTO（006-bribery-punishment；契约十六 §5、data-model §7.1）。</summary>

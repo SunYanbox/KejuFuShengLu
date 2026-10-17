@@ -37,7 +37,7 @@ public class PersonTests
         "AppliedExam",
     };
 
-    /// <summary><see cref="Person"/> 自持的可写属性，只有这十个。</summary>
+    /// <summary><see cref="Person"/> 自持的可写属性，只有这十一个。</summary>
     public static TheoryData<string> WritableMembers => new()
     {
         "Name",
@@ -50,6 +50,7 @@ public class PersonTests
         "Occupation",
         "MonthsInOffice",
         "EntryTrack",
+        "IsTutoredByMaster",
     };
 
     [Fact]

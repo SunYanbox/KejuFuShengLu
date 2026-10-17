@@ -6,6 +6,7 @@ using KFL.Rules.Career;
 using KFL.Rules.Config;
 using KFL.Rules.Economy;
 using KFL.Rules.Exam;
+using KFL.Rules.FamilyLifecycle;
 using KFL.Rules.Punishment;
 
 namespace KFL.Rules.Settlement;
@@ -16,7 +17,7 @@ namespace KFL.Rules.Settlement;
 /// <remarks>
 /// <para>
 /// **唯一的编排入口**（FR-020）：按契约三 §1（003 后为契约七 §2 的七步；005 后为契约十三 §1.1 的八步；
-/// 006 后为契约十六 §1.1 的九步）执行一次，**就地**推进传入的
+/// 006 后为契约十六 §1.1 的九步；007 后为契约十八 §1 的十步）执行一次，**就地**推进传入的
 /// <see cref="GameState"/> 与 <see cref="GameState.CurrentDate"/>，并返回可断言的快照。
 /// </para>
 /// <list type="number">
@@ -27,18 +28,21 @@ namespace KFL.Rules.Settlement;
 /// <item><description>收入：1 月 roll 当年储蓄利率、12 月计息并入本金 + 工出身 bonus，再按 §6 各来源入账（俸禄按三态）。</description></item>
 /// <item><description>生活费：足额或部分支付 + 饥馑四阶段状态机（先解除、后升级；R-12）。</description></item>
 /// <item><description>贷款：**先计息、后划扣**（E-05；US2 已接入）。</description></item>
+/// <item><description>人口与健康推进（007 新增；<c>PopulationAdvance.Run</c>：⑧-a 婚配事件 → ⑧-b 分娩 → ⑧-c 患病与病程 → ⑧-d 成长 → ⑧-e 饥馑死亡判定 → ⑧-f 寿终与夭折 → ⑧-g 死亡结算 → ⑧-h 家主继任）。</description></item>
 /// <item><description>科举季（005 新增；<c>ExamSeasonRunner.Run</c>，按 <c>PersonId</c> 升序）：自动报名 → 路费与弃考 → 免解 → 录取 / 进甲判定 → 及第入仕 → 特奏名询问。</description></item>
 /// <item><description><see cref="GameState.AdvanceMonth"/> 并返回快照。</description></item>
 /// </list>
 /// <para>
-/// **MUST NOT 存在**的步骤（各属其他阶段）：随机事件、属性成长 / 衰老 / 疾病 / 死亡判定、
-/// 绝嗣判定、存档写入（契约三 §1 的「MUST NOT 存在」清单）。
+/// **MUST NOT 存在**的步骤（各属其他阶段）：随机事件、绝嗣判定、结局与成就、存档写入
+/// （契约三 §1 的「MUST NOT 存在」清单；属性成长 / 衰老 / 疾病 / 死亡判定已由 007 的 ⑧ 接管）。
 /// </para>
 /// <para>
-/// **随机消费次序**（契约七 §2、契约十三 §1.3、契约十六 §1.3，单测逐次断言）：米价（②）
-/// → 考课掷骰（④-d，逐人升序）→ 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）→ 科举判定（⑧，逐人：
-/// 1 次录取 / 进甲，进甲者紧接 1 次名次）→ 及第入仕待阙（⑧，1 次 <c>Next(6, 25)</c>，
-/// 按 <c>PersonId</c> 升序）。**第③步惩罚推进消费 0 次**。
+/// **随机消费次序**（契约七 §2、契约十三 §1.3、契约十六 §1.3、契约十八 §3，单测逐次断言）：米价（②）
+/// → 惩罚推进（③，**0 次**）→ 考课掷骰（④-d，逐人升序）→ 储蓄利率（仅 1 月，⑤）→ 贷款计息利率（⑦）
+/// → 婚配事件（⑧-a）→ 分娩（⑧-b，逐对升序）→ 患病与病程（⑧-c，逐人升序）→ 成长（⑧-d，**0 次**）
+/// → 饥馑死亡判定（⑧-e，仅严重期）→ 寿终与夭折（⑧-f，逐人升序，仅 <c>AgeAt &lt; 3</c>）
+/// → 科举判定（⑨，逐人：1 次录取 / 进甲，进甲者紧接 1 次名次）→ 及第入仕待阙（⑨，
+/// 1 次 <c>Next(6, 25)</c>，按 <c>PersonId</c> 升序）。
 /// </para>
 /// <para>
 /// 随机与「现在」都只能来自构造函数注入的接缝（章程原则 II、契约二）：
@@ -55,18 +59,22 @@ public sealed class MonthlySettlementEngine
 
     private readonly IRandomService _randomService;
     private readonly IGameClock _clock;
+    private readonly INameGenerator _nameGenerator;
 
-    /// <summary>构造并注入两组接缝。</summary>
-    /// <param name="randomService">随机来源（米价 / 储蓄利率 / 贷款计息利率）。</param>
+    /// <summary>构造并注入三组接缝。</summary>
+    /// <param name="randomService">随机来源（米价 / 储蓄利率 / 贷款计息利率 / ⑧ 各子步）。</param>
     /// <param name="clock">游戏时间来源（结算对象是它给出的当月）。</param>
+    /// <param name="nameGenerator">取名来源（⑧-a 候选者与 ⑧-b 新生儿；R-02）。</param>
     /// <exception cref="ArgumentNullException">任一参数为 <c>null</c>。</exception>
-    public MonthlySettlementEngine(IRandomService randomService, IGameClock clock)
+    public MonthlySettlementEngine(IRandomService randomService, IGameClock clock, INameGenerator nameGenerator)
     {
         ArgumentNullException.ThrowIfNull(randomService);
         ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(nameGenerator);
 
         _randomService = randomService;
         _clock = clock;
+        _nameGenerator = nameGenerator;
     }
 
     /// <summary>结算当月账目、就地推进一个月，并返回本次结算的可断言快照。</summary>
@@ -198,11 +206,17 @@ public sealed class MonthlySettlementEngine
 
         var famineAfter = new FamineState(economy.Famine);
 
-        // ⑧ 科举季（**必须在推进时间之前**，故判定用的是考试当月的日期与当月值）：
+        // ⑧ 人口与健康推进（007 新增；契约十八 §2）：八子步固定次序，**必须**在 ⑨ 科举季之前
+        //    （⑧-f 的寿终判定与 ⑨ 的及第入仕互不干涉，但次序 MUST NOT 颠倒）。
+        //    本步 MUST NOT 调用 AdvanceMonth、MUST NOT 修改 CurrentDate。⑧-b~⑧-f 只登记死亡，
+        //    ⑧-g 统一结算；⑧-d / ⑧-g / ⑧-h 消费 **0 次**随机。
+        var population = PopulationAdvance.Run(state, _randomService, _nameGenerator);
+
+        // ⑨ 科举季（**必须在推进时间之前**，故判定用的是考试当月的日期与当月值）：
         //    本步 MUST NOT 调用 AdvanceMonth、MUST NOT 修改 CurrentDate（契约十三 §1.1）。
         var examSeason = ExamSeasonRunner.Run(state, _randomService);
 
-        // ⑨ 推进时间并返回快照。
+        // ⑩ 推进时间并返回快照。
         state.AdvanceMonth();
 
         return new SettlementResult
@@ -227,6 +241,7 @@ public sealed class MonthlySettlementEngine
             Punishment = punishment,
             Career = career,
             ExamSeason = examSeason,
+            Lifecycle = population.Lifecycle,
         };
     }
 

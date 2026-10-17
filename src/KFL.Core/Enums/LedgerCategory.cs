@@ -1,8 +1,8 @@
 namespace KFL.Core.Enums;
 
 /// <summary>
-/// 家族流水账的类别全集（22 个取值；data-model §2.1、§2.4，逐行取自规格书 §12.3 与 §5.1~§5.4、
-/// 006 的 §7.1 / §7.5）。
+/// 家族流水账的类别全集（38 个取值；data-model §2.1、§2.4，逐行取自规格书 §12.3 与 §5.1~§5.4、
+/// 006 的 §7.1 / §7.5、007 的 §4.3 / §9.1~§9.5）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -13,10 +13,10 @@ namespace KFL.Core.Enums;
 /// **明确不含**（§17 裁决）：
 /// ① **不**为 <see cref="Occupation"/> 新增「自耕」「务农」等取值——收入来源是**账本类别**，
 /// 不是职业（E-02）；
-/// ② **不**出现「买人口」「聘礼 / 嫁妆」等阶段⑤⑥⑧ 的类别（FR-028：本阶段 MUST NOT 存在该类型，
-/// 以「无该类别」断言）；005 新增 <see cref="ExamTravelCost"/>，
-/// 006 新增 <see cref="BribeExpense"/> 与 <see cref="Fine"/> 两项（FR-027）——「贿赂」自此**有**类别，
-/// 故 001 时期「无贿赂类别」的断言由 006 的类别名单等价替代。
+/// ② 005 新增 <see cref="ExamTravelCost"/>，006 新增 <see cref="BribeExpense"/> 与
+/// <see cref="Fine"/>，007 新增聘礼 / 嫁妆与买人口的 16 项（FR-043）——001 时期
+/// 「无贿赂类别」「无买人口 / 聘礼 / 嫁妆类别」的**负向**断言自此由 006 / 007 的类别名单
+/// 等价替代（不变量由正向断言守卫，MUST NOT 再保留「该类类别不存在」的断言）。
 /// </para>
 /// </remarks>
 public enum LedgerCategory
@@ -86,4 +86,52 @@ public enum LedgerCategory
 
     /// <summary>罚金（资金类，恒为负；规格书 §7.5 / 契约十六 §4）。</summary>
     Fine,
+
+    /// <summary>托媒费（资金类，恒为负；规格书 §9.1 / 契约十九 §3）。</summary>
+    MatchmakerFee,
+
+    /// <summary>名师月费（资金类，恒为负；规格书 §4.3）。</summary>
+    TutorFee,
+
+    /// <summary>娶入时付给对方的聘礼（资金类，恒为负；规格书 §9.1 的 24 格金额表）。</summary>
+    BetrothalGiftPaid,
+
+    /// <summary>嫁出时付给对方的嫁妆（资金类，恒为负；规格书 §9.1）。</summary>
+    DowryPaid,
+
+    /// <summary>买功名婚姻的额外支出（资金类，恒为负；规格书 §9.3，年俸 × 150%）。</summary>
+    DegreeMarriageFeePaid,
+
+    /// <summary>生育申请费（资金类，恒为负；规格书 §9.4）。</summary>
+    ChildbirthExpense,
+
+    /// <summary>疗程药费（资金类，恒为负；规格书 §4.3，<c>(0.05 + 0.45s) 贯</c> × 支出系数）。</summary>
+    MedicineExpense,
+
+    /// <summary>买人口支出（资金类，恒为负；规格书 §9.5，本年第 n 名 = 10n 贯）。</summary>
+    PersonPurchase,
+
+    /// <summary>嫁出时收受对方的聘礼（资金类，正额入现金；规格书 §9.1）。</summary>
+    BetrothalGiftReceived,
+
+    /// <summary>娶入时收受对方的嫁妆（资金类，正额入现金；规格书 §9.1）。</summary>
+    DowryReceived,
+
+    /// <summary>外嫁时收受的买功名婚姻额外嫁妆（资金类，正额入现金；规格书 §9.3）。</summary>
+    DegreeMarriageDowryReceived,
+
+    /// <summary>新生儿降生（**事件类**，不引起资金池变动；规格书 §9.4）。</summary>
+    ChildBorn,
+
+    /// <summary>成员死亡（**事件类**；规格书 §4.1~§4.4，⑧-g 统一归档时落一条）。</summary>
+    MemberDeceased,
+
+    /// <summary>婚姻成立（**事件类**；规格书 §9.1 / §9.2）。</summary>
+    MarriageFormed,
+
+    /// <summary>成员外嫁归档（**事件类**；规格书 §9.1 的嫁出方向）。</summary>
+    MemberMarriedOut,
+
+    /// <summary>买人口成交（**事件类**；规格书 §9.5）。</summary>
+    PersonBought,
 }

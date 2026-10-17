@@ -42,6 +42,7 @@ public sealed class TurnRunner
     private readonly IRandomService _randomService;
     private readonly ISaveService? _saveService;
     private readonly SaveSlot _slot;
+    private readonly INameGenerator _nameGenerator;
 
     /// <summary>建推进器。</summary>
     /// <param name="randomService">随机源；每回合新建的结算引擎要用它。</param>
@@ -50,14 +51,23 @@ public sealed class TurnRunner
     /// MUST NOT 另加一个持久化设置。
     /// </param>
     /// <param name="slot">当前档（档名 + 格式）；会话信息，组合期注入。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="randomService"/> 为 <c>null</c>。</exception>
-    public TurnRunner(IRandomService randomService, ISaveService? saveService, SaveSlot slot)
+    /// <param name="nameGenerator">姓名来源（007 新增）：转交给每回合新建的结算引擎，供 ⑧-a/⑧-b 取名。</param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="randomService"/> 或 <paramref name="nameGenerator"/> 为 <c>null</c>。
+    /// </exception>
+    public TurnRunner(
+        IRandomService randomService,
+        ISaveService? saveService,
+        SaveSlot slot,
+        INameGenerator nameGenerator)
     {
         ArgumentNullException.ThrowIfNull(randomService);
+        ArgumentNullException.ThrowIfNull(nameGenerator);
 
         _randomService = randomService;
         _saveService = saveService;
         _slot = slot;
+        _nameGenerator = nameGenerator;
     }
 
     /// <summary>推进一个游戏月，并按节奏存档/备份。</summary>
@@ -71,7 +81,7 @@ public sealed class TurnRunner
         ArgumentNullException.ThrowIfNull(state);
 
         // ① 结算。引擎绑定到这个具体状态上（既有调用点的同款形状）；抛出 ⇒ 本回合不存档。
-        var settlement = new MonthlySettlementEngine(_randomService, new GameStateClock(state)).Settle(state);
+        var settlement = new MonthlySettlementEngine(_randomService, new GameStateClock(state), _nameGenerator).Settle(state);
 
         // ② 没注入存档服务 ⇒ 自动存档关，直接返回（结算照跑，结果不受影响：US2 AS4）。
         if (_saveService is null)

@@ -14,9 +14,11 @@ namespace KFL.Rules.Exam;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 本步是 <c>MonthlySettlementEngine.Settle</c> 的**第 ⑦ 步**，位于「⑥ 贷款」之后、
-/// 「⑧ 推进时间（<see cref="GameState.AdvanceMonth"/>）」之前，因此判定用的是**考试当月**的
-/// 日期与当月值（学业、仕天赋、难度、现金）。本步 MUST NOT 调用
+/// 本步是 <c>MonthlySettlementEngine.Settle</c> 的**第 ⑨ 步**（007 后记：原第 ⑦ 步，经 006 插入
+/// ③ 惩罚推进与 007 插入 ⑧ 人口与健康推进两次顺移），位于「⑦ 贷款」之后、
+/// 「⑩ 推进时间（<see cref="GameState.AdvanceMonth"/>）」之前，因此判定用的是**考试当月**的
+/// 日期与当月值（学业、仕天赋、难度、现金）。**推论**：⑧ 内死亡（含寿终与夭折）的成员不会出现在
+/// 本步的考生集合里（SC-001 的次序断言）。本步 MUST NOT 调用
 /// <see cref="GameState.AdvanceMonth"/>、MUST NOT 修改 <see cref="GameState.CurrentDate"/>
 /// （契约十三 §1.1）。
 /// </para>

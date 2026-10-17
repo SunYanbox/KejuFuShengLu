@@ -27,17 +27,24 @@ public class SavingsTests
     {
         var state = NewState(January, Origin.Scholar, cash: Guan(1000m), savings: Guan(100m));
 
-        // 随机槽位：米价（1 月）→ 储蓄利率（1 月）→ 米价（2~12 月）→ 米价（次年 1 月）→ 储蓄利率（次年 1 月）。
-        var values = new List<double> { 0.0d, 0.0d };
+        // 随机槽位（007 起每月末尾还有 ⑧-a 提亲骰与 ⑧-c 感染骰，本夹具只有一名 8 岁成员）：
+        // 1 月：米价 → 储蓄利率 → ⑧-a → ⑧-c；2~12 月：米价 → ⑧-a → ⑧-c；
+        // 次年 1 月：米价 → 储蓄利率 → ⑧-a → ⑧-c。
+        var values = new List<double> { 0.0d, 0.0d, 0.5d, 0.5d };  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
-        for (var index = 0; index < 12; index++)
+        for (var index = 0; index < 11; index++)
         {
-            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）2~12 月米价
+            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）2~12 月 ⑧-a
+            values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）2~12 月 ⑧-c
         }
 
+        values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）次年 1 月米价
         values.Add(double.MaxValue);
+        values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）次年 1 月 ⑧-a
+        values.Add(0.5d);  // arch-guard:allow 夹具随机取值（非规则数值副本）次年 1 月 ⑧-c
 
-        var engine = new MonthlySettlementEngine(new FixedRandomService(values.ToArray()), new GameStateClock(state));
+        var engine = new MonthlySettlementEngine(new FixedRandomService(values.ToArray()), new GameStateClock(state), new FixedNameGenerator());
         var first = engine.Settle(state);
 
         // 米价先被消费：若次序颠倒，本月米价拿到的会是储蓄利率的那个取值。
@@ -74,7 +81,7 @@ public class SavingsTests
         var state = NewState(January, Origin.Scholar, cash: Guan(1000m), savings: savings);
 
         // 第 1 个取值给米价，第 2 个给 1 月的储蓄利率 roll（极大值 → 区间上限）；其余月份回落中值。
-        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d, 1.0d), new GameStateClock(state));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d, 1.0d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
         var interest80 = DecemberInterest(engine, state);
 
@@ -184,7 +191,7 @@ public class SavingsTests
     {
         var savings = Guan(100m);
         var state = NewState(January, Origin.Scholar, cash: Guan(1000m), savings: savings);
-        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state));  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        var engine = new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator());  // arch-guard:allow 夹具随机取值（非规则数值副本）
         var interest = Money.Zero;
 
         for (var index = 0; index < 12; index++)
@@ -247,7 +254,7 @@ public class SavingsTests
     }
 
     private static SettlementResult Settle(GameState state) =>
-        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state)).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
+        new MonthlySettlementEngine(new FixedRandomService(0.5d), new GameStateClock(state), new FixedNameGenerator()).Settle(state);  // arch-guard:allow 夹具随机取值（非规则数值副本）
 
     private static Loan LoanOf(Money principal) => new() { Principal = principal };
 
