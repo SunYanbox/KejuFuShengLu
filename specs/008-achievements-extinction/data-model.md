@@ -14,9 +14,9 @@
 | --- | --- | --- |
 | `KFL.Core` | `AchievementId`、`AchievementSeries`、`OriginMilestone`（枚举）；`AchievementMark`、`PendingUnlock`、`ChronicleSnapshot`（值对象）；`AchievementState`、`EndingState`（聚合） | `GameState`：**+2 聚合属性**（内联初始化，ctor 形状不变） |
 | `KFL.Infrastructure` | `IAchievementStore`、`AchievementArchive`、`AchievementFlushResult`（接缝）；`AchievementStore`（实现）；`AchievementArchiveJson`（序列化）；5 个新 DTO | `SaveFileFormat.Version` 4→5；`SaveStateDto` 8→10 键；`SaveStateMapper`；`MessagePackSaveFormat`；`SaveStateValidator` +7 条 |
-| `KFL.Rules` | `AchievementPolicy`（配置）；`Achievements/` 目录 11 个文件 | `TurnRunner`：①~⑤ 编排（**第 ⑤ 步新增**，ctor +1 可选参）；FR-009 的 12 个动作入口各 +1 次上报调用 |
+| `KFL.Rules` | `AchievementPolicy`（配置）；`Achievements/` 目录 11 个文件 | `TurnRunner`：①~⑤ 编排（**第 ② 步与第 ⑤ 步新增**，ctor +1 可选参）；FR-009 的 12 个动作入口各 +1 次上报调用 |
 | `KFL.Presentation` / `KFL.App` | 无 | 无（界面轨 U1~U5 全部 Out of Scope） |
-| `tests/KFL.Tests` | `Rules/` 8 个 + `Infrastructure/` 4 个测试文件 | `RulesTestHarness` / `SaveCadenceTests` 的 `TurnRunner` 构造点（可选参，可不改） |
+| `tests/KFL.Tests` | `Rules/` 10 个 + `Infrastructure/` 4 个 + `Architecture/` 1 个测试文件（合计 **15**） | `RulesTestHarness` / `SaveCadenceTests` 的 `TurnRunner` 构造点（可选参，可不改） |
 
 **方向约束复核**：`Core` 仍零出边；判定器（`Rules`）通过**只读参数**接收全局面，不注入 store（R-01）；
 文件系统接触面全部在 `Infrastructure`（章程 II 与 G-07）。
@@ -66,7 +66,7 @@ public enum AchievementId
     ImperialSweep = 29,        // ACH-029 鼎甲包揽
     ExamFailuresTwenty = 30,   // ACH-030 科场遗珠
     FallenAtShengShi = 31,     // ACH-031 名落孙山
-    // 系列四：宗族血脉（ACH-032~043）
+    // 系列四：宗族血脉（ACH-032~048）
     LargeHousehold = 32,       // ACH-032 人丁兴旺
     FiftyBirths = 33,          // ACH-033 百子千孙
     ImperialGroomPick = 34,    // ACH-034 榜下捉婿
@@ -79,7 +79,7 @@ public enum AchievementId
     TradeLoss = 41,            // ACH-041 商海浮沉（待接线，恒 false）
     DebtBurden = 42,           // ACH-042 债台高筑
     DebtFree = 43,             // ACH-043 无债一身轻
-    // 系列五：覆巢之下（ACH-044~059）
+    // 系列五：覆巢之下（ACH-049~059）
     FamilyExtinct = 44,        // ACH-044 烟消云散
     CenturyHouse = 45,         // ACH-045 百年世家
     MillenniumHouse = 46,      // ACH-046 千秋万代
@@ -121,14 +121,14 @@ public enum AchievementSeries
     Emerging = 0,       // 初露锋芒（ACH-001~012，12 条）
     ExamProgression = 1,// 科名累进（ACH-013~020，8 条）
     OfficialCareer = 2, // 宦海沉浮（ACH-021~031，11 条）
-    Lineage = 3,        // 宗族血脉（ACH-032~043，12 条）
-    CollectiveRuin = 4, // 覆巢之下（ACH-044~059，16 条）
+    Lineage = 3,        // 宗族血脉（ACH-032~048，17 条）
+    CollectiveRuin = 4, // 覆巢之下（ACH-049~059，11 条）
     Famine = 5,         // 饥馑求生（ACH-060~063，4 条）
     DebugSecrets = 6,   // 调试秘辛（ACH-064~068，5 条）
 }
 ```
 
-**计数不变量**：`12 + 8 + 11 + 12 + 16 + 4 + 5 == 68`，由 `AchievementCatalogTests` 逐系列断言。
+**计数不变量**：`12 + 8 + 11 + 17 + 11 + 4 + 5 == 68`，由 `AchievementCatalogTests` 逐系列断言。
 
 #### `src/KFL.Core/Enums/OriginMilestone.cs`
 
@@ -607,7 +607,7 @@ SaveStateMapper.MapToDomain(dto)
 | 9 | `Chronicle.SurvivedYears == EndedAt.Year − 1` | 校验器新条 7 |
 | 10 | 68 条目录表齐全且 `Id` 与枚举一一对应 | `AchievementCatalogTests` |
 | 11 | 判定器无环境依赖（无时钟/随机/文件/网络/GUID 生成） | G-07（`src\KFL.Rules\` 在扫描范围） |
-| 12 | 008 的阈值只出现在 `src\KFL.Rules\Config\` | SC-008（`ConfigLiteralRules`） |
+| 12 | 008 的阈值只出现在 `src\KFL.Rules\Config\` | 章程「技术栈与工程约束」（`ConfigLiteralRules`） |
 | 13 | `EndingState.End` 幂等（第二次不改编年史） | `EndingStateTests` + SC-011 |
 | 14 | 已结束存档的推进零变更 | SC-010（三面：异常、状态快照、目录清单） |
 | 15 | 同种子同输入 ⇒ 判定结果逐字段一致 | SC-003（`AchievementDeterminismTests`） |
@@ -711,7 +711,7 @@ SaveStateMapper.MapToDomain(dto)
 | FR-037 契约自二十二 | 本特性 `contracts/` 三个文件 |
 | FR-041~043 待接线 | `TradeLoss` 恒 false + `AchievementTrigger.DebugWakeReported` + `IAchievementStore.Read` 读面（R-19） |
 | FR-048 测试落点 | 契约二十二 §5 的测试映射表 |
-| SC-001~015 | 见各条括注；SC-008/014 由守卫测试与序列化清单断言 |
+| SC-001~015 | 见各条括注；SC-014 由序列化清单断言；配置字面量守卫引章程「技术栈与工程约束」 |
 
 ---
 

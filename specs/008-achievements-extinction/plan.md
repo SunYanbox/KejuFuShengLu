@@ -13,7 +13,9 @@
 交付**逻辑轨 ⑧「成就与绝嗣结局」**（规格书 §16.1 第 ⑧ 项；§16.2 的旧编号「⑪ 成就/绝嗣结局」）。
 本特性是**纯逻辑轨**，全部断言 MUST 可完全脱离界面验收，MUST NOT 被 U 轨阻塞（`spec.md` 范围来源）。
 
-技术路线一句话：**在既有「结算 → 写档 → 备份」编排之后追加「成就与绝嗣判定」与「全局成就落盘」两步**，
+技术路线一句话：**把既有「结算 → 写档 → 备份」编排扩展为「结算 → 成就与绝嗣判定 → 覆盖写档 → 备份
+→ 全局成就落盘」**——在既有第 ① 步「结算」**之后**插入判定 ②（FR-007：判定在结算完成后、写盘之前），
+在既有第 ④ 步「备份」之后追加全局落盘 ⑤，
 用 `KFL.Core` 的两个新聚合（随档 `AchievementState` / `EndingState`）承载不可重算的累计量与终局，
 用 `KFL.Infrastructure` 的新接缝 `IAchievementStore` 承载跨存档的 `achievements.json`，
 判定器作为 `KFL.Rules` 的**唯一纯函数入口**消费既有六类当月事实快照。
@@ -66,7 +68,7 @@
   既有变体二选一，验收标准是「`SaveStateMapper` 能在不新增 `public` 面的前提下复原」）。
 **Scale/Scope**：单家族；成员数典型 3~200；新增 **8** 个 `KFL.Core` 类型（3 枚举 + 3 值对象
 + 2 聚合）与 `GameState` 的一处变更、**11** 个 `KFL.Rules/Achievements/` 文件、1 个配置类、
-**5** 个新存档 DTO、**5** 个 Infrastructure 文件；新增 **14** 个测试文件（`Rules/` 9 + `Infrastructure/` 4
+**5** 个新存档 DTO、**5** 个 Infrastructure 文件；新增 **15** 个测试文件（`Rules/` 10 + `Infrastructure/` 4
 + `Architecture/` 1）。
 
 ## Constitution Check
@@ -116,6 +118,27 @@
 | E-03 | `contracts/achievement-store.md:5/:211`、`contracts/chronicle-ending.md:5`、`data-model.md:673`、`quickstart.md:185-186` | 引用 004 的目录名为 `specs/004-persistence-recovery/` | 实为 **`specs/004-save-system/`**（已在本次计划阶段就地订正，含 `quickstart.md` 的两条 `Select-String` 路径） | 仓库实际目录（`Get-ChildItem specs -Directory`） |
 | E-04 | `specs/007-family-lifecycle/plan.md:125` | 引 004 为 `specs/004-save-system/...`（正确），并「顺带修正 004 `data-model.md` 的存量旧值 `FormatVersion = 2`」 | **不在本特性范围内**（007 已登记）；本特性只改 004 契约的键表/版本/常量/校验条数，MUST NOT 顺手改 004 `data-model.md` 的其它存量值 | AGENTS.md「一次提交只做一件事」；章程 V |
 | E-05 | 本文件自身 | 初稿曾在 `Summary` 写「`SaveStateDto` 8 → 10 键」而 `Scale/Scope` 写「**5** 个新存档 DTO」 | 两者一致：DTO 为 `AchievementStateDto` / `AchievementMarkDto` / `PendingUnlockDto` / `EndingStateDto` / `ChronicleDto` = **5** 个，键表见 `contracts/achievement-store.md` §6 | 本文件、`data-model.md` §7.1 |
+
+### 勘误登记（任务阶段追加，承接 `tasks.md` 的 E-06~E-11）
+
+> 本节为 `$speckit-analyze` 后的**追加**登记（不覆盖 E-01~E-05）。E-06~E-11 的完整口径见
+> `tasks.md`「勘误登记（任务阶段）」表，此处只留指针与影响面。
+
+| # | 位置 | 原文 | 采用口径 | 依据 |
+| --- | --- | --- | --- | --- |
+| E-06 | 本文件 `:69-70`（新增 14 个测试文件：`Rules/` 9 + `Infrastructure/` 4 + `Architecture/` 1）与 `data-model.md:19` | 两处数字矛盾，且**均漏 `Rules/AchievementDeterminismTests.cs`** | 实为 **15 个**：`Rules/` **10** + `Infrastructure/` **4** + `Architecture/` **1**（**已就地订正**本文件与 `data-model.md`） | `data-model.md` §6 不变量 15；`spec.md` SC-003；`tasks.md` E-06 |
+| E-07 | 契约二十二 §5 的测试文件名表 | 与 `plan.md:225-244` 的 Project Structure 不一致 | **以 Project Structure 为准**：`AchievementJudgmentTests` → `AchievementPredicateTests`；`AchievementArchiveJsonTests` **并入** `AchievementStoreTests`；`AchievementSaveRoundTripTests` **并入** `AchievementSaveFormatTests`；`EndingRefusalTests` **并入** `EndedSaveTests`（**已就地订正**契约 §5） | `tasks.md` E-07 |
+| E-08 | 契约二十四 §2「条款 6」表与 `quickstart.md:32-33`、`:51-52` | 首达年数写 `Year == 103`/`303`；`quickstart.md` 写「**六个**系列」与「宗族血脉 17 / 覆巢之下 11」（与契约二十四 §1 的系列列自相矛盾） | **规格书口径**：`SurvivedYears = CurrentDate.Year − 1` ⇒ `> 100` 首达 `Year == 102`、`> 300` 首达 `302`、`绝处逢生` `>= 100` 首达 `101`；系列为**七**个，计数 `12/8/11/17/11/4/5`（**已就地订正**契约二十四与 `quickstart.md`） | `tasks.md` E-08；`spec.md` Assumptions 5 / US3 AS4 |
+| E-09 | 契约二十四「条款 6」「条款 25」「条款 18」 | 枚举名 `SurvivedAgainstOdds`/`AcedTheLot` 在 `AchievementId` 中**不存在**；`烟消云散` 写成 ACH-**045**；称 `TukeyTrimean` 有两个调用点（其中 ACH-012「需要同口径存续年数」） | `NarrowEscape`（ACH-012）/`HellEnding`（ACH-048）；`烟消云散` = `FamilyExtinct` = **ACH-044**；`TukeyTrimean` 的调用点只有**编年史 ⑥**（**已就地订正**契约二十四） | `tasks.md` E-09；契约二十二 §1 |
+| E-10 | 契约二十二 §3 第 4/5 行 | 「002 借款发生入口」「002 提前清偿入口」**未给路径** | 借款本金唯一来源 = `src/KFL.Rules/Economy/PaymentPrimitive.cs:108-111`（缺口转贷款）；提前清偿 = `FamilyEconomy.RepayLoan`（`src/KFL.Core/Entities/FamilyEconomy.cs:233`）（**已就地订正**契约二十二 §3） | `tasks.md` E-10 |
+| E-11 | 契约二十二 §3 第 8/11 行 | 「007 买功名婚姻入口」「005 科举询问应答入口」**未给路径** | `DegreeMarriagePurchased` 是 `LifecycleEntry.TryMatchmake`（`src/KFL.Rules/Family/LifecycleEntry.cs:40`）/`RespondToProposal`（`:198`）的 `buyDegreeMarriage` 参数；`ExamInquiryAnswered` = `ExamRegistration.AcceptSpecialTribute`（`src/KFL.Rules/Exam/ExamRegistration.cs:170`）（**已就地订正**契约二十二 §3） | `tasks.md` E-11 |
+| E-12 | 本文件 `:176`（`AchievementSeries.cs  # 【新】六系列`）与 `:229`（「七系列计数」段落中的「六系列」） | 本文件自身写「**六系列**」，与规格书 §14.1 的**七**个 `####` 系列标题矛盾 | 一律改 **七系列**（`AchievementSeries` 恰 7 个成员）（**已就地订正**本文件） | 规格书 §14.1 :557/:572/:582/:596/:616/:630/:636；`spec.md` 判据总表 :445/:462/:475/:491/:513/:529/:538；契约二十二 条款 2 |
+| E-13 | 本文件 `:16`（「在既有『结算 → 写档 → 备份』编排**之后**追加『成就与绝嗣判定』与『全局成就落盘』两步」） | 读作两步都排在 ④ 之后，与 `contracts/achievement-store.md` §5、`spec.md` FR-034/FR-007（判定在**写档之前**）、`quickstart.md` 场景 4 矛盾 | 表述为「在 ① 结算之后、③ 覆盖写档之前**插入** ② 成就与绝嗣判定；在 ④ 备份之后**追加** ⑤ 全局成就落盘」（**已就地订正**本文件） | `spec.md` FR-034/FR-007；契约二十三 §5 条款 19/22；`quickstart.md` 场景 4 |
+| E-14 | `research.md:538`/`:549`、`data-model.md:610`/`:714`、契约二十二 §2 条款 4 与 §5 表行 | 把「配置字面量守卫/环境守卫」的锚点写成 **SC-008**，而 `spec.md:592` 的 SC-008 实为「绝嗣判定四条口径」 | 配置字面量守卫的真实依据 = **章程「技术栈与工程约束」（规则数值集中配置）**；SC-008 只留绝嗣口径（**已就地订正** `research.md`/`data-model.md`/契约二十二） | `spec.md:592`；章程「技术栈与工程约束」 |
+| E-15 | `tasks.md:127`（T013）、`:324`（T087） | 同 E-14 的锚点错指（T087 还把「变红确认」的对象写成 `SC-008`） | `tasks.md` 既有条目属**历史记录类**，MUST NOT 回改 ⇒ 在 `tasks.md`「收敛补充」段做**追加式更正** | `tasks.md` 收敛补充；AGENTS.md「历史记录类工件 MUST NOT 回改」 |
+| E-16 | FR-031（不实现界面）与 Assumption 19 / Edge Case 1 | 25 条 Assumptions 中 21 条、16 条 Edge Cases 中 12 条无任务文本引用；**FR-031 无显式实现/守卫任务**（仅 `tasks.md:35-39` 范围声明与 T044 的「MUST NOT 改动 `KFL.Presentation`」隐式承担）；**Assumption 19 / Edge Case 1**（FR-032 要求「次序必须被测试钉死」）无任务点名 | FR-031 的守卫并入 T002；次序义务在 T064 文本显式引用 EC1/Assumption 19 ⇒ 在 `tasks.md`「收敛补充」登记追加任务 | `spec.md` :607-694（Assumptions）/ :235-268（Edge Cases）；`tasks.md` :35-39 |
+| E-17 | 契约二十四 §1 条款 1 行 ④「最高 `DegreeLevel`」与 `tasks.md` T008 | `Person` **无** `DegreeLevel` 属性；实际成员是 `Person.CurrentDegree`（`src/KFL.Core/Entities/Person.cs:173`），`DegreeLevel` 是类型名 | 口径写成「`Person.CurrentDegree` 的最大值（含已亡与外嫁归档）」（**已就地订正**契约二十四；`tasks.md` 按追加式更正） | `src/KFL.Core/Entities/Person.cs:173`；`tasks.md` 收敛补充 |
+| E-18 | `src/KFL.Infrastructure/Abstractions/ISaveService.cs:93` | `Load` 的 XML doc 仍写「结束于**九条**一致性校验」，实际 `SaveStateValidator` 现为 15 条（14 + `ValidateIdentity`），**不在** T001 的 2 处注释清单内 | 该注释并入 T001 的注释订正清单（**已就地订正**为「十五条」；008 落地后由 T001 一并改为 22 条口径） | `tasks.md` 收敛补充 |
 
 ## 回写义务清单（AGENTS.md「铁律」+ FR-036~FR-040 的落地）
 
@@ -171,7 +194,7 @@ specs/008-achievements-extinction/
 src/KFL.Core/
 ├── Enums/
 │   ├── AchievementId.cs             # 【新】ACH-001~068，68 成员（含中文名注释）
-│   ├── AchievementSeries.cs         # 【新】六系列
+│   ├── AchievementSeries.cs         # 【新】七系列
 │   └── OriginMilestone.cs           # 【新】Extinction / CenturyFamily（出身达成段的两类）
 ├── ValueObjects/
 │   ├── AchievementMark.cs           # 【新】档内完成标记（标识 + 难度 + 完成年月）
@@ -224,7 +247,7 @@ src/KFL.Presentation/                # 【不动】U1/U2 才接 AchievementQuery
 
 tests/KFL.Tests/
 ├── Rules/
-│   ├── AchievementCatalogTests.cs    # 【新】68 行 / 三元组 / 六系列计数 / Pending 恰 6
+│   ├── AchievementCatalogTests.cs    # 【新】68 行 / 三元组 / 七系列计数 / Pending 恰 6
 │   ├── AchievementPredicateTests.cs  # 【新】68×2 = 136 条参数化（触发 + 恰好差一格）
 │   ├── AchievementAdjudicatorTests.cs# 【新】唯一次序、幂等、不解锁重复项、结束态冻结
 │   ├── AchievementTriggerTests.cs    # 【新】12 个入口成功后才上报、被拒不上报、不落盘
@@ -232,7 +255,8 @@ tests/KFL.Tests/
 │   ├── ExtinctionTests.cs            # 【新】绝嗣四正负例（外嫁不计）+ 必测清单第 9 条
 │   ├── ChronicleTests.cs             # 【新】七项逐项取值（含跨月冻结）
 │   ├── TukeyTrimeanTests.cs          # 【新】八行金色算例 + 判别例（≠ 36.250）
-│   └── AchievementQueryTests.cs      # 【新】查询面纯度（不写状态、不消费随机）
+│   ├── AchievementQueryTests.cs      # 【新】查询面纯度（不写状态、不消费随机）
+│   └── AchievementDeterminismTests.cs# 【新】同种子逐字段一致（SC-003）
 ├── Infrastructure/
 │   ├── AchievementStoreTests.cs      # 【新】落点/格式/去重/最早日期/兼容/隔离/Origins 排除项
 │   ├── AchievementStoreFailureTests.cs # 【新】写失败不阻断 + 待落盘保留 + 恢复后原年月

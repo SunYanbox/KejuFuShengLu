@@ -535,7 +535,7 @@ Infrastructure 侧只实现 JSON 读写与解析，**不实现** MessagePack 侧
 **理由**：
 
 1. `GameConfig` 的既有 remark（`src/KFL.Rules/Config/GameConfig.cs:14-18`）逐字规定
-   「本文件只有转发，没有数值（SC-008）」，并且 `:24-28` 的「明确不含」里**点名**了
+   「本文件只有转发，没有数值（章程「技术栈与工程约束」）」，并且 `:24-28` 的「明确不含」里**点名**了
    「尚未落地的阶段的数值（**成就与绝嗣阈值等**）」—— 即 008 的阈值被显式留给了本计划。
 2. `ConfigLiteralRules.ScannedRoots` 覆盖 `src\KFL.Rules\` 全量，数值字面量只允许出现在
    `src\KFL.Rules\Config\`（`ConfigLiteralRules.cs:53`）内。因此 68 条判据里的所有数字（10000/50000/80/100/300/50/20/3/10/100/1000/10000 …）
@@ -546,7 +546,7 @@ Infrastructure 侧只实现 JSON 读写与解析，**不实现** MessagePack 侧
 **替代方案与否决原因**：
 
 - *方案 B：把阈值写在 `AchievementCatalog` 的定义表里* —— 否决。定义表在
-  `src\KFL.Rules\Achievements\`，会被 SC-008 扫描并判违规。
+  `src\KFL.Rules\Achievements\`，会被配置字面量守卫（章程「技术栈与工程约束」）扫描并判违规。
 - *方案 C：新建配置注册表类型* —— 否决。仓库无此机制，且会与 007 的
   `contracts/config-registry.md`（契约二十一，逐成员转发）冲突。
 

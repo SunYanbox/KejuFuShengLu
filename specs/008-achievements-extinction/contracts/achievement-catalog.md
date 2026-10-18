@@ -17,7 +17,10 @@
 一旦发布 MUST NOT 变更或复用。`Id` 的数值 MUST 等于 `Code` 的十进制序号（连续、从 1 起、无洞）。
 
 **条款 2**：系列划分（`AchievementSeries`）与行数 MUST 满足
-`Emerging 12 / ExamProgression 8 / OfficialCareer 11 / Lineage 12 / CollectiveRuin 16 / Famine 4 / DebugSecrets 5`，合计 68。
+`Emerging 12 / ExamProgression 8 / OfficialCareer 11 / Lineage 17 / CollectiveRuin 11 / Famine 4 / DebugSecrets 5`，合计 68。
+系列归属的**唯一真源**是《科举浮生录规格书》§14.1 的七个系列标题（`宗族血脉系列` `:596-614` 含
+`烟消云散`~`大梦一场`，`覆巢之下系列` `:616-628` 含 `投石问路`~`囹圄之灾`）；本表与
+`spec.md` 的「成就判据总表」分节标题、`data-model.md` §2.1 的注释 MUST 逐条一致。
 
 | Code | 枚举成员 | 中文名 | 系列 | 来源族（`AchievementSource`） |
 | --- | --- | --- | --- | --- |
@@ -64,11 +67,11 @@
 | ACH-041 | `TradeLoss` | 商海浮沉 | Lineage | **Pending** |
 | ACH-042 | `DebtBurden` | 债台高筑 | Lineage | Asset |
 | ACH-043 | `DebtFree` | 无债一身轻 | Lineage | Cumulative |
-| ACH-044 | `FamilyExtinct` | 烟消云散 | CollectiveRuin | Ending |
-| ACH-045 | `CenturyHouse` | 百年世家 | CollectiveRuin | Cumulative |
-| ACH-046 | `MillenniumHouse` | 千秋万代 | CollectiveRuin | Cumulative |
-| ACH-047 | `AllFourOrigins` | 四民皆历 | CollectiveRuin | GlobalArchive |
-| ACH-048 | `HellEnding` | 大梦一场 | CollectiveRuin | Ending |
+| ACH-044 | `FamilyExtinct` | 烟消云散 | Lineage | Ending |
+| ACH-045 | `CenturyHouse` | 百年世家 | Lineage | Cumulative |
+| ACH-046 | `MillenniumHouse` | 千秋万代 | Lineage | Cumulative |
+| ACH-047 | `AllFourOrigins` | 四民皆历 | Lineage | GlobalArchive |
+| ACH-048 | `HellEnding` | 大梦一场 | Lineage | Ending |
 | ACH-049 | `FirstSuccessfulBribe` | 投石问路 | CollectiveRuin | Punishment |
 | ACH-050 | `BribeThree` | 暗度陈仓 | CollectiveRuin | Cumulative |
 | ACH-051 | `BribeTen` | 权钱交易 | CollectiveRuin | Cumulative |
@@ -98,7 +101,7 @@
 谓词 MUST NOT 写状态、MUST NOT 消费随机、MUST NOT 访问时钟/文件/网络（G-07 扫描 `src\KFL.Rules\`）。
 
 **条款 4**：表中的每个阈值 MUST 是 `src/KFL.Rules/Config/AchievementPolicy.cs` 的常量，
-并由 `GameConfig.Achievements` 转发。判据代码与 `AchievementCatalog` 里 MUST NOT 出现裸数值字面量（SC-008）。
+并由 `GameConfig.Achievements` 转发。判据代码与 `AchievementCatalog` 里 MUST NOT 出现裸数值字面量（章程「技术栈与工程约束」）。
 
 **条款 5**：判据里的「成员」口径 —— 除判据逐字写「**在册**」者外，一律指 `Family.Members` 的**全量**成员
 （含已亡与外嫁归档者）。「当月报告」指 `SettlementResult` 的对应子段。
@@ -201,16 +204,16 @@
 | # | `AchievementTrigger` | 数值 | 调用点（既有面） | 直接受益的成就 |
 | --- | --- | --- | --- | --- |
 | 1 | `NewGameCreated` | 1 | `src/KFL.Rules/Start/NewGameSetup.cs:99` `Create` 成功后 | ACH-001 |
-| 2 | `AssetPurchased` | 2 | 003 资产买入入口成功后 | ACH-038~040，ACH-007/008 |
-| 3 | `AssetSold` | 3 | 003 资产卖出入口成功后 | 同上（卖出亦可抬高现金） |
-| 4 | `LoanOriginated` | 4 | 002 借款发生入口成功后 | ACH-042、ACH-043 |
-| 5 | `LoanRepaid` | 5 | 002 提前清偿入口成功后 | ACH-043 |
-| 6 | `MatchmakingCommenced` | 6 | 007 托媒入口成功后 | ACH-035（若当月成交） |
-| 7 | `ProposalAnswered` | 7 | 007 提亲应答入口（接受或拒绝）成功后 | ACH-035 |
-| 8 | `DegreeMarriagePurchased` | 8 | 007 买功名婚姻入口成功后 | ACH-035 |
-| 9 | `PersonPurchased` | 9 | 007 买人口入口成功后 | ACH-032 |
-| 10 | `BribeSubmitted` | 10 | 006 行贿提交入口成功后 | ACH-049~054 |
-| 11 | `ExamInquiryAnswered` | 11 | 005 科举询问应答入口成功后 | ACH-027、ACH-028 |
+| 2 | `AssetPurchased` | 2 | `AssetMarket.Buy`（`src/KFL.Rules/Economy/AssetMarket.cs:40`）成功后 | ACH-038~040，ACH-007/008 |
+| 3 | `AssetSold` | 3 | `AssetMarket.Sell`（`src/KFL.Rules/Economy/AssetMarket.cs:77`）成功后 | 同上（卖出亦可抬高现金） |
+| 4 | `LoanOriginated` | 4 | 缺口转贷款处 `src/KFL.Rules/Economy/PaymentPrimitive.cs:108-111` 成功后（**无独立公开入口**，见 `tasks.md` E-10） | ACH-042、ACH-043 |
+| 5 | `LoanRepaid` | 5 | `FamilyEconomy.RepayLoan`（`src/KFL.Core/Entities/FamilyEconomy.cs:233`）成功后（**无独立公开入口**，见 E-10） | ACH-043 |
+| 6 | `MatchmakingCommenced` | 6 | `LifecycleEntry.TryMatchmake`（`src/KFL.Rules/Family/LifecycleEntry.cs:40`）成功后 | ACH-035（若当月成交） |
+| 7 | `ProposalAnswered` | 7 | `LifecycleEntry.RespondToProposal`（`src/KFL.Rules/Family/LifecycleEntry.cs:198`）（接受或拒绝）成功后 | ACH-035 |
+| 8 | `DegreeMarriagePurchased` | 8 | `TryMatchmake` / `RespondToProposal` 的 `buyDegreeMarriage: true` 分支成功后（**无独立入口**，见 E-11） | ACH-035 |
+| 9 | `PersonPurchased` | 9 | `LifecycleEntry.BuyPerson`（`src/KFL.Rules/Family/LifecycleEntry.cs:461`）成功后 | ACH-032 |
+| 10 | `BribeSubmitted` | 10 | `BribeEntry.Bribe`（`src/KFL.Rules/Bribery/BribeEntry.cs:41`）成功后 | ACH-049~054 |
+| 11 | `ExamInquiryAnswered` | 11 | `ExamRegistration.AcceptSpecialTribute`（`src/KFL.Rules/Exam/ExamRegistration.cs:170`）成功后 | ACH-027、ACH-028 |
 | 12 | `DebugWakeReported` | 12 | FR-041 ⑥ 的上报接缝（U4 未来调用） | ACH-064~068 |
 
 **条款 11（为什么是 12 而不是 13）**：「捉婿提议产出」**不**是触发器。它由 `MonthlySettlementEngine`
@@ -241,21 +244,24 @@
 `tests/KFL.Tests/Rules/ExtinctionTests.cs`，且 MUST 至少覆盖四条：零在册成立 / 只剩已亡不成立 /
 只剩外嫁归档不成立 / 在册 ≥ 1 不成立。
 
-| 测试文件 | 覆盖 |
+| 测试文件（文件名以 `plan.md` 的 Project Structure 为准，见 `tasks.md` E-07） | 覆盖 |
 | --- | --- |
-| `tests/KFL.Tests/Rules/AchievementCatalogTests.cs` | 68 行齐全、`Id` 与 `Code` 连续无洞、系列计数、枚举与目录双向一一对应 |
-| `tests/KFL.Tests/Rules/AchievementJudgmentTests.cs` | 68 条 ×（触发 / 不触发）参数化；含 6 条 `Pending` 的「恒不解锁」 |
+| `tests/KFL.Tests/Rules/AchievementCatalogTests.cs` | 68 行齐全、`Id` 与 `Code` 连续无洞、**七系列计数 `12/8/11/17/11/4/5`**、枚举与目录双向一一对应 |
+| `tests/KFL.Tests/Rules/AchievementPredicateTests.cs` | 68 条 ×（触发 / 不触发）参数化（136 例）；含 6 条 `Pending` 的「恒不解锁」 |
+| `tests/KFL.Tests/Rules/AchievementAdjudicatorTests.cs` | 唯一次序（累计量 → 68 条 → 绝嗣）、幂等、同月重复命中只落一条、结束态冻结 |
 | `tests/KFL.Tests/Rules/AchievementCounterTests.cs` | ①②③④⑤⑥ 的更新时点、增量语义、幂等；含 ACH-034/042 的时点特例 |
 | `tests/KFL.Tests/Rules/AchievementTriggerTests.cs` | 12 个入口各触发一次；拒绝路径不触发（条款 9） |
 | `tests/KFL.Tests/Rules/TukeyTrimeanTests.cs` | 金色算例 8 行 + 判别例 `[10,20,30,40,100] → 30.000` + n=0 |
 | `tests/KFL.Tests/Rules/ChronicleTests.cs` | 七项口径；`SurvivedYears == EndYear − 1`；年 102 首次成立百年世家 |
 | `tests/KFL.Tests/Rules/ExtinctionTests.cs` | 四条判据面 + `End` 幂等 + ACH-044/048 的补判 |
+| `tests/KFL.Tests/Rules/AchievementQueryTests.cs` | 查询面纯度（不写状态、零随机消费、全部由 ⑦ 投影） |
 | `tests/KFL.Tests/Rules/AchievementDeterminismTests.cs` | SC-003 同种子同输入逐字段一致 |
-| `tests/KFL.Tests/Infrastructure/AchievementStoreTests.cs` | 原子性、最早日期合并、来源 UUID、损坏隔离、目录不可写（SC-004~007） |
-| `tests/KFL.Tests/Infrastructure/AchievementArchiveJsonTests.cs` | 未知键忽略 / 缺失取默认（FR-019）、`Version` 语义 |
-| `tests/KFL.Tests/Infrastructure/AchievementSaveRoundTripTests.cs` | SC-011 存档往返（含 `Completed`/`PendingUnlocks` 次序）；`SaveStateComparer` 扩展 |
-| `tests/KFL.Tests/Infrastructure/EndingRefusalTests.cs` | SC-010 三面（异常类型、状态零变更、目录清单不变） |
-| `tests/KFL.Tests/Architecture/ConfigLiteralTests.cs`（既有） | SC-008 自动覆盖 008 的新阈值落点 |
+| `tests/KFL.Tests/Infrastructure/AchievementStoreTests.cs` | 原子性、最早日期合并、来源 UUID、损坏隔离、目录不可写（SC-004~007）；**含 FR-019 兼容语义（未知键忽略 / 缺 `Version` 视作 1 / 更高版本不失败）** |
+| `tests/KFL.Tests/Infrastructure/AchievementStoreFailureTests.cs` | 写失败不阻断 + 待落盘保留 + 恢复后写原解锁年月（SC-007） |
+| `tests/KFL.Tests/Infrastructure/AchievementSaveFormatTests.cs` | SC-011 存档往返（含 `Completed`/`PendingUnlocks` 次序）；`SaveStateComparer` 扩展 |
+| `tests/KFL.Tests/Infrastructure/EndedSaveTests.cs` | SC-010 三面（异常类型、状态零变更、目录清单不变）+ 仍可写读改备份 |
+| `tests/KFL.Tests/Architecture/AchievementPendingWiringTests.cs` | SC-002 六条待接线登记 + 0 处自造规则 |
+| `tests/KFL.Tests/Architecture/ConfigLiteralTests.cs`（既有） | 章程「技术栈与工程约束」（规则数值集中配置）自动覆盖 008 的新阈值落点 |
 | `tests/KFL.Tests/Architecture/EnvironmentDependencyTests.cs`（既有） | G-07 自动覆盖判定器 |
 
 ---
@@ -266,7 +272,7 @@
 | --- | --- |
 | 契约六 §1（新建存档） | 008 在其 `Create` 成功路径后**追加**一次 `Report(NewGameCreated)`；起始年月校验（`:106-110`）与随机消费次序 MUST NOT 变更 |
 | 契约十（存档本体，004） | 008 变更其键表、版本闸门与校验条数；回写见 `achievement-store.md` §6 |
-| 契约十一 §2/§3（存档节奏，004） | 008 在 `Advance` 的 ①~④ 之后追加 ⑤；①②③④ 的次序与异常策略 MUST NOT 变更 |
+| 契约十一 §2/§3（存档节奏，004） | 008 在 `Advance` 的 ①~④ 之间**插入** ②（成就与绝嗣判定，`achievement-store.md` §5）并**追加** ⑤（全局成就落盘）；①③④ 的次序与异常策略 MUST NOT 变更 |
 | 契约十六 §8 / §9（贿赂与惩罚，006） | 008 **消费** `PunishmentSnapshot` 与 `PunishmentQueries`，**不修改**其形状；`FamilyCumulativeBribes` 的「尝试次数」语义澄清见 `achievement-store.md` 后记 |
 | 契约十九~二十一（007） | 008 **消费** `LifecycleSnapshot`、（无）`CareerAdvanceResult`、`ExamSeasonSnapshot`、`FamineState`；**不修改** 007 的步骤表 |
 | 契约一 §2.1（禁用 token，001） | 12 个 token 清单 + 扫描范围 MUST NOT 变更；判定器 MUST 全部遵守 |
