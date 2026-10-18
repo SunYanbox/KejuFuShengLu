@@ -1,6 +1,7 @@
 using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
+using KFL.Rules.Achievements;
 using KFL.Rules.Config;
 
 namespace KFL.Rules.Economy;
@@ -61,6 +62,10 @@ public static class AssetMarket
         state.Economy.Apply(LedgerCategory.AssetPurchase, null, -total, state.CurrentDate);
         state.Economy.Holdings.Add(kind, count);
 
+        // 008 接线（T051）：成功之后、返回之前即时判定，使「同月买入后卖出」不漏判（Edge Case 9）。
+        // 失败路径在上方已抛出，故走不到这里。
+        AchievementAdjudicator.Report(state, AchievementTrigger.AssetPurchased);
+
         return total;
     }
 
@@ -89,6 +94,9 @@ public static class AssetMarket
         // 先校验并减持，再进账：持有量不足时 MUST NOT 有任何资金流入。
         state.Economy.Holdings.Remove(kind, count);
         state.Economy.Apply(LedgerCategory.AssetSale, null, total, state.CurrentDate);
+
+        // 008 接线（T051）：减持与进账都成功之后才判定。
+        AchievementAdjudicator.Report(state, AchievementTrigger.AssetSold);
 
         return total;
     }

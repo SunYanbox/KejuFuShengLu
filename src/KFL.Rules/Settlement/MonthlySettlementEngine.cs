@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Achievements;
 using KFL.Rules.Career;
 using KFL.Rules.Config;
 using KFL.Rules.Economy;
@@ -308,7 +309,18 @@ public sealed class MonthlySettlementEngine
             return (interestAccrued, new LoanRepayment(Money.Zero, Money.Zero));
         }
 
-        return (interestAccrued, economy.RepayLoan(due, month));
+        var repayment = economy.RepayLoan(due, month);
+
+        // 008 接线（T052，trigger ⑤）：清偿确实冲减了本金 ⇒ 即时判定 ACH-043（无债一身轻）。
+        // 这是当前 `FamilyEconomy.RepayLoan` 在 KFL.Rules 侧的**唯一**落点（另见契约二十二 §3 第 5 行）。
+        // 注意：本步在 ⑩ 之前，故此刻 CurrentDate 仍是**本结算月**——判定取它就是刻意的
+        // （清偿这件事属于本结算月；月末 ② 的全会判定会用推进后的日期，两者不冲突）。
+        if (repayment.PrincipalPart.IsPositive)
+        {
+            AchievementAdjudicator.Report(state, AchievementTrigger.LoanRepaid);
+        }
+
+        return (interestAccrued, repayment);
     }
 
     /// <summary>取本次结算向账本追加的全部条目（含事件类），与 <c>Ledger</c> 逐条相同。</summary>

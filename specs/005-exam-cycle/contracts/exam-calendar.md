@@ -138,7 +138,7 @@ public enum ExamLevel { JieShi = 1, ShengShi = 2, DianShi = 3 }
 | 1 | `SpecialTributeEligible(Person, GameDate)`：满 **50** 岁 ∧ `ShengShiFailureCount >= 6` ∧ `Rank is null` ∧ `AwaitingPost` 位为假 |
 | 2 | **询问**由科举季步在**省试落第当月**产出，写入快照（契约十三 §9）；询问本身 **MUST NOT 改任何状态** |
 | 3 | 每个科年**询问一次**；拒绝或未应答 ⇒ 状态逐字段不变，可在**下次省试落第后再次询问** |
-| 4 | `AcceptSpecialTribute(person, date, random)`：不满足 §6.2 条款 1 ⇒ `InvalidOperationException` 且 MUST NOT 改任何字段；否则 `AppointmentEntry.Begin(person, AppointmentTrack.SpecialTribute, date, random)`（003 的通用入口） |
+| 4 | `AcceptSpecialTribute(person, date, random, state = null)`：不满足 §6.2 条款 1 ⇒ `InvalidOperationException` 且 MUST NOT 改任何字段；否则 `AppointmentEntry.Begin(person, AppointmentTrack.SpecialTribute, date, random)`（003 的通用入口）。<br>**008 起追加可选尾参** `GameState? state = null`（形状变更授权见 008 `tasks.md` T055、登记 E-20）：`state is not null` 时在成功后上报 `AchievementTrigger.ExamInquiryAnswered`（契约二十二 §3 第 11 行）；为 `null` 时行为与 005 原签名**逐字段相同**。MUST NOT 影响本条款既有资格判定与 `random` 消耗次序 |
 | 5 | 接受后：进入待阙（6~24 月，最终授官 **L18**，由 `OfficialCareerPolicy.InitialRankOf` 单点决定）；**功名变迁史不新增任何记录**，MUST NOT 伪造进士记录 |
 | 6 | 接受后 MUST 退出科举：此后不再被自动报名、不再进入判定（由 §3.2 条款 6 在待阙期为假、条款 5 在授官后为假**结构性地**保证） |
 | 7 | 拒绝 = **不调用** `AcceptSpecialTribute`；MUST NOT 提供「记录拒绝」的持久字段（那会成为第二真源） |

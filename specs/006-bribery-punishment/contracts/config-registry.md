@@ -108,6 +108,17 @@
 > （「买功名婚姻」的数值复用 `MarriagePolicy.DegreeMarriageFeeRatio` 与 `SalaryTable`），
 > 登记见 [007 contracts/config-registry.md](../../007-family-lifecycle/contracts/config-registry.md)。
 > 故 006 的 `RegisteredValues` 对照表（§4）**无需增补**，也不得因此放宽本节的禁止项。
+
+> **008 读向备注（2026-10-18，逻辑轨 ⑧）**：`PunishmentQueries.FamilyCumulativeBribes(Family)`
+> （`src/KFL.Rules/Punishment/PunishmentQueries.cs:54`）的语义是家族**尝试**行贿的次数（**含被抓**），
+> 而成就「暗度陈仓 / 权钱交易 / 只手遮天 / 买断功名」（ACH-050~053）要的是**成功**次数 ⇒
+> 它们读 `AchievementState.SuccessfulBribeCount`（由当月 `PunishmentSnapshot.Bribes` 中
+> `Caught == false` 的条数累加），**MUST NOT** 复用 `FamilyCumulativeBribes`。
+> 两者口径相近但**不等价**，混用会把「行贿被抓」也算作成就进度。成就侧新增的数值只有
+> `Bribe{Three,Ten,Hundred,Thousand}Threshold = 3/10/100/1_000`（`KFL.Rules/Config/AchievementPolicy.cs`），
+> 它们是**整数规则值**，按 §4.3 的纪律**不入** `ConfigLiteralTests.RegisteredValues`；
+> 本节的禁止项（尤其第 8 条）继续成立且未被放宽。真源见
+> [008 `achievement-catalog.md` §2/§3](../../008-achievements-extinction/contracts/achievement-catalog.md)。
 ---
 
 ## 4. 与 `ConfigLiteralTests.RegisteredValues` 的对照

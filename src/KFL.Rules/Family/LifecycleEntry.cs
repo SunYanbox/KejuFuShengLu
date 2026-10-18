@@ -3,6 +3,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Achievements;
 using KFL.Rules.Config;
 using KFL.Rules.Economy;
 
@@ -176,6 +177,14 @@ public static class LifecycleEntry
                 month);
         }
 
+        // 008 接线（T053，trigger ⑥⑦）：**成功之后、返回之前**判定；被拒路径（上面各 return）不调。
+        // 走到这里 ⇒ 托媒确已成立，故 `buyDegreeMarriage` 为真即「确实发生了买功名婚姻」。
+        AchievementAdjudicator.Report(state, AchievementTrigger.MatchmakingCommenced);
+        if (buyDegreeMarriage)
+        {
+            AchievementAdjudicator.Report(state, AchievementTrigger.DegreeMarriagePurchased);
+        }
+
         return new LifecycleOutcome
         {
             Accepted = true,
@@ -219,6 +228,9 @@ public static class LifecycleEntry
         if (!accept)
         {
             family.Lifecycle.SetProposal(null);
+
+            // 008 接线（T053，trigger ⑦）：**拒绝也算「应答成功」**——提议确已被应答并消耗。
+            AchievementAdjudicator.Report(state, AchievementTrigger.ProposalAnswered);
             return LifecycleOutcome.Rejected(LifecycleRejectReason.None);
         }
 
@@ -301,6 +313,13 @@ public static class LifecycleEntry
         SettleAmounts(state, member, direction, proposal.BetrothalGift, proposal.Dowry);
         SettleMarriage(state, member, candidate, direction);
         family.Lifecycle.SetProposal(null);
+
+        // 008 接线（T053，trigger ⑦⑧）：接受成功之后判定；若本次买了功名婚姻（费额为正）则增报 ⑧。
+        AchievementAdjudicator.Report(state, AchievementTrigger.ProposalAnswered);
+        if (degreeFee.IsPositive)
+        {
+            AchievementAdjudicator.Report(state, AchievementTrigger.DegreeMarriagePurchased);
+        }
 
         return new LifecycleOutcome
         {
@@ -523,6 +542,9 @@ public static class LifecycleEntry
 
         // ⑥ 事件条目（金额 0）。
         state.Economy.Apply(LedgerCategory.PersonBought, newcomer.Id, Money.Zero, month);
+
+        // 008 接线（T053，trigger ⑨）：买人口成功之后判定（被拒路径在上面已返回）。
+        AchievementAdjudicator.Report(state, AchievementTrigger.PersonPurchased);
 
         return new LifecycleOutcome
         {

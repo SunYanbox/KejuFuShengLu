@@ -107,13 +107,15 @@ public class GameStateTests
     }
 
     [Fact]
-    public void 公开属性全集恰为七个()
+    public void 公开属性全集恰为九个()
     {
         // T021 修订：阶段① 的「恰为五个」随 Economy / PendingDifficulty 的落地扩充为七个；
+        // 008 修订（T057）：随档内成就与终局状态的落地扩充为九个。
         // 断言仍在守住「新增字段必须经显式裁决」——多一个公开属性就会红。
         var expected = new[]
         {
-            "Id", "CurrentDate", "Difficulty", "Origin", "Family", "Economy", "PendingDifficulty",
+            "Id", "CurrentDate", "Difficulty", "Origin", "Family", "Achievements", "Ending",
+            "Economy", "PendingDifficulty",
         };
 
         Assert.Equal(

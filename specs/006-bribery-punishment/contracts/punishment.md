@@ -278,6 +278,17 @@ public required PunishmentSnapshot Punishment { get; init; }
    它经 §8 的 `WasExecutedByState` 状态派生，不经本快照；见上）；本特性 MUST NOT 自行解锁
    （判据 = 事件与计数齐备，不判成就、不判绝嗣）。
 
+> **008 消费注（2026-10-18）**：逻辑轨 ⑧ 把本快照当作「当月报告」读，接缝如下——
+> ① 成就「投石问路 / 暗度陈仓 / 权钱交易 / 只手遮天 / 买断功名」读
+> `Bribes` 中 `Caught == false` 的条数（**成功**行贿，累加进 `AchievementState.SuccessfulBribeCount`），
+> **MUST NOT** 改用 §8 的 `FamilyCumulativeBribes`（它数的是**尝试**次数，口径不同）；
+> ② 「无法无天」读 `Bribes` 中 `CapReached == true` 的当月条目；③「身首异处」读
+> `Caught == true` 的**殿试**条目与 `PunishmentPolicy.CellOf(...)` 的执行口径；
+> ④「覆巢之下 / 殃及池鱼 / 斯文扫地」读 `CollectivePunishments` / `RelativeBans` / `FamilyBanDeclared`；
+> ⑤「囹圄之灾」读 `PrisonerCount >= 3`（**当月**同月口径，不复算历史）。
+> 这些读法只**读**快照，MUST NOT 回写日志或快照（001/002 的「快照是增量只读投影」不变）。
+> 契约真源仍是 [008 `achievement-catalog.md` §2](../../008-achievements-extinction/contracts/achievement-catalog.md)。
+
 ---
 
 ## 10. 明确不包含

@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Achievements;
 using KFL.Rules.Economy;
 using KFL.Rules.Punishment;
 
@@ -93,6 +94,10 @@ public static class BribeEntry
         var punishment = caught
             ? PunishmentImposer.Apply(state, examinee, level, random)
             : null;
+
+        // 008 接线（T054，trigger ⑩）：**成功提交之后、返回之前**判定，使 ACH-049~054 当月即时解锁。
+        // 被拒路径（① 的 return）不调；⑥ 的掷骰、计数与事实次序一字未动。
+        AchievementAdjudicator.Report(state, AchievementTrigger.BribeSubmitted);
 
         return new BribeOutcome
         {

@@ -24,12 +24,13 @@ public static class SaveFileFormat
     /// <summary>本版本的文件格式版本号。</summary>
     /// <remarks>
     /// 读取时 <c>FormatVersion != 本值</c> 一律拒绝（<see cref="SaveFileErrorKind.UnsupportedVersion"/>）；
-    /// 本版本**不提供**任何迁移/兼容路径（<c>&lt; 4</c> 与 <c>&gt; 4</c> 同样拒绝，FR-015）。
+    /// 本版本**不提供**任何迁移/兼容路径（<c>&lt; 5</c> 与 <c>&gt; 5</c> 同样拒绝，FR-015）。
     /// 版本 2 相对版本 1 新增科举进度四个成员（家族自动报名 + 两个失败数 + 报名级别，契约十四 §10）；
     /// 版本 3 相对版本 2 新增行贿计数三个成员与整本惩罚日志（006-bribery-punishment；契约十六 §5、data-model §7）；
-    /// 版本 4 相对版本 3 新增家族生命周期簿记、延名师标志、疾病程度与疗程两路计时（007-family-lifecycle；契约二十 §5）。
+    /// 版本 4 相对版本 3 新增家族生命周期簿记、延名师标志、疾病程度与疗程两路计时（007-family-lifecycle；契约二十 §5）；
+    /// 版本 5 相对版本 4 新增成就状态 8 键与结局状态 3 键（008-achievements-extinction；契约二十三 §6）。
     /// </remarks>
-    public const int Version = 4;
+    public const int Version = 5;
 
     /// <summary>二进制格式的扩展名。</summary>
     public const string BinaryExtension = ".dat";

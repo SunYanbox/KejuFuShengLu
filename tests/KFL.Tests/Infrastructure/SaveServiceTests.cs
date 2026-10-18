@@ -5,7 +5,9 @@ using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
 using KFL.Infrastructure.Save;
 using KFL.Infrastructure.Services;
+using KFL.Rules.Config;
 using KFL.Rules.Save;
+using KFL.Tests.Fixtures;
 using KFL.Tests.Rules;
 using Xunit;
 
@@ -245,8 +247,9 @@ public sealed class SaveServiceTests
 
         // 两路喂同一个种子：存档 MUST NOT 消耗随机流（FR-017），故「落盘 + 每回合覆盖写」与
         // 「从不落盘」必须逐字段一致。
-        var persisted = SaveFixtures.PlainState();
-        var baseline = SaveFixtures.PlainState();
+        var persisted = LongRunState();
+        var baseline = LongRunState();
+
         var recording = new TurnRunner(new SeededRandomService(Seed), service, slot, new FixedNameGenerator());
         var plain = new TurnRunner(new SeededRandomService(Seed), saveService: null, slot, new FixedNameGenerator());
 
@@ -257,6 +260,9 @@ public sealed class SaveServiceTests
 
             Assert.True(persistedOutcome.Saved);
             Assert.False(plainOutcome.Saved);
+            // 场景前提（E-23）：SC-002 的 24 + 12 月长跑要求家族不在中途绝嗣——绝嗣后 008 的结束闸门
+            // （契约二十四「条款 19」）会拒绝继续推进。
+            Assert.False(persisted.Ending.IsEnded, $"长跑夹具在第 {month + 1} 月绝嗣，24 + 12 月的场景不再成立。");
         }
 
         Assert.True(persisted.Economy.Ledger.Entries.Count > 0);
@@ -273,6 +279,31 @@ public sealed class SaveServiceTests
         }
 
         SaveStateComparer.AssertEquivalent(baseline, loaded);
+    }
+
+    /// <summary>
+    /// 008 修订（E-23）：长跑所需的「能活过 24 个月」的薄状态。
+    /// </summary>
+    /// <remarks>
+    /// `SaveFixtures.PlainState` 的家主生于 1 年 1 月（开局当月），第 13 月因**襁褓死亡**而绝嗣；
+    /// 008 的结束闸门（契约二十四「条款 19」）此后拒绝推进，24 个月长跑无从进行（诊断：第 13 月
+    /// 绝嗣，死因 <c>Infancy</c>）。本夹具沿用同一薄经济与同一存档标识，只把家主抬到成年
+    /// （生于前史纪年）并把体质置为设计均值（与本特性其它用例的既有做法一致）——
+    /// **断言本身未放宽**，24 + 12 月的等价性照旧被逐字段检验。
+    /// </remarks>
+    /// <returns>一个新的状态实例。</returns>
+    private static GameState LongRunState()
+    {
+        var family = new Family("宋家三十年");
+        var head = family.AddFoundingMember(
+            FamilyFixtures.NewPerson(1, "宋家主", Gender.Male, birthYear: -19, birthMonth: 1, generation: 0));
+        head.Health = (int)GameConfig.Attributes.HealthMean;
+        family.SetHead(head.Id);
+
+        var economy = new FamilyEconomy(LivingStandard.Normal, new GrainPriceIndex(1.000m));
+
+        return new GameState(
+            SaveFixtures.PlainStateId, new GameDate(1, 1), Difficulty.Normal, Origin.Farmer, family, economy);
     }
 
     // ───────────────────────────── T038：真文件节奏 ─────────────────────────────

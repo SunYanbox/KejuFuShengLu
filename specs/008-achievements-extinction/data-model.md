@@ -183,7 +183,8 @@ public sealed record ChronicleSnapshot
 
 七项与规格书 §15:632-641 一一对应（顺序也按规格书）。
 `Genealogy` 的语义见 R-09：只冻结**次序与成员集合**，不复制 `Person`。
-`HighestDegree` 取不到任何功名时用 `DegreeLevel.None`（既有枚举零值）；
+`HighestDegree` 取不到任何功名时用 `DegreeLevel.BaiShen`——既有 `DegreeLevel` 枚举的零值
+（**不存在** `DegreeLevel.None`，见 `plan.md` E-13；`Person.CurrentDegree` 对空历史本来就返回白身）；
 `Generations` 在零成员时为 `0`（不可能，绝嗣前至少有过开局成员；仍由类型给值避免 `Nullable`）。
 
 ### 2.3 新增聚合 `AchievementState`
@@ -220,7 +221,9 @@ public sealed class AchievementState
     internal void Restore(int successfulBribeCount, int birthCount, IReadOnlyList<int> lifespans,
                           Money peakTotalAssets, bool everHadLoan, int debugWakeCount,
                           IReadOnlyList<AchievementMark> completed, IReadOnlyList<PendingUnlock> pendingUnlocks);
-    internal void RestorePendingUnlocks(IReadOnlyList<PendingUnlock> pendingUnlocks);  // 落盘成功后清空队列
+    // ⑧ 的单独写通道：**public**（勘误 E-19）——唯一常规调用方是 KFL.Rules 的 ⑤ 落盘成功分支，
+    // 而 AssemblyInfo 只对 KFL.Infrastructure 放行 internal；Restore 仍为 internal。
+    public void RestorePendingUnlocks(IReadOnlyList<PendingUnlock> pendingUnlocks);  // 落盘成功后清空队列
 }
 ```
 
@@ -600,7 +603,7 @@ SaveStateMapper.MapToDomain(dto)
 | 2 | `Completed` 内 `(Achievement, Difficulty)` 唯一 | 类型（`MarkCompleted` 幂等） |
 | 3 | `PendingUnlocks` 内 `(Achievement, Difficulty)` 唯一 | 类型 |
 | 4 | `PendingUnlocks ⊆ Completed` | 类型（唯一入口 `MarkCompletedAndEnqueue`） |
-| 5 | `Lifespans.Count == Members.Count(p => p.Status.HasFlag(StatusFlag.Deceased))` | `SaveStateValidator` 新条 3 |
+| 5 | `Lifespans.Count <= Members.Count(p => p.Status.HasFlag(StatusFlag.Deceased))`（**E-21 修订**：上界而非相等——处决/株连在 `DeathRegister` 之外置 `Deceased`、不记享年） | `SaveStateValidator` 新条 3 |
 | 6 | `IsEnded ⇔ EndedAt.HasValue ∧ Chronicle is not null` | 类型 + 校验器新条 5 |
 | 7 | `IsEnded ⇒ RegisteredMembers.Count == 0` | 校验器新条 6 |
 | 8 | `Chronicle.Genealogy` 逐元素 = `Family.Members.Select(p => p.Id)` | 校验器新条 7 |

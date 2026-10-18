@@ -262,7 +262,7 @@ MUST 增加两段复原调用，并 MUST 保持 `Completed` / `PendingUnlocks` �
 | --- | --- | --- |
 | 1 | `Completed` 内 `(Achievement, Difficulty)` 唯一 | FR-011 |
 | 2 | `PendingUnlocks` 内 `(Achievement, Difficulty)` 唯一，且每个键都出现在 `Completed` 里 | FR-013 ⑦⑧ |
-| 3 | `Lifespans.Count == Members.Count(p => p.Status.HasFlag(StatusFlag.Deceased))` 且每项 `>= 0` | FR-013 ③ |
+| 3 | `Lifespans.Count <= Members.Count(p => p.Status.HasFlag(StatusFlag.Deceased))` 且每项 `>= 0`（**E-21 修订**：处决/株连在 `DeathRegister` 之外置 `Deceased`、不记享年 ⇒ 只能取上界） | FR-013 ③ |
 | 4 | `SuccessfulBribeCount >= 0`、`BirthCount >= 0`、`DebugWakeCount >= 0`、`PeakTotalAssets >= 0` | 域下界 |
 | 5 | `IsEnded ⇔ (EndedAt.HasValue ∧ Chronicle is not null)` | `research.md` R-08 |
 | 6 | `IsEnded ⇒ Family.RegisteredMembers.Count == 0` | FR-026 |

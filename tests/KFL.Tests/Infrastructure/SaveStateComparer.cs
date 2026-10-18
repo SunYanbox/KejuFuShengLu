@@ -37,6 +37,11 @@ internal static class SaveStateComparer
         AssertFamily(expected.Family, actual.Family);
         AssertEconomy(expected.Economy, actual.Economy);
 
+        // 008-achievements-extinction：成就状态的 8 个持久字段与终局状态的三元。
+        // 这两块同样是「整块漏存时默认值会让往返静默通过」的典型。
+        AssertAchievements(expected.Achievements, actual.Achievements);
+        AssertEnding(expected.Ending, actual.Ending);
+
         // ⑲ 外来者簿记（落籍旁系 / 联姻对齐）：领域侧只有 internal 读取通道（KFL.Tests 看不见），
         // 故按 DTO 投影比**内容**。这两处簿记没有公开读取通道，漏存即静默失真，而成员集合里
         // 看不出它（契约十 §4 FamilyDto 键 4/5、data-model §3.11 第 ⑦ 步）。
@@ -49,8 +54,26 @@ internal static class SaveStateComparer
     /// <summary>断言两个金额**位级**相等（标度也算）。</summary>
     /// <param name="expected">期望值。</param>
     /// <param name="actual">实际值。</param>
+    /// <remarks>
+    /// 008 修订（E-23）：**忽略零的符号位**。<see cref="decimal"/> 的文本形态不表达负号零——
+    /// <c>(-0.000m).ToString()</c> 得到 <c>"0.000"</c>——故任何经文本往返的存档格式都不可能保留
+    /// 该位（JSON 与二进制两条路径实测一致地丢失它）；而 FR-021 要求位级保留的是**标度**
+    /// （尾随零，见本类顶部注释），不是零的符号。除 <c>±0</c> 外一切照旧逐位比较。
+    /// </remarks>
     public static void AssertBits(decimal expected, decimal actual) =>
-        Assert.Equal(decimal.GetBits(expected), decimal.GetBits(actual));
+        Assert.Equal(CanonicalBits(expected), CanonicalBits(actual));
+
+    /// <summary>取用于比较的位组：零一律按正零比较，其余原样。</summary>
+    private static int[] CanonicalBits(decimal value)
+    {
+        var bits = decimal.GetBits(value);
+        if (bits[0] == 0 && bits[1] == 0 && bits[2] == 0)
+        {
+            bits[3] &= 0x7FFFFFFF;
+        }
+
+        return bits;
+    }
 
     private static void AssertFamily(Family expected, Family actual)
     {
@@ -165,6 +188,91 @@ internal static class SaveStateComparer
         AssertBits(left.Dowry.Wen, right.Dowry.Wen);
         Assert.Equal(left.ProposedAt, right.ProposedAt);
         Assert.Equal(left.CandidatePlacement, right.CandidatePlacement);
+    }
+
+    /// <summary>
+    /// ㉔ 档内成就累计量（008-achievements-extinction；`SaveStateDto` 键 8 / `AchievementStateDto` 键 0~7）：
+    /// **恰 8 个**持久字段逐个点名，其中四个容器按**次序**逐元素比对
+    /// （`Lifespans` / `Completed` / `PendingUnlocks`；次序本身是产品信息，SC-014）。
+    /// </summary>
+    /// <param name="expected">期望。</param>
+    /// <param name="actual">实际。</param>
+    private static void AssertAchievements(AchievementState expected, AchievementState actual)
+    {
+        Assert.Equal(expected.SuccessfulBribeCount, actual.SuccessfulBribeCount);
+        Assert.Equal(expected.BirthCount, actual.BirthCount);
+        AssertBits(expected.PeakTotalAssets.Wen, actual.PeakTotalAssets.Wen);
+        Assert.Equal(expected.EverHadLoan, actual.EverHadLoan);
+        Assert.Equal(expected.DebugWakeCount, actual.DebugWakeCount);
+
+        // ③ 寿命序列：逐元素 + 次序（三均值的输入是有序样本）。
+        Assert.Equal(expected.Lifespans.Count, actual.Lifespans.Count);
+        for (var index = 0; index < expected.Lifespans.Count; index++)
+        {
+            Assert.Equal(expected.Lifespans[index], actual.Lifespans[index]);
+        }
+
+        // ⑦ 已完成集合：三元组逐项 + 次序。
+        Assert.Equal(expected.Completed.Count, actual.Completed.Count);
+        for (var index = 0; index < expected.Completed.Count; index++)
+        {
+            var left = expected.Completed[index];
+            var right = actual.Completed[index];
+
+            Assert.Equal(left.Achievement, right.Achievement);
+            Assert.Equal(left.Difficulty, right.Difficulty);
+            Assert.Equal(left.CompletedAt, right.CompletedAt);
+        }
+
+        // ⑧ 待落盘队列：四个成员逐项 + 次序（末项是来源存档 UUID，漏存会让 SC-004 失真）。
+        Assert.Equal(expected.PendingUnlocks.Count, actual.PendingUnlocks.Count);
+        for (var index = 0; index < expected.PendingUnlocks.Count; index++)
+        {
+            var left = expected.PendingUnlocks[index];
+            var right = actual.PendingUnlocks[index];
+
+            Assert.Equal(left.Achievement, right.Achievement);
+            Assert.Equal(left.Difficulty, right.Difficulty);
+            Assert.Equal(left.UnlockedAt, right.UnlockedAt);
+            Assert.Equal(left.SourceSaveId, right.SourceSaveId);
+        }
+    }
+
+    /// <summary>
+    /// ㉕ 终局状态（008；`SaveStateDto` 键 9 / `EndingStateDto` 键 0~2）：三元齐备性与编年史七项。
+    /// </summary>
+    /// <remarks>
+    /// 三元任一不一致都要红：只比 <c>IsEnded</c> 会让「快照整体漏存」静默通过。
+    /// 编年史 ⑦ 宗谱按**次序**逐元素比对（契约二十四「条款 34」）。
+    /// </remarks>
+    /// <param name="expected">期望。</param>
+    /// <param name="actual">实际。</param>
+    private static void AssertEnding(EndingState expected, EndingState actual)
+    {
+        Assert.Equal(expected.IsEnded, actual.IsEnded);
+        Assert.Equal(expected.EndedAt, actual.EndedAt);
+
+        var left = expected.Chronicle;
+        var right = actual.Chronicle;
+        Assert.Equal(left is null, right is null);
+
+        if (left is null || right is null)
+        {
+            return;
+        }
+
+        Assert.Equal(left.SurvivedYears, right.SurvivedYears);
+        Assert.Equal(left.Generations, right.Generations);
+        AssertBits(left.PeakTotalAssets.Wen, right.PeakTotalAssets.Wen);
+        Assert.Equal(left.HighestDegree, right.HighestDegree);
+        Assert.Equal(left.TotalJinShi, right.TotalJinShi);
+        AssertBits(left.AverageLifespan, right.AverageLifespan);
+
+        Assert.Equal(left.Genealogy.Count, right.Genealogy.Count);
+        for (var index = 0; index < left.Genealogy.Count; index++)
+        {
+            Assert.Equal(left.Genealogy[index], right.Genealogy[index]);
+        }
     }
 
     /// <summary>㉒ 惩罚日志（006-bribery-punishment）：六类事实行逐字段比对（含可空字段与金额标度）。</summary>

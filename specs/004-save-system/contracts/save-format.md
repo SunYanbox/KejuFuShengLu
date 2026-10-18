@@ -29,7 +29,7 @@
 | 3 | `SaveId` | `Guid` | `Write(string)`（`D` 格式，36 字符） | `"SaveId"` 字符串成员 |
 
 二进制头的完整形状 = `fixarray(3)` 起手（`0x93`）后跟三个成员；JSON 头的完整形状 =
-`{"FormatVersion":4,"PayloadLength":N,"SaveId":"…","State":<主体>}`（`State` 之前恰有这三个成员，
+`{"FormatVersion":5,"PayloadLength":N,"SaveId":"…","State":<主体>}`（`State` 之前恰有这三个成员，
 次序固定）。
 
 **不变量**
@@ -69,6 +69,8 @@
 | 5 | `origin` | `Origin` |
 | 6 | `family` | `FamilyDto` |
 | 7 | `economy` | `FamilyEconomyDto` |
+| 8 | `achievements` | `AchievementStateDto` |
+| 9 | `ending` | `EndingStateDto?` |
 
 ### 4.2 `FamilyDto` / `PersonDto` 及其子 DTO
 
@@ -92,6 +94,11 @@
 | `RelativeBanFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `relative`(Guid)、3 `examBanMonths`(int)、4 `promotionBanMonths`(int?) |
 | `CollectivePunishmentFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `outcome`(`CollectiveOutcome`)、3 `relative`(Guid)、4 `degreeBefore`(`DegreeLevel?`)、5 `degreeAfter`(`DegreeLevel?`) |
 | `ReleaseFactDto` | 0 `date`(GameDateDto)、1 `subject`(Guid)、2 `newRankLevel`(int?) |
+| `AchievementStateDto` | 0 `successfulBribeCount`(int)、1 `birthCount`(int)、2 `lifespans`(int[])、3 `peakTotalAssets`(decimal)、4 `everHadLoan`(bool)、5 `debugWakeCount`(int)、6 `completed`(AchievementMarkDto[])、7 `pendingUnlocks`(PendingUnlockDto[]) |
+| `AchievementMarkDto` | 0 `achievement`、1 `difficulty`、2 `completedYear`(int)、3 `completedMonth`(int) |
+| `PendingUnlockDto` | 0 `achievement`、1 `difficulty`、2 `unlockedYear`(int)、3 `unlockedMonth`(int)、4 `sourceSaveId`(Guid) |
+| `EndingStateDto` | 0 `endedYear`(int)、1 `endedMonth`(int)、2 `chronicle`(ChronicleDto) |
+| `ChronicleDto` | 0 `survivedYears`(int)、1 `generations`(int)、2 `peakTotalAssets`(decimal)、3 `highestDegree`、4 `totalJinShi`(int)、5 `averageLifespan`(decimal)、6 `genealogy`(Guid[]) |
 
 ### 4.3 `FamilyEconomyDto` 及其子 DTO
 
@@ -130,17 +137,17 @@
 ① 文件存在？           否 ⇒ Missing
 ② 头记录可读？         否 ⇒ Malformed
 ③ 剩余字节 ≥ PayloadLength？ 否 ⇒ Truncated
-④ FormatVersion == 4？ 否 ⇒ UnsupportedVersion（≠ 4 = 更新或旧版本写出，一律拒绝，无迁移路径）
+④ FormatVersion == 5？ 否 ⇒ UnsupportedVersion（≠ 5 = 更新或旧版本写出，一律拒绝，无迁移路径）
 ⑤ 主体可解析？         否 ⇒ Malformed
 ⑥ 必需成员齐备？       否 ⇒ InvalidStructure
 ⑦ 逐字段复原（Core 校验）？ 否 ⇒ InvalidStructure
-⑧ 一致性校验（十五条）？ 否 ⇒ InvalidStructure
+⑧ 一致性校验（二十二条）？ 否 ⇒ InvalidStructure
 ```
 
 | 条款 | 要求 |
 | --- | --- |
-| 1 | 版本闸门（④）MUST 在任何主体解析之前；接受的**唯一**谓词是 `FormatVersion == 4`——**任何 ≠ 4 的值**（`> 4` 与旧版 `3` / `2` / `1`）MUST 一律拒绝（FR-015 的正面用例），MUST NOT 静默误读 |
-| 2 | 本版本 MUST NOT 提供任何迁移/兼容路径（Out of Scope）；`≠ 4`（含旧版 `3` / `2` 与 `1`）同样拒绝 |
+| 1 | 版本闸门（④）MUST 在任何主体解析之前；接受的**唯一**谓词是 `FormatVersion == 5`——**任何 ≠ 5 的值**（`> 5` 与旧版 `4` / `3` / `2` / `1`）MUST 一律拒绝（FR-015 的正面用例），MUST NOT 静默误读 |
+| 2 | 本版本 MUST NOT 提供任何迁移/兼容路径（Out of Scope）；`≠ 5`（含旧版 `4` / `3` / `2` 与 `1`）同样拒绝 |
 | 3 | 失败分类的判据 MUST 与「SC-007 的四类输入」一一对应，MUST NOT 依赖异常消息文本（R-07 的备选 ② 已被否） |
 | 4 | 全部失败路径 MUST NOT 修改原文件、MUST NOT 返回默认或部分状态（FR-014；[契约九 §2](./save-service.md)） |
 | 5 | 读取 MUST 只读该文件本身；MUST NOT 依赖任何外部状态（无时钟、无环境变量、无网络） |
@@ -150,13 +157,16 @@
 
 | 9 | **第 ⑬ / ⑭ / ⑮ 条校验（007 新增）**：`lifecycle.proposal` 非空 ⇒ `ourMemberId` MUST 指向 `Family.Members` 中的成员、且该成员**未亡、未外嫁、无配偶**（⑬）；`lifecycle.pendingBirths` 的每一条 `(husbandId, wifeId)` MUST 同时出现在 `appliedBirthCouples` 中、双方 MUST 指向 `Family.Members` 中的成员、且双方 `spouseId` MUST 互指（⑭）；`lifecycle` 的计数与年份 MUST 合法——`purchaseCount >= 0`、`purchaseYear` / `birthApplicationYear` 落在 `1..当年`，当年 `PersonPurchase` 条目数 MUST 等于本年度 `purchaseCount` 且同年度单价严格递增（⑮）。另：第 ④ 条追加「有在册男性而 `headId` 为空 ⇒ 拒」，第 ⑤ 条由 4 路扩到 **6 路**（`Ill` 位 ⇔ `illnessSeverityBasisPoints` 非空、`treatmentRemainingMonths` 仅在 `Ill` 置位时非空）。以上都在 ⑦ 逐字段复原之后判定 ⇒ 失败为 `InvalidStructure`。⇒ 校验总数由十二条变为**十五条** |
 
+| 10 | **第 ⑯~㉒ 条校验（008 新增）**：成就状态的键唯一性与非负性、成就/绝嗣状态机的一致性，共 **7** 条（⑯`Completed` 内 `(Achievement, Difficulty)` 唯一；⑰`PendingUnlocks` 内键唯一、且每个键都出现在 `Completed` 中；⑱`Lifespans.Count` 等于已亡成员数、每项 `>= 0`；⑲`SuccessfulBribeCount` / `BirthCount` / `DebugWakeCount` / `PeakTotalAssets` 非负；⑳`IsEnded ⇔ (EndedAt.HasValue ∧ Chronicle is not null)`；㉑`IsEnded ⇒ Family.RegisteredMembers.Count == 0`；㉒`Chronicle.Genealogy` **次序敏感逐元素**等于 `Family.Members.Select(p => p.Id)`、且 `Chronicle.SurvivedYears == EndedAt.Year − 1`——MUST NOT 用集合相等）。**明确不校验**：`PeakTotalAssets` / `HighestDegree` / `TotalJinShi` / `AverageLifespan` 与任何重算派生值的一致性（契约二十三「条款 33」——它们是不可重算的历史量）。以上都在 ⑦ 逐字段复原之后判定 ⇒ 失败为 `InvalidStructure`。⇒ 校验总数由十五条变为**二十二条**（008；详见 [008 契约二十三 §7](../../008-achievements-extinction/contracts/achievement-store.md)） |
+
 ## 7. 常量登记、依赖与验证物
 
 | 常量 | 声明处 | 依据 | 断言锚点 |
 | --- | --- | --- | --- |
-| 文件格式版本 **4** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2`，006 由 `2` 升为 `3`，007 由 `3` 升为 `4` | 版本闸门的用例（**`≠ 4` 一律拒绝**：`5` 拒绝、`3` 拒绝——与 §6 ④ 的谓词 `FormatVersion == 4` 同口径） |
+| 文件格式版本 **5** | `SaveFileFormat.Version` | §14（未规定版本字段，按 §17② 取「拒绝优于误读」）；005 由 `1` 升为 `2`，006 由 `2` 升为 `3`，007 由 `3` 升为 `4`，008 由 `4` 升为 `5` | 版本闸门的用例（**`≠ 5` 一律拒绝**：`6` 拒绝、`4` 拒绝——与 §6 ④ 的谓词 `FormatVersion == 5` 同口径） |
 | `FamilyMemberCount` = **9**、`PersonMemberCount` = **29**、`StatusTimersMemberCount` = **6** | `MessagePackSaveFormat`（二进制 walker 的成员数常量） | 键表 §4.2；006 各 +1 / +3（`punishmentJournal` 与三个行贿计数）；007 各 +1 / +1 / +2（`lifecycle`、`isTutoredByMaster`、疾病程度与疗程两路计时） | `SaveFormatContractTests` 的键数断言 |
 | `FamilyLifecycleMemberCount` = **7**、`PendingBirthMemberCount` = **4**、`MatchmakeApplicationMemberCount` = **3**、`CoupleKeyMemberCount` = **2**、`MarriageProposalMemberCount` = **19** | `MessagePackSaveFormat` | 键表 §4.2；五个 007 新增 DTO 的键数（`matchmakeApplications` 与 `MatchmakeApplicationDto` 为 T093 追加） | 同上 |
+| `AchievementStateMemberCount` = **8**、`AchievementMarkMemberCount` = **4**、`PendingUnlockMemberCount` = **5**、`EndingStateMemberCount` = **3**、`ChronicleMemberCount` = **7** | `MessagePackSaveFormat` | 键表 §4.2；五个 008 新增 DTO 的键数（008-achievements-extinction；契约二十三 §6「条款 25」） | 同上 |
 | `PunishmentJournalMemberCount` = **7** | `MessagePackSaveFormat` | 键表 §4.2；`PunishmentJournalDto` 键数 7 | 同上 |
 | `BribeFactMemberCount` = **7**、`SentenceFactMemberCount` = **3**、`FineFactMemberCount` = **5**、`RelativeBanFactMemberCount` = **5**、`CollectivePunishmentFactMemberCount` = **6**、`ReleaseFactMemberCount` = **3** | `MessagePackSaveFormat` | 键表 §4.2；六类事实行 DTO 的键数 = 对应 `KFL.Core` 记录的成员数（逐一对应） | 同上 |
 | 扩展名 `.dat` / `.json` | `SaveFileFormat` | §14 | 未指定格式 ⇒ `.dat`；指定 JSON ⇒ `.json`（FR-005） |
@@ -258,4 +268,29 @@
 `[JsonRequired]`——凡本版本 DTO 的成员（含可空成员）**缺键**一律 `InvalidStructure`；可空成员
 只允许显式写 `null`。这样 JSON 的「缺键」与二进制位置式数组的「长度不足」在信息集上严格对称
 （条款 3：任一字段缺失 MUST 被检出）。
+
+---
+
+## 008 后记（`008-achievements-extinction` 同步注，2026-10-18）
+
+本契约随 008 的**跨特性形状变更**同步（变更授权在 `specs/008-achievements-extinction/plan.md` 与
+`specs/008-achievements-extinction/contracts/achievement-store.md`）：
+
+| 同步点 | 变更 |
+| --- | --- |
+| §2、§4.1、§7 | 头记录 `FormatVersion` 与 `SaveFileFormat.Version` 由 `4` 升为 **`5`**；版本闸门的接受谓词改为 `FormatVersion == 5`（**任何 ≠ 5 的值**一律 `UnsupportedVersion`，**无迁移路径**） |
+| §4.1 | `SaveStateDto` 8 → **10** 键（末尾追加 `8 achievements`(`AchievementStateDto`)、`9 ending`(`EndingStateDto?`)）；既有键的 `Key` 序号与键名**不变**，新键**只追加** |
+| §4.2 | 新增 DTO 行：`AchievementStateDto`（**8 键**）、`AchievementMarkDto`（**4 键**：`completedYear` + `completedMonth`）、`PendingUnlockDto`（**5 键**：`unlockedYear` + `unlockedMonth` + `sourceSaveId`）、`EndingStateDto`（**3 键**：`endedYear` + `endedMonth` + `chronicle`）、`ChronicleDto`（**7 键**，`genealogy` 为 `Guid[]`） |
+| §6 | 一致性校验由「十五条」变「**二十二条**」，新增第 ⑯~㉒ 条（成就键唯一性、待解锁 ⊆ 已完成、寿命序列与已亡成员数一致、四个计数非负、`IsEnded` ⇔ 快照三元齐备、已结束 ⇒ 无在册成员、编年史宗谱次序敏感逐元素对应）及其 `InvalidStructure` 落点（条款 10） |
+| §7 | `SaveFileFormat.Version` **4 → 5**；登记二进制 walker 的成员数常量：`AchievementStateMemberCount` **8**、`AchievementMarkMemberCount` **4**、`PendingUnlockMemberCount` **5**、`EndingStateMemberCount` **3**、`ChronicleMemberCount` **7** |
+
+**边界**：008 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`≠ 5` 的旧档一律
+`UnsupportedVersion`）；两处新状态属于 `AchievementState` / `EndingState` 领域类型的**形状扩展**
+（`GameState.Achievements` / `GameState.Ending` 两个只读聚合属性），其语义真源见
+[008 data-model.md §2.3、§2.4](../../008-achievements-extinction/data-model.md)，本文件只记录它们如何变成字节。
+**可空引用成员**：`SaveStateDto.ending` 是可空成员，JSON 侧 **MUST NOT** 标 `[JsonRequired]`
+（否则 `ending: null` 会被 ⑥ 误判为 `InvalidStructure`）；二进制侧用 `TryReadNil()`。
+复原入口：`AchievementState.Restore(...)` / `RestorePendingUnlocks(...)` 与 `EndingState.Restore(...)`
+（`internal`，见 [008 data-model §2.3、§2.4](../../008-achievements-extinction/data-model.md)）；
+复原次序 MUST NOT 反转（先 `Achievements`，再由 `Ending.Restore` 复原快照；契约二十四「条款 30」）。
 

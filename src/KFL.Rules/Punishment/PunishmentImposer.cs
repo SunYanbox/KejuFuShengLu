@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Achievements;
 using KFL.Rules.Config;
 using KFL.Rules.Economy;
 
@@ -80,6 +81,14 @@ public static class PunishmentImposer
                 month, subject.Id, fine, payment.FromCash + payment.FromSavings, payment.ToLoan);
             journal.Append(fact);
             fines.Add(fact);
+
+            // 008 接线（T052，trigger ④）：罚金付不起而转为贷款本金时，即时判定 ACH-042（债台高筑）。
+            // 本入口由 BribeEntry 在**动作路径**上调用（CurrentDate 即当月），故落点恰当；
+            // 这里是当前代码里唯一真能产生贷款本金的路径（其余 Pay 调用点都先过 CanCover）。
+            if (payment.ToLoan.IsPositive)
+            {
+                AchievementAdjudicator.Report(state, AchievementTrigger.LoanOriginated);
+            }
         }
 
         var relatives = RelativesOf(state.Family, subject);

@@ -20,7 +20,7 @@ namespace KFL.Tests.Infrastructure;
 /// <remarks>
 /// <para>
 /// 四类输入对应契约十 §6 的八个判定步：不存在 ⇒ <c>Missing</c>；头之后字节损坏 ⇒ <c>Malformed</c>；
-/// 剩余字节不足头声明 ⇒ <c>Truncated</c>；版本不是 3 ⇒ <c>UnsupportedVersion</c>；
+/// 剩余字节不足头声明 ⇒ <c>Truncated</c>；版本不是 5 ⇒ <c>UnsupportedVersion</c>；
 /// 主体可解析但成员缺失或违反一致性 ⇒ <c>InvalidStructure</c>。
 /// </para>
 /// <para>

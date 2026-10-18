@@ -29,7 +29,7 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     private const int HeaderMemberCount = 3;
 
     /// <summary>
-    /// <c>SaveStateDto</c> 的成员数（契约十 §4.1：键 <c>0..7</c> 连续）。
+    /// <c>SaveStateDto</c> 的成员数（契约十 §4.1：键 <c>0..9</c> 连续；008 起为 10）。
     /// </summary>
     /// <remarks>
     /// 位置式数组的「数组长度」就是「本版本必需成员是否齐备」的判据（契约十 §6 第 ⑥ 步）。
@@ -41,7 +41,7 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     /// <see cref="EnsurePayloadShape"/> 逐层核对每个 DTO 的成员数（契约十 §5 条款 3）。
     /// </para>
     /// </remarks>
-    private const int SaveStateMemberCount = 8;
+    private const int SaveStateMemberCount = 10;
 
     /// <summary>嵌套 DTO 的成员数（契约十 §4 键表；全部按 <c>[Key(0..n-1)]</c> 连续编号）。</summary>
     private const int FamilyMemberCount = 9;
@@ -111,6 +111,21 @@ public sealed class MessagePackSaveFormat : ISaveFormat
 
     /// <inheritdoc cref="PunishmentJournalMemberCount"/>
     private const int ReleaseFactMemberCount = 3;
+
+    /// <summary>档内成就累计量的成员数（008-achievements-extinction；契约二十三 §6、data-model §7.1）。</summary>
+    private const int AchievementStateMemberCount = 8;
+
+    /// <inheritdoc cref="AchievementStateMemberCount"/>
+    private const int AchievementMarkMemberCount = 4;
+
+    /// <inheritdoc cref="AchievementStateMemberCount"/>
+    private const int PendingUnlockMemberCount = 5;
+
+    /// <inheritdoc cref="AchievementStateMemberCount"/>
+    private const int EndingStateMemberCount = 3;
+
+    /// <inheritdoc cref="AchievementStateMemberCount"/>
+    private const int ChronicleMemberCount = 7;
 
     /// <inheritdoc />
     public SaveFormat Format => SaveFormat.Binary;
@@ -238,6 +253,12 @@ public sealed class MessagePackSaveFormat : ISaveFormat
             Skip(ref reader, 6);                    // 0 Id / 1 年 / 2 月 / 3 难度 / 4 待定难度 / 5 出身
             EnsureFamilyShape(ref reader, "SaveStateDto.Family");       // 6
             EnsureEconomyShape(ref reader, "SaveStateDto.Economy");     // 7
+            EnsureAchievementsShape(ref reader, "SaveStateDto.Achievements");   // 8
+
+            if (!reader.TryReadNil())               // 9 终局（可为空）
+            {
+                EnsureEndingShape(ref reader, "SaveStateDto.Ending");
+            }
         }
         catch (Exception ex) when (ex is MessagePackSerializationException or EndOfStreamException)
         {
@@ -367,6 +388,47 @@ public sealed class MessagePackSaveFormat : ISaveFormat
         }
 
         Skip(ref reader, 7);                        // 22..28 解试失败数/省试失败数/报名级别（005）/三个行贿计数（006）/延名师（007）
+    }
+
+    /// <summary>
+    /// 核对档内成就累计量、完成记录与待落盘队列的成员数（008-achievements-extinction；契约二十三 §6）。
+    /// </summary>
+    /// <param name="reader">读取器。</param>
+    /// <param name="path">诊断用路径。</param>
+    private static void EnsureAchievementsShape(ref MessagePackReader reader, string path)
+    {
+        EnsureArrayHeader(ref reader, AchievementStateMemberCount, path);
+        Skip(ref reader, 6);                        // 0 行贿计数 / 1 出生计数 / 2 寿命序列 / 3 资产峰值 / 4 曾贷款 / 5 调试唤醒数
+
+        var completed = reader.ReadArrayHeader();   // 6 已完成集合
+        for (var index = 0; index < completed; index++)
+        {
+            EnsureArrayHeader(ref reader, AchievementMarkMemberCount, $"{path}.Completed[{index}]");
+            Skip(ref reader, AchievementMarkMemberCount);
+        }
+
+        var pending = reader.ReadArrayHeader();     // 7 待落盘队列
+        for (var index = 0; index < pending; index++)
+        {
+            EnsureArrayHeader(ref reader, PendingUnlockMemberCount, $"{path}.PendingUnlocks[{index}]");
+            Skip(ref reader, PendingUnlockMemberCount);
+        }
+    }
+
+    /// <summary>
+    /// 核对终局状态与其编年史快照的成员数（008-achievements-extinction；契约二十四 §1、data-model §7.1）。
+    /// </summary>
+    /// <param name="reader">读取器。</param>
+    /// <param name="path">诊断用路径。</param>
+    private static void EnsureEndingShape(ref MessagePackReader reader, string path)
+    {
+        EnsureArrayHeader(ref reader, EndingStateMemberCount, path);
+        Skip(ref reader, 2);                        // 0 结束年 / 1 结束月
+
+        EnsureArrayHeader(ref reader, ChronicleMemberCount, $"{path}.Chronicle");
+        Skip(ref reader, 5);                        // ①..⑤ 存续年数/世代数/资产峰值/最高功名/进士人数
+        Skip(ref reader, 1);                        // ⑥ 平均寿命
+        Skip(ref reader, 1);                        // ⑦ 宗谱（次序敏感的 UUID 序列，长度不定）
     }
 
     private static void EnsureEconomyShape(ref MessagePackReader reader, string path)
