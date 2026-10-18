@@ -182,4 +182,48 @@ public static class Display
         _ = date;
         return flags.Count == 0 ? "在册" : string.Join(' ', flags);
     }
+
+    /// <summary>流水类别的中文名（统计页与日志共用；未收录者退回枚举名，避免静默丢行）。</summary>
+    public static string Category(KFL.Core.Enums.LedgerCategory category) => category switch
+    {
+        KFL.Core.Enums.LedgerCategory.LivingCost => "生活支出",
+        KFL.Core.Enums.LedgerCategory.SelfFarmingIncome => "自耕收入",
+        KFL.Core.Enums.LedgerCategory.LandRentIncome => "田租收入",
+        KFL.Core.Enums.LedgerCategory.FarmingWageIncome => "务农收入",
+        KFL.Core.Enums.LedgerCategory.CraftingIncome => "做工收入",
+        KFL.Core.Enums.LedgerCategory.TradeIncome => "经商收益",
+        KFL.Core.Enums.LedgerCategory.OfficialSalary => "官俸",
+        KFL.Core.Enums.LedgerCategory.ShopRentIncome => "铺面租",
+        KFL.Core.Enums.LedgerCategory.ArtisanBonus => "匠户岁入",
+        KFL.Core.Enums.LedgerCategory.SavingsInterest => "储蓄利息",
+        KFL.Core.Enums.LedgerCategory.LoanPrincipalRepaid => "偿还本金",
+        KFL.Core.Enums.LedgerCategory.LoanInterestRepaid => "偿还欠息",
+        KFL.Core.Enums.LedgerCategory.AssetPurchase => "置产支出",
+        KFL.Core.Enums.LedgerCategory.AssetSale => "售产收入",
+        KFL.Core.Enums.LedgerCategory.LoanInterestAccrued => "贷款计息",
+        KFL.Core.Enums.LedgerCategory.FamineEntered => "进入饥馑",
+        KFL.Core.Enums.LedgerCategory.FamineReliefEntered => "转入救济",
+        KFL.Core.Enums.LedgerCategory.FamineSevereEntered => "饥馑加剧",
+        KFL.Core.Enums.LedgerCategory.FamineResolved => "饥馑解除",
+        KFL.Core.Enums.LedgerCategory.ExamTravelCost => "赶考路费",
+        KFL.Core.Enums.LedgerCategory.BribeExpense => "行贿支出",
+        KFL.Core.Enums.LedgerCategory.Fine => "罚金",
+        KFL.Core.Enums.LedgerCategory.MatchmakerFee => "托媒费",
+        KFL.Core.Enums.LedgerCategory.TutorFee => "名师束脩",
+        KFL.Core.Enums.LedgerCategory.BetrothalGiftPaid => "聘礼支出",
+        KFL.Core.Enums.LedgerCategory.DowryPaid => "嫁妆支出",
+        KFL.Core.Enums.LedgerCategory.DegreeMarriageFeePaid => "功名婚支出",
+        KFL.Core.Enums.LedgerCategory.ChildbirthExpense => "生育花费",
+        KFL.Core.Enums.LedgerCategory.MedicineExpense => "医药费",
+        KFL.Core.Enums.LedgerCategory.PersonPurchase => "买人口",
+        KFL.Core.Enums.LedgerCategory.BetrothalGiftReceived => "聘礼收入",
+        KFL.Core.Enums.LedgerCategory.DowryReceived => "嫁妆收入",
+        KFL.Core.Enums.LedgerCategory.DegreeMarriageDowryReceived => "功名婚嫁妆",
+        KFL.Core.Enums.LedgerCategory.ChildBorn => "添丁",
+        KFL.Core.Enums.LedgerCategory.MemberDeceased => "族人亡故",
+        KFL.Core.Enums.LedgerCategory.MarriageFormed => "成婚",
+        KFL.Core.Enums.LedgerCategory.MemberMarriedOut => "外嫁",
+        KFL.Core.Enums.LedgerCategory.PersonBought => "买人成交",
+        _ => category.ToString(),
+    };
 }

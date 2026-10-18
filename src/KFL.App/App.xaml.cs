@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -110,7 +110,25 @@ public partial class App : Application
             log.Add($"纪事 {vm.LogLines.Count} 行；末行：{(vm.LogLines.Count > 0 ? vm.LogLines[^1] : "-")}");
             log.Add($"考试条：{vm.ExamInfo}");
             log.Add($"成就条：{vm.AchievementSummary}");
-            log.Add($"统计 {vm.StatisticsText.Length} 字");
+            log.Add($"统计 {vm.StatisticsText.Length} 字；图表 {vm.Charts.Count} 张");
+            log.Add($"成员筛选条：{vm.MemberCountText}");
+            foreach (var filter in vm.MemberFilters)
+            {
+                vm.SelectedMemberFilter = filter;
+                log.Add($"  筛选「{filter.Text}」→ 列表 {vm.Members.Count} 行");
+            }
+
+            vm.SelectedMemberFilter = vm.MemberFilters[0];
+            log.Add($"本机存档槽 {vm.Saves.Count} 个");
+            if (vm.Saves.Count > 0)
+            {
+                vm.SelectedSave = vm.Saves[0];
+                log.Add("存档概览：" + vm.SaveOverviewText);
+            }
+
+            log.Add($"成就样例：{vm.Achievements[0].Code} {vm.Achievements[0].Name} ｜条件 {vm.Achievements[0].Description} ｜达成 {vm.Achievements[0].Detail}");
+            var completed = vm.Achievements.FirstOrDefault(row => row.Completed);
+            log.Add($"首个已达成：{completed?.Code} {completed?.Name} ｜{completed?.Detail}");
 
             vm.DoCommand.Execute("assetbuy:10");
             log.Add($"买田 10 亩后末行：{LastLog(vm)}");
@@ -124,6 +142,10 @@ public partial class App : Application
             vm.DoCommand.Execute("save");
             log.Add($"存档后末行：{LastLog(vm)}");
             log.Add($"存档槽 {vm.Saves.Count} 个；当前名 {vm.SaveName}");
+            vm.SelectedSaveFormat = vm.SaveFormats[1];
+            log.Add($"切 JSON 后末行：{LastLog(vm)}");
+            vm.DoCommand.Execute("advance");
+            log.Add($"JSON 档自动存档后末行：{LastLog(vm)}；存档槽 {vm.Saves.Count} 个");
             vm.DoCommand.Execute("console");
             log.Add($"控制台可见={vm.ConsoleVisible}，输出 {vm.ConsoleOutput.Length} 字");
             vm.ConsoleInput = "difficulty-list";

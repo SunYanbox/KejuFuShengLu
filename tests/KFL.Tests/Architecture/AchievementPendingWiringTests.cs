@@ -78,10 +78,11 @@ public sealed class AchievementPendingWiringTests
         (10_000, 9_000),
     ];
 
-    /// <summary>`TradeLoss` 只允许出现在这六处接线点：枚举成员、目录行、判据占位、来源枚举注解、两个待接线常量及其透传。</summary>
+    /// <summary>`TradeLoss` 只允许出现在这些接线点：枚举成员、目录行、判据占位、来源枚举注解、两个待接线常量及其透传，外加界面层的成就描述文案表。</summary>
     private static readonly string[] TradeLossWiringFiles =
     [
         @"src\KFL.Core\Enums\AchievementId.cs",
+        @"src\KFL.Presentation\AchievementDescriptions.cs",
         @"src\KFL.Rules\Achievements\AchievementCatalog.cs",
         @"src\KFL.Rules\Achievements\AchievementPredicates.cs",
         @"src\KFL.Rules\Achievements\AchievementSource.cs",
@@ -91,6 +92,7 @@ public sealed class AchievementPendingWiringTests
 
     private static readonly string[] TradeLossCommentFiles =
     [
+        @"src\KFL.Presentation\AchievementDescriptions.cs",
         @"src\KFL.Rules\Achievements\AchievementPredicates.cs",
         @"src\KFL.Rules\Config\AchievementPolicy.cs",
         @"src\KFL.Rules\Config\GameConfig.cs",

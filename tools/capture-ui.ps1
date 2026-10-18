@@ -17,7 +17,8 @@ $exe = (Resolve-Path 'src\KFL.App\bin\Debug\net10.0-windows\KFL.App.exe').Path
 Get-Process -Name KFL.App -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill() }
 $env:KFL_SMOKE = $null
 $env:KFL_AUTOSTART = if ($args[1]) { $args[1] } else { $null }
-$proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
+$proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru `
+    -RedirectStandardOutput 'artifacts\capture-app-out.txt' -RedirectStandardError 'artifacts\capture-app-err.txt'
 $hwnd = [IntPtr]::Zero
 for ($i = 0; $i -lt 40 -and $hwnd -eq [IntPtr]::Zero; $i++) {
     Start-Sleep -Milliseconds 500

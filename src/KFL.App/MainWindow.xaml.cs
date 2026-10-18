@@ -32,7 +32,8 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// 开发自检钩子（与 <c>KFL_SMOKE</c> 同源，正常启动无副作用）：置环境变量
-    /// <c>KFL_AUTOSTART</c> 为月数则直接开局并快进该月数；为 <c>console</c> 则另开调试控制台浮窗。
+    /// <c>KFL_AUTOSTART</c> 为分号分隔的指令串——<c>play:月数[:出身]</c> 同步推进、
+    /// <c>console</c> 直接打开调试控制台浮窗、纯月数则按定时器快进。
     /// 供截图/回归脚本在无人工点击的情况下进入游戏内状态。
     /// </summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -42,20 +43,32 @@ public partial class MainWindow : Window
             return;
         }
 
-        _viewModel.SelectedOrigin = _viewModel.Origins[0];
-        _viewModel.SelectedDifficulty = _viewModel.Difficulties[1];
-        _viewModel.StartGameCommand.Execute(null);
-
-        if (mode.Equals("console", StringComparison.OrdinalIgnoreCase))
+        var tokens = mode.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (!tokens.Any(token => token.StartsWith("play:", StringComparison.OrdinalIgnoreCase)))
         {
-            _viewModel.ActivateConsole();
-            _viewModel.ToggleConsole();
-            return;
+            _viewModel.SelectedOrigin = _viewModel.Origins[0];
+            _viewModel.SelectedDifficulty = _viewModel.Difficulties[1];
+            _viewModel.StartGameCommand.Execute(null);
         }
 
-        if (int.TryParse(mode, NumberStyles.Integer, CultureInfo.InvariantCulture, out var months) && months > 0)
+        foreach (var token in tokens)
         {
-            _viewModel.DoCommand.Execute($"ff:{months}");
+            if (token.StartsWith("play:", StringComparison.OrdinalIgnoreCase))
+            {
+                _viewModel.AutoPlay(token[5..]);
+            }
+            else if (token.Equals("console", StringComparison.OrdinalIgnoreCase))
+            {
+                _viewModel.ActivateConsole();
+                if (!_viewModel.ConsoleVisible)
+                {
+                    _viewModel.ToggleConsole();
+                }
+            }
+            else if (int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var months) && months > 0)
+            {
+                _viewModel.DoCommand.Execute($"ff:{months}");
+            }
         }
     }
 
