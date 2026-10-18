@@ -28,7 +28,7 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProce
 ```
 
 **期望**：`AchievementId` 恰 **68** 个成员；`AchievementCatalog` 恰 **68** 行；
-`Code` 集合逐字等于 `ACH-001`~`ACH-068`（无重号、无缺号）；六个系列的成员数
+`Code` 集合逐字等于 `ACH-001`~`ACH-068`（无重号、无缺号）；七个系列的成员数
 = 初露锋芒 **12** / 科名累进 **8** / 宦海沉浮 **11** / 宗族血脉 **17** / 覆巢之下 **11** /
 饥馑求生 **4** / 调试秘辛 **5**（合计 68）；每条 `AchievementSource.Pending` 的恰 **6** 条
 （ACH-041、ACH-064~068）。断言表逐行对应 `契约二十二 §1` 的三元组表。
@@ -48,9 +48,9 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProce
 | 成就 | 边界断言 |
 | --- | --- |
 | `五世其昌` | `Generation >= 4`（**非** `>= 5`；辈分 0 基准，见 `Assumptions 6`） |
-| `百年世家` | `SurvivedYears > 100` ⇒ 首次成立时 `CurrentDate.Year == 103` |
-| `千秋万代` | `SurvivedYears > 300` ⇒ 首次成立时 `CurrentDate.Year == 303` |
-| `绝处逢生` | `>= 100`（**含** 100，§14.1:570 无「超过」字样） |
+| `百年世家` | `SurvivedYears > 100` ⇒ 首次成立时 `CurrentDate.Year == 102` |
+| `千秋万代` | `SurvivedYears > 300` ⇒ 首次成立时 `CurrentDate.Year == 302` |
+| `绝处逢生` | `>= 100`（**含** 100，§14.1:570 无「超过」字样）⇒ 首次成立时 `CurrentDate.Year == 101` |
 | `寿比南山` | `AgeAt >= 80`（分界月份两侧各一例） |
 | `囹圄之灾` | 同一月份 `PrisonerCount >= 3` |
 | `枯木逢春` | 上月 `Relief` ∧ 本月脱离救济 ∧ 实付 == 应付 |

@@ -19,7 +19,7 @@
 | ① | `SurvivedYears` | 存续年数 = `CurrentDate.Year − 1` | §2 |
 | ② | `Generations` | 传承代数 = `Family.Members.Max(p => p.Generation) + 1` | `KFL.Core/Entities/Family.cs`、`Person.Generation` |
 | ③ | `PeakTotalAssets` | 历史月末总资产极大值 | `AchievementState.PeakTotalAssets`（累计量 ④，`data-model.md §2.4`） |
-| ④ | `HighestDegree` | 族谱历史最高 `DegreeLevel`（**含已亡与外嫁归档**） | `Family.Members` 全量的 `Person.DegreeHistory` |
+| ④ | `HighestDegree` | 族谱历史最高功名 = **全量** `Family.Members` 的 `Person.CurrentDegree` 的最大 `DegreeLevel`（**含已亡与外嫁归档**；空族谱取 `DegreeLevel.None`） | `Family.Members` 全量的 `Person.CurrentDegree`（由 `Person.DegreeHistory` 末条派生，`src/KFL.Core/Entities/Person.cs:173`） |
 | ⑤ | `TotalJinShi` | 族谱历史累计进士人数（**按人计**） | `Family.Members` 全量中 `DegreeHistory` 含 `DegreeLevel.JinShi` 的成员数 |
 | ⑥ | `AverageLifespan` | 已故成员享年分布的三均值 | `AchievementState.Lifespans`（累计量 ③）+ §4 |
 | ⑦ | `Genealogy` | 全量 `Family.Members.Select(p => p.Id)`（**含归档**） | `Family.Members` |
@@ -51,10 +51,10 @@ MUST NOT 只数在册 —— 与 FR-028 的「含已亡与外嫁」和 `Assumpti
 
 | 成就 | 门槛 | 首次成立时的存续年数 |
 | --- | --- | --- |
-| `CenturyHouse`（百年世家） | `SurvivedYears > 100` | 102（该月 `CurrentDate.Year == 103`） |
-| `MillenniumHouse`（千秋万代） | `SurvivedYears > 300` | 302 |
-| `SurvivedAgainstOdds`（绝处逢生，地狱） | `SurvivedYears >= 100` | 101 |
-| `AcedTheLot`（绝处逢生系列的 `大梦一场`） | 地狱 ∧ 绝嗣 | 任意 |
+| `CenturyHouse`（百年世家） | `SurvivedYears > 100` | 102（该月 `CurrentDate.Year == 102`） |
+| `MillenniumHouse`（千秋万代） | `SurvivedYears > 300` | 302（该月 `CurrentDate.Year == 302`） |
+| `NarrowEscape`（绝处逢生，地狱） | `SurvivedYears >= 100` | 100（该月 `CurrentDate.Year == 101`） |
+| `HellEnding`（大梦一场） | 地狱 ∧ 绝嗣 | 任意 |
 
 **注意**：「超过 100 年」**不含** 100（§14.1:611 逐字「存续时间**超过** 100 年」），
 而「绝处逢生」§14.1:570 无「超过」字样 ⇒ 取 `>=`（`spec.md` 次级口径 A）。
@@ -141,8 +141,8 @@ MUST NOT 采用「奇数样本弃中位」的变体。
 `Math.Round(value, 3, MidpointRounding.AwayFromZero)`。MUST NOT 对 Q1/Q2/Q3 各自取整后再合成。
 
 **条款 18（放哪）**：算法住在 `src/KFL.Rules/Achievements/TukeyTrimean.cs`（`data-model.md §3.7`），
-MUST NOT 塞进 `ExtinctionJudge` 或 `ChronicleBuilder` —— 它有两个调用点
-（编年史 ⑥ 与成就 `LongLived` 系列不需要，但 `AchievementPredicates` 的 ACH-012 需要同口径的存续年数）。
+MUST NOT 塞进 `ExtinctionJudge` 或 `ChronicleBuilder` —— 它在本特性**只有一个调用点**：编年史 ⑥
+（`ChronicleBuilder`）。ACH-012 的存续年数是**整数年差**（`CurrentDate.Year − 1`），与三均值无关。
 MUST NOT 在判据与编年史里各写一份。
 
 ---
@@ -182,7 +182,7 @@ MUST NOT 消费累计量、MUST NOT 追加待落盘项。
 **条款 25（先成就、后绝嗣）**：绝嗣成立的**当月**，`AchievementAdjudicator.Judge` MUST 先判 68 条成就、
 再判绝嗣并冻结 `Ending`。这样：
 1. 触发绝嗣的那一次结算产生的成就事实（如 `路有冻死` = 当月饥馑死亡）能正常解锁；
-2. 绝嗣自身解锁的成就（`烟消云散` ACH-045、`大梦一场` ACH-048）在同一轮内入 `PendingUnlocks`，
+2. 绝嗣自身解锁的成就（`烟消云散` ACH-044、`大梦一场` ACH-048）在同一轮内入 `PendingUnlocks`，
    随即由 ⑤ 落全局（契约二十三 §5）；
 
 **条款 26**：本契约是「先成就后绝嗣」的**唯一副本**（`spec.md` Assumptions 19 取其为准），
