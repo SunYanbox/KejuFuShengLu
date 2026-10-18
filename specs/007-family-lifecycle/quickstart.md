@@ -146,6 +146,13 @@ Get-ChildItem -Recurse -Filter *.sln | Where-Object { $_.FullName -notmatch '\\\
 
 **期望**：0 警告 0 错误；全绿（含 G-01~G-08）；`dotnet sln list` 恰六个工程；最后一条**无输出**。
 
+> **平台口径（非 Windows 宿主）**：第二条「全绿」以 **Windows** 宿主为权威。全量套件中有 8 例
+> （`SaveServiceTests.原子写的临时名不随档名变长` + `Architecture/` 守卫 7 例）的期望值内建了
+> Windows 宿主语义——存档路径的 `MAX_PATH` 259 字符预算、`net10.0-windows` 目标框架判定、
+> 大小写不敏感的文件系统，**存档路径类用例以 Windows 为准**。实测它们在 Linux 等宿主上
+> **于 `main` 上同样失败**（PR #15 审核结论第一节），属既有环境性差异，与本特性无关；
+> 非 Windows 宿主上核验本特性时，以场景 1~8 的专属筛选与「本特性新增用例零失败」为准。
+
 **回写核对（SC-011）**：`plan.md` 的「回写义务清单」10 项逐项在仓库里可检索到；
 `specs/001-core-skeleton/tasks.md:88`、`specs/002-monthly-settlement-economy/tasks.md:83`/`:279`
 的「阶段⑧」残句**未被回改**（历史记录类工件）。
