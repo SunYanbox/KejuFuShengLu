@@ -49,7 +49,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 
 | 位置 | 成员 | 类型 | 语义 | 读取时机 |
 | --- | --- | --- | --- | --- |
-| 1 | `FormatVersion` | `int` | 文件格式版本，本版本 = `4` | **任何正文解析之前**（FR-015 的闸门，R-06） |
+| 1 | `FormatVersion` | `int` | 文件格式版本，本版本 = **`5`**（008 起；旧值 `4`/`3`/`2`/`1` 一律拒绝） | **任何正文解析之前**（FR-015 的闸门，R-06） |
 | 2 | `PayloadLength` | `int` | 主体的**字节数** | 截断判据（R-05/R-07） |
 | 3 | `SaveId` | `Guid` | 存档标识的探针副本（`D` 格式字符串） | UUID 唯一性探针（R-18） |
 
@@ -68,7 +68,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
   <PayloadLength 字节的主体 MessagePack 数组>
 
 .json（System.Text.Json，R-08 选项）
-  {"FormatVersion":4,"PayloadLength":N,"SaveId":"…","State":
+  {"FormatVersion":5,"PayloadLength":N,"SaveId":"…","State":
   <主体 JSON>}
 ```
 
@@ -108,6 +108,8 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | 5 | `Origin` | `origin` | `int` / 枚举名 | `GameState.Origin` | 构造函数第 4 参 |
 | 6 | `Family` | `family` | 数组 / 对象 | `GameState.Family` | 见 §3.2 |
 | 7 | `Economy` | `economy` | 数组 / 对象 | `GameState.Economy` | 见 §3.3 |
+| 8 | `Achievements` | `achievements` | 数组 / 对象 | `GameState.Achievements`（**008 新增**） | `AchievementState.Restore(...)`（**008 新增 `internal`**，八参；见 §3.11 第 ⑨′ 步） |
+| 9 | `Ending` | `ending` | 数组 / 对象或 `null` | `GameState.Ending`（**008 新增**） | `EndingState.Restore(...)`（**008 新增 `internal`**，三参；`null` ⇒ 未绝嗣。**刻意无 `[JsonRequired]`**：`null` 是合法值，而**缺键**仍由 JSON 侧的键在性检查拒绝） |
 
 ### 3.2 `FamilyDto`（`Core.Family`，§4.4、§12.1、§12.4）
 
@@ -276,7 +278,8 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | ⑦′ | `family.PunishmentJournal.Restore(familyBanDeclared, …六个事实集合…)` | 日志**每行**都引用 `PersonId`，故 MUST 在全部成员已在册之后；它不依赖经济状态，故先于 ⑧（**006 新增的独立一步**） |
 | ⑧ | 建 `Treasury`（三池 + 贷款 + 利率，**先年份后利率**）、`Holdings`、`Ledger`（逐条 `Append`）、`Famine` | `Treasury` 的利率交叉校验 |
 | ⑨ | 建 `FamilyEconomy`（生活费档位 + 米价系数 + 三个子聚合）→ 建 `GameState`（identifier / 年月 / 难度 / 出身） | `LivingStandard` 与 `GrainPriceIndex` 是构造必需参数 |
-| ⑩ | 跑 `SaveStateValidator`（**R-04 的十五条**） | 不自洽 ⇒ `InvalidStructure` |
+| ⑨′ | **008 新增**：先 `state.Achievements.Restore(...)`（八参），**再** `state.Ending.Restore(...)`（三参；未绝嗣 ⇒ `(false, null, null)`） | **次序即约束**（契约二十三「条款 29/30」）：编年史 ③ 读 `AchievementState.PeakTotalAssets`，故成就面必须先复原；不得颠倒 |
+| ⑩ | 跑 `SaveStateValidator`（**R-04 的二十二条**：004 的旧十五条 + 008 新增第 16~22 条） | 不自洽 ⇒ `InvalidStructure` |
 
 > **005 注**：`PersonDto` 的 22~24 三个键（`jieShiFailureCount` / `shengShiFailureCount` / `appliedExam`）
 > 由 ② 步的 `Person.RestoreExamProgress` **一次性**写回——它是唯一的复原入口
@@ -302,14 +305,15 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | `SaveIdentityConflictException` | 同上文件族 | 同根下同 UUID 的另一个文件（R-18） |
 | `SaveAccessException` | 同上文件族 | 目录创建失败 / 无写权限（Edge Case；R-15） |
 | `SaveFileHeader` | `Save/SaveFileHeader.cs` | `readonly record struct (int FormatVersion, int PayloadLength, Guid SaveId)` |
-| `SaveFileFormat` | `Save/SaveFileFormat.cs` | `Version = 4`、扩展名常量、两种格式的**唯一**常量出处（R-06） |
+| `SaveFileFormat` | `Save/SaveFileFormat.cs` | `Version = 5`（**008 起**；`4` 及更旧一律拒绝）、扩展名常量、两种格式的**唯一**常量出处（R-06） |
 | `SaveName` | `Save/SaveName.cs` | `Validate`/`Normalize`：名称口径的唯一真源（R-13） |
 | `AtomicFileWriter` | `Save/AtomicFileWriter.cs` | 临时文件 + 同卷替换；**唯一**写盘路径（R-14） |
 | `SaveCatalog` | `Save/SaveCatalog.cs` | 目录枚举、存在性、`SaveId` 探针（只读头）、格式切换时的旧文件清理（R-18） |
 | `ISaveFormat` + `MessagePackSaveFormat` / `JsonSaveFormat` | `Save/Serialization/` | `Write(header, dto) → byte[]` / `Read(byte[]) → (header, dto)`；编解码选项的唯一出处（R-08/R-09） |
 | `SaveStateDto` 及其子 DTO | `Save/Serialization/*Dto.cs` | 线上形状的唯一真源（§3；R-02） |
 | `SaveStateMapper` | `Save/Serialization/SaveStateMapper.cs` | `ToDto(GameState)` / `ToDomain(SaveStateDto)`，逐字段显式（§3；R-02/R-12） |
-| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` | R-04 的十五条一致性校验（005 的十条 + 006 新增两条 + 007 新增三条：提议引用在册未婚成员、待产记录 ⊆ 已申请夫妇且夫妇互指、生命周期计数与年份合法；另第 ④ / ⑤ 条加严） |
+| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` | R-04 的**二十二条**一致性校验（004 的十五条 = 005/006/007 的增补；**008 新增第 16~22 条**：成就键唯一、待落盘队列 ⊆ 已完成、享年条数上界、计数非负、终局三元自洽、已结束 ⇒ 零在册成员、编年史与家族集合同序同长且存续年数 == `EndedAt.Year − 1`；契约二十三「条款 31~33」） |
+| `SaveStateMapper`（008 增补） | 同上 | `⑨′` 步复原次序 **成就面先于终局面**（契约二十三「条款 29/30」） |
 | `SaveService` | `Save/SaveService.cs` | `ISaveService` 的实现：装配 `SaveName`/`SaveCatalog`/`AtomicFileWriter`/`ISaveFormat` |
 
 ---
@@ -353,11 +357,11 @@ CompletedTurnsAt(current) = (current.Year − EpochYear) × 12 + (current.Month 
 | ① | 目标文件存在 | `Missing` |
 | ② | 头记录可读（形状 + 三成员） | `Malformed` |
 | ③ | `文件剩余字节 ≥ PayloadLength` | `Truncated` |
-| ④ | `FormatVersion == 4` | `UnsupportedVersion` |
+| ④ | `FormatVersion == 5`（**008 起**；任何 ≠ 5 的值一律拒绝，`4`/`3`/`2`/`1` 同样拒绝） | `UnsupportedVersion` |
 | ⑤ | 主体文本/字节可解析 | `Malformed` |
 | ⑥ | 必需成员齐备（`[JsonRequired]` / MessagePack 数组长度） | `InvalidStructure` |
 | ⑦ | 沿 `Core` 校验路径逐字段复原（§3.11） | `InvalidStructure` |
-| ⑧ | `SaveStateValidator` 十五条 | `InvalidStructure` |
+| ⑧ | `SaveStateValidator` 二十二条（**008 起**） | `InvalidStructure` |
 
 **不变量 11（失败无副作用）**：`Load` 失败 MUST NOT 修改存档文件、MUST NOT 返回默认状态或部分状态、
 MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
@@ -525,4 +529,28 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 本文件只记录它们如何变成字节。**订正**：本次同步同时修正了 006 遗留的四处存量旧值（本文件 §2.2 的
 「本版本 = `2`」、§2.3 的 JSON 布局示例、§8 组件表的 `Version = 2`、§6.2 的 `FormatVersion == 2`
 与「十二条」），它们本应随 006 一并回写，详见 `specs/007-family-lifecycle/tasks.md` T081/T085。
+
+---
+
+## 13. 008 后记（`008-achievements-extinction` 同步注，2026-10-18）
+
+本文件的存储侧形状随 008 的**跨特性形状变更**同步（变更授权：
+`specs/008-achievements-extinction/plan.md` 的回写义务清单与
+[`contracts/achievement-store.md`](../008-achievements-extinction/contracts/achievement-store.md)）：
+
+| 同步点 | 变更 |
+| --- | --- |
+| §2.2、§2.3、§4 | `SaveFileFormat.Version` 由 `4` 升为 **`5`**；版本闸门的接受谓词为 `FormatVersion == 5`（**任何 ≠ 5 的值**一律 `UnsupportedVersion`，判定在任何正文解析之前；**无迁移路径**） |
+| §3.1 | `SaveStateDto` 8 → **10** 成员（末尾追加 `Achievements` / `achievements`、`Ending` / `ending`）；既有成员的序号与键名不变。`Ending` 是**可空成员**，JSON 侧 MUST NOT 标 `[JsonRequired]`（`null` 合法、**缺键**仍被拒） |
+| §3.1 子 DTO 表 | 新增 `AchievementStateDto`（**8 键**）、`AchievementMarkDto`（4 键）、`PendingUnlockDto`（5 键）、`EndingStateDto`（3 键）、`ChronicleDto`（7 键）；枚举值一律以**底层整数**入线（`SaveFileFormat.JsonOptions` 注册了 `JsonStringEnumConverter`，故这些成员在 DTO 里刻意声明为 `int`） |
+| §3.11 | 新增**独立**第 ⑨′ 步——成就面 `AchievementState.Restore(...)` **先于**终局面 `EndingState.Restore(...)`（契约二十三「条款 29/30」；编年史 ③ 读 `AchievementState.PeakTotalAssets`） |
+| §4、§6.2、§3.11 | `SaveStateValidator` 由「十五条」变「**二十二条**」；第 16 条 = 成就键唯一，第 17 条 = 待落盘队列 ⊆ 已完成，第 18 条 = 享年条数 ≤ 已亡人数（**上界**，见 `plan.md` 勘误 E-21），第 19 条 = 计数非负，第 20 条 = 终局三元自洽，第 21 条 = 已结束 ⇒ 零在册成员（单向），第 22 条 = 编年史与家族集合同序同长且 `SurvivedYears == EndedAt.Year − 1` |
+| §4 组件表 | `SaveFileFormat` 的 `Version` 字样同步为 `5`；`SaveStateValidator` 条目同步为二十二条 |
+
+**边界**：008 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`≠ 5` 的旧档一律
+`UnsupportedVersion`；旧档迁移明确在 008 Out of Scope）；成就与终局的领域语义真源是
+[008 data-model.md](../../008-achievements-extinction/data-model.md) 与
+[契约二十三](../008-achievements-extinction/contracts/achievement-store.md)，
+本文件只记录它们如何变成字节。**MUST NOT** 顺手修正本文件其它存量旧值（例如 `plan.md:117`
+勘误 E-04 记录的 `FormatVersion = 2` 残留，属 007 的范围）。
 

@@ -370,7 +370,7 @@ MUST NOT 自造亏损事件规则（FR-042）。理由：既不改动 U4 的分�
   辈分为 0 基准，见规格书 §4.4:115）；③ 峰值资产 = 历史**月末**总资产的极大值
   （口径 `TotalAssetsCalculator.Of`：现金 + 储蓄 + 田宅铺市值 − 贷款）；
   ④ 最高功名 = 族谱历史**全量成员**的 `Person.CurrentDegree` 的最高 `DegreeLevel`（含已亡与外嫁归档者；
-  空族谱取 `DegreeLevel.None`）；
+  空族谱取 `DegreeLevel.BaiShen`——既有 `DegreeLevel` 枚举的零值（**不存在** `DegreeLevel.None`，见 `plan.md` E-13））；
   ⑤ 进士总数 = 族谱历史累计进士人数（按**人**计，不按次）；
   ⑥ 平均寿命 = 已故成员**享年分布的三均值**（Tukey trimean：
   `TM = (Q1 + 2·Q2 + Q3) / 4`，Q1/Q2/Q3 为享年序列的下四分位 / 中位 / 上四分位，
@@ -497,7 +497,7 @@ MUST NOT 自造亏损事件规则（FR-042）。理由：既不改动 U4 的分�
 | ACH-032 | 人丁兴旺 | `Family.RegisteredMembers.Count >= 20` | 既有 |
 | ACH-033 | 百子千孙 | 累计出生（含夭折）≥ 50 | **新增**（累计出生数） |
 | ACH-034 | 榜下捉婿 | 历史上出现过 `Kind == ImperialProposal` 的提议（**含被拒**；007 已限定候选为新科一甲次月，§14.1:600） | 既有（`MarriageProposal.Kind`） |
-| ACH-035 | 秦晋之好 | 当月 `MarriageFact.IsDegreeMarriage == true` | 既有 |
+| ACH-035 | 秦晋之好 | 当月 `MarriageFact.IsDegreeMarriage == true`，**或**状态面兜底：家族台账出现过 `DegreeMarriageFeePaid`（娶入）/ `DegreeMarriageDowryReceived`（嫁出）（勘误 E-24：007 的 ⑧-a 从不填 `LifecycleSnapshot.Marriages`，当月面恒空） | 既有 |
 | ACH-036 | 红颜薄命 | 当月死亡事实 `Cause == Childbirth` 且亡者为女性 | 既有（`DeathCause`） |
 | ACH-037 | 襁褓之殇 | 当月死亡事实的亡者 `AgeAt(死亡月) < 3` | 既有（`DeathFact` + `AgeAt`） |
 | ACH-038 | 阡陌交通 | `Holdings.FarmlandMu >= 100` | 既有 |

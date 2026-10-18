@@ -360,8 +360,14 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `Family` | `Family` | 当前家族 | §2 |
 | `Economy` | `FamilyEconomy` | **002 新增**（逻辑轨 ②）：资金池、账本、持有物与饥馑状态。只读属性——一切资金流动经它的聚合方法落条目（SC-005） | 002 `data-model.md` §3.7；R-13 |
 | `PendingDifficulty` | `Difficulty?` | **002 新增**（逻辑轨 ②）：难度「次月生效」的待生效位，结算开头提升并清空 | 002 `data-model.md` §3.7；R-13 |
+| `Achievements` | `AchievementState` | **008 新增**（逻辑轨 ⑧）：成就的累计量与解锁集（**内联初始化**，构造参数个数仍是 6）。只读属性——写入一律经 `AchievementState` 的写通道 | 008 `data-model.md` §2.3/§2.6 |
+| `Ending` | `EndingState` | **008 新增**（逻辑轨 ⑧）：终局三元（`IsEnded` / `EndedAt` / `Chronicle`），与 `Family.Lifecycle` **正交**。只读属性——唯一写入通道是 `EndingState.End(GameDate, ChronicleSnapshot)` | 008 `data-model.md` §2.5/§2.6 |
 
 **不变量**：`Id != Guid.Empty`；`CurrentDate.Month` 合法。
+**不变量 4（008 追加引用注）**：`Ending.IsEnded` ⇔ `Ending.EndedAt.HasValue ∧ Ending.Chronicle is not null`
+（三元**同生同灭**；存档期由 `SaveStateValidator` 第 20 条强制）。`Achievements` / `Ending` 均为
+**内联初始化**的聚合，故 `GameState` 的构造参数个数、`Person` 的公开可写属性清单、
+「无写入通道成员全集」**均不变**（008 不改 `Person`）。
 
 > **写入通道**：`CurrentDate` **只读**——唯一推进通道是 `AdvanceMonth()`（一次一个月、跨年进位）。
 > 001 内除构造参数外没有第二个写入者，002 起由 `MonthlySettlementEngine` 在结算末尾调用；

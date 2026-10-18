@@ -4,6 +4,7 @@ using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
 using KFL.Infrastructure.Services;
+using KFL.Rules.Achievements;
 using KFL.Rules.Config;
 
 namespace KFL.Rules.Start;
@@ -140,6 +141,9 @@ public static class NewGameSetup
         // ⑥ 存档唯一标识：复用 GameStateFactory 的「16 字节 → Guid」，MUST NOT 在规则层重写。
         var state = new GameStateFactory(random).Create(
             request.StartDate, request.Difficulty, request.Origin, family, economy);
+
+        // 008 接线（T045）：创建成功后即时判定 ACH-001 开基立业（不落文件、不写档、不抛）。
+        AchievementAdjudicator.Report(state, AchievementTrigger.NewGameCreated);
 
         return new NewGameSetupResult(state);
     }

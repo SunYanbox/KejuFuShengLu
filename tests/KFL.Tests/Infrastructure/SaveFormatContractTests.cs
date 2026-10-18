@@ -104,7 +104,7 @@ public sealed class SaveFormatContractTests
         var payload = MessagePackSerializer.Serialize(dto, SaveFileFormat.BinaryOptions);
         var reader = new MessagePackReader(payload);
 
-        Assert.Equal(8, reader.ReadArrayHeader());
+        Assert.Equal(10, reader.ReadArrayHeader());
         Assert.Equal(SaveFixtures.PlainStateId, Guid.Parse(reader.ReadString()!));
         Assert.Equal(1, reader.ReadInt32());
         Assert.Equal(1, reader.ReadInt32());
@@ -376,6 +376,11 @@ public sealed class SaveFormatContractTests
             ("CoupleKeyMemberCount", typeof(CoupleKeyDto)),
             ("MatchmakeApplicationMemberCount", typeof(MatchmakeApplicationDto)),
             ("MarriageProposalMemberCount", typeof(MarriageProposalDto)),
+            ("AchievementStateMemberCount", typeof(AchievementStateDto)),
+            ("AchievementMarkMemberCount", typeof(AchievementMarkDto)),
+            ("PendingUnlockMemberCount", typeof(PendingUnlockDto)),
+            ("EndingStateMemberCount", typeof(EndingStateDto)),
+            ("ChronicleMemberCount", typeof(ChronicleDto)),
         ];
 
         foreach (var (constant, dto) in mapping)
@@ -396,7 +401,8 @@ public sealed class SaveFormatContractTests
     private static readonly (Type Type, string[] NamesByKey)[] BinaryKeyTables =
     [
         (typeof(SaveStateDto),
-            ["id", "currentYear", "currentMonth", "difficulty", "pendingDifficulty", "origin", "family", "economy"]),
+            ["id", "currentYear", "currentMonth", "difficulty", "pendingDifficulty", "origin", "family", "economy",
+                "achievements", "ending"]),
         (typeof(FamilyDto),
             ["name", "hasShiStatus", "headId", "members", "settledOutsiders", "marriageAlignedOutsiders",
                 "autoExamApplication", "punishmentJournal", "lifecycle"]),
@@ -452,6 +458,18 @@ public sealed class SaveFormatContractTests
                 "candidateHealth", "candidateLifespan", "candidateDegree", "class", "betrothalGift",
                 "dowry", "proposedYear", "proposedMonth", "candidatePlacement",
             ]),
+
+        // 008-achievements-extinction：档内成就累计量（8）与终局状态（3）+ 编年史七项。
+        (typeof(AchievementStateDto),
+            ["successfulBribeCount", "birthCount", "lifespans", "peakTotalAssets", "everHadLoan",
+                "debugWakeCount", "completed", "pendingUnlocks"]),
+        (typeof(AchievementMarkDto), ["achievement", "difficulty", "completedYear", "completedMonth"]),
+        (typeof(PendingUnlockDto),
+            ["achievement", "difficulty", "unlockedYear", "unlockedMonth", "sourceSaveId"]),
+        (typeof(EndingStateDto), ["endedYear", "endedMonth", "chronicle"]),
+        (typeof(ChronicleDto),
+            ["survivedYears", "generations", "peakTotalAssets", "highestDegree", "totalJinShi",
+                "averageLifespan", "genealogy"]),
     ];
 
     /// <summary>造一个账本有 <paramref name="entryCount"/> 条的状态。</summary>
@@ -531,6 +549,18 @@ public sealed class SaveFormatContractTests
     /// <summary>契约十 §4 的键表（逐条抄自契约，按序数排序）。</summary>
     private static readonly string[] ContractKeyTable =
     [
+        // 008：`achievements` 恒非空（`SaveStateDto.Achievements` 有初值），其三个序列在夹具里为空，
+        //      故只出现数组名本身；`ending` 恒写 `null`（无 `DefaultIgnoreCondition`）——
+        //      键在、子键不在，正是「缺键」与「显式空值」必须被读侧区分的地方（契约二十三 条款 17）。
+        "achievements",
+        "achievements.birthCount",
+        "achievements.completed",
+        "achievements.debugWakeCount",
+        "achievements.everHadLoan",
+        "achievements.lifespans",
+        "achievements.peakTotalAssets",
+        "achievements.pendingUnlocks",
+        "achievements.successfulBribeCount",
         "currentMonth",
         "currentYear",
         "difficulty",
@@ -562,6 +592,7 @@ public sealed class SaveFormatContractTests
         "economy.treasury.savings",
         "economy.treasury.savingsRate",
         "economy.treasury.savingsRateYear",
+        "ending",
         "family",
         "family.autoExamApplication",
         "family.hasShiStatus",

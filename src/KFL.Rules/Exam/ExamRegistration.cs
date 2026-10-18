@@ -2,6 +2,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Rules.Achievements;
 using KFL.Rules.Career;
 using KFL.Rules.Config;
 using KFL.Rules.Settlement;
@@ -161,13 +162,25 @@ public static class ExamRegistration
     /// <param name="person">成员。</param>
     /// <param name="date">接受时点。</param>
     /// <param name="random">随机来源（待阙时长的唯一来源，经 003 的通用入口）。</param>
+    /// <param name="state">
+    /// 当前对局（008 起可选）。传入时在成功应答后即时判定 <c>ExamInquiryAnswered</c>
+    /// （契约二十二 §3 第 11 行）；为 <c>null</c> 时行为与 005 原签名逐字段相同。
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="person"/> 或 <paramref name="random"/> 为 <c>null</c>。</exception>
     /// <exception cref="InvalidOperationException">不满足资格。</exception>
     /// <remarks>
     /// **功名变迁史不新增任何记录**（MUST NOT 伪造进士记录）；接受后退出科举由
     /// <see cref="IsEligible"/> 的条件 ⑤、⑥ **结构性**保证。
+    /// <para>
+    /// 008（T055 / E-20）：成功应答即上报，**不影响**本节既有资格判定与随机次序——即时判定
+    /// MUST NOT 落全局文件、MUST NOT 写档、MUST NOT 抛（契约二十二 §3 条款 10）。
+    /// </para>
     /// </remarks>
-    public static void AcceptSpecialTribute(Person person, GameDate date, IRandomService random)
+    public static void AcceptSpecialTribute(
+        Person person,
+        GameDate date,
+        IRandomService random,
+        GameState? state = null)
     {
         ArgumentNullException.ThrowIfNull(random);
 
@@ -178,5 +191,11 @@ public static class ExamRegistration
         }
 
         AppointmentEntry.Begin(person, AppointmentTrack.SpecialTribute, date, random);
+
+        // 008 接线（T055）：成功应答后即时判定（不落文件、不写档、不抛）。
+        if (state is not null)
+        {
+            AchievementAdjudicator.Report(state, AchievementTrigger.ExamInquiryAnswered);
+        }
     }
 }

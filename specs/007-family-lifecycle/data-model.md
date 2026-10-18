@@ -270,6 +270,22 @@ public sealed record LifecycleSnapshot
 `IllnessFact(PersonId, bool Contracted, bool Recovered)`、
 `AgeBracketCrossFact(PersonId, AgeBracket From, AgeBracket To)`。
 
+> **008 消费注（2026-10-18，逻辑轨 ⑧）**：成就面把本快照当作「当月报告」**只读**消费——
+> ① `Births` 的**条数**累加进 `AchievementState.BirthCount`（**含**当月出生即夭折者：出生与死亡是两件独立事实）；
+> ② 逐条 `Deaths` 取「该成员在**事实月**的周岁」（`Person.AgeAt(snapshot.Month)`）追加进享年序列，
+> 并用 `Cause` 判定「红颜薄命（Childbirth）」「襁褓之殇（事实月年龄 < 3）」「路有冻死骨（Famine）」；
+> ③ `Marriages` 中 `IsDegreeMarriage == true` 触发「秦晋之好」——**⚠ 但本特性（007）实际从不填 `Marriages`**：
+> `PopulationAdvance` 只 `with` 了 `PendingProposal` / `Births` / `Illnesses` / `Crossings` / `Deaths`，
+> `Marriages` 与 `Purchases` **恒为空快照成员**。故 ⑧ 按 FR-008 补了**状态面兜底**（家族台账出现
+> `DegreeMarriageFeePaid` / `DegreeMarriageDowryReceived` 即算达成，见 008 勘误 **E-24**）；
+> **恢复「当月面」严格口径**须由 007 在 ⑧-a 补记婚配事实（属 007 的形状变更，登记为 008 的待接线候选）；
+> ④ `PendingProposal?.Kind == ImperialProposal` 触发「榜下捉婿」（**含被拒**：提议一产出即算见过；
+> 当月状态侧还未应答的那条经 `LifecycleQueries.PendingProposal` 同口径读取，故**不需要**新增持久字段）；
+> ⑤ `MarriedOut` / `Crossings` / `Illnesses` / `Purchases` / `NewHeadId` / `HeadBecameVacant` 与成就面**无关**。
+> 本消费 MUST NOT 回写快照或生命周期的任何状态（快照是「增量只读投影」，001/002 既有口径不变），
+> 也 MUST NOT 让 ⑧ 去调用结算或成就判定（FR-035：单月只结算一次；判定只发生在 `TurnRunner.Advance` 的 ② / 动作返回之前）。
+> 契约真源见 [008 `achievement-catalog.md` §2/§3](../../008-achievements-extinction/contracts/achievement-catalog.md)。
+
 ### 3.3 `Family/LifecycleEntry.cs` —— 玩家动作（可拒绝）
 
 ```csharp

@@ -71,6 +71,26 @@ public sealed class SaveStateDto
     [JsonPropertyName("economy")]
     [JsonRequired]
     public FamilyEconomyDto Economy { get; set; } = new();
+
+    /// <summary>档内成就累计量与解锁记录（008-achievements-extinction）。</summary>
+    [Key(8)]
+    [JsonPropertyName("achievements")]
+    [JsonRequired]
+    public AchievementStateDto Achievements { get; set; } = new();
+
+    /// <summary>终局状态；<c>null</c> = 家族尚未绝嗣（008-achievements-extinction）。</summary>
+    /// <remarks>
+    /// 本成员<b>有意不标 <c>[JsonRequired]</c></b>：<c>null</c> 是本版本允许的取值
+    /// （「家族仍存续」），而 <c>[JsonRequired]</c> 既要求成员存在、也（在
+    /// <c>JsonSaveFormat</c> 的判据下）禁止引用类型取 <c>null</c>。缺键与 <c>null</c>
+    /// 的区别由契约十 §5 条款 3 的「缺失 MUST 被检出」覆盖：JSON 里必须写出
+    /// <c>"ending": null</c>，缺键仍会被拒。二进制侧同理由 <c>TryReadNil()</c> 分支承担
+    /// （契约二十三「条款 26」，照 007 对 <c>proposal</c> 的既有处理）。
+    /// <b>MUST NOT</b> 改成「<c>bool</c> + 两个可空字段」的三键表示。
+    /// </remarks>
+    [Key(9)]
+    [JsonPropertyName("ending")]
+    public EndingStateDto? Ending { get; set; }
 }
 
 /// <summary>

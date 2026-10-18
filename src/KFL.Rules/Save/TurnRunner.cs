@@ -1,6 +1,10 @@
 using KFL.Core.Entities;
+using KFL.Core.Enums;
+using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
+using KFL.Infrastructure.Achievements;
 using KFL.Infrastructure.Services;
+using KFL.Rules.Achievements;
 using KFL.Rules.Config;
 using KFL.Rules.Settlement;
 
@@ -43,6 +47,7 @@ public sealed class TurnRunner
     private readonly ISaveService? _saveService;
     private readonly SaveSlot _slot;
     private readonly INameGenerator _nameGenerator;
+    private readonly IAchievementStore? _achievementStore;
 
     /// <summary>建推进器。</summary>
     /// <param name="randomService">随机源；每回合新建的结算引擎要用它。</param>
@@ -52,6 +57,10 @@ public sealed class TurnRunner
     /// </param>
     /// <param name="slot">当前档（档名 + 格式）；会话信息，组合期注入。</param>
     /// <param name="nameGenerator">姓名来源（007 新增）：转交给每回合新建的结算引擎，供 ⑧-a/⑧-b 取名。</param>
+    /// <param name="achievementStore">
+    /// 全局成就档案（008 新增）；<c>null</c> ⇒ 跳过 ⑤ 全局落盘（判定与档内队列仍照跑）。
+    /// **本参 MUST 带默认值**，使既有构造点无需改动（契约二十三「条款 20」）。
+    /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="randomService"/> 或 <paramref name="nameGenerator"/> 为 <c>null</c>。
     /// </exception>
@@ -59,7 +68,8 @@ public sealed class TurnRunner
         IRandomService randomService,
         ISaveService? saveService,
         SaveSlot slot,
-        INameGenerator nameGenerator)
+        INameGenerator nameGenerator,
+        IAchievementStore? achievementStore = null)
     {
         ArgumentNullException.ThrowIfNull(randomService);
         ArgumentNullException.ThrowIfNull(nameGenerator);
@@ -68,44 +78,148 @@ public sealed class TurnRunner
         _saveService = saveService;
         _slot = slot;
         _nameGenerator = nameGenerator;
+        _achievementStore = achievementStore;
     }
 
-    /// <summary>推进一个游戏月，并按节奏存档/备份。</summary>
+    /// <summary>推进一个游戏月，并按节奏存档/备份（008 起在 ④ 之后追加 ⑤ 全局落盘）。</summary>
     /// <param name="state">游戏状态（就地推进）。</param>
-    /// <returns>本回合的增量快照。</returns>
+    /// <returns>本回合的增量快照，含 ⑤ 的结果。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="state"/> 为 <c>null</c>。</exception>
+    /// <exception cref="InvalidOperationException">
+    /// 家族已绝嗣（<see cref="GameState.Ending"/> 的 <c>IsEnded</c> 为真）——结束态存档不可继续推进。
+    /// 抛出发生在任何结算之前，保证**零状态变更**（契约二十四「条款 19」；<c>spec.md</c> Assumptions 20）。
+    /// </exception>
     /// <exception cref="SaveFileException">落盘失败（内存状态已保留）。</exception>
     /// <exception cref="SaveAccessException">存档目录不可写。</exception>
+    /// <remarks>
+    /// <para>
+    /// <b>五步次序</b>（契约二十三「条款 19」）：① 结算 → ② 成就与绝嗣判定 → ③ 覆盖当前档 →
+    /// ④ 备份 → ⑤ 全局成就落盘。② 在 ① 之后是刚需：判据读的就是本回合的月事实与已推进的
+    /// <c>CurrentDate</c>。
+    /// </para>
+    /// <para>
+    /// <b>③ 的短路不影响 ⑤</b>（「条款 21」）：<c>_saveService</c> 为 <c>null</c>（自动存档关）
+    /// 时 ③④ 跳过，但 ⑤ **仍执行**——成就是独立于存档的能力。
+    /// </para>
+    /// <para>
+    /// <b>③ 与 ⑤ 的异常策略刻意相反</b>（「条款 22」）：③ 失败上抛且不回滚；⑤ 失败**不抛**、
+    /// 队列保留待下回合重试，诊断经 <see cref="TurnOutcome.AchievementFlush"/> 交回调用方。
+    /// </para>
+    /// </remarks>
     public TurnOutcome Advance(GameState state)
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        // 结束闸门：必须排在**任何结算之前**，保证拒绝时零状态变更（契约二十四「条款 19」）。
+        // MUST NOT 返回「无变化的 TurnOutcome」——静默无操作会让调用方以为推进成功。
+        if (state.Ending.IsEnded)
+        {
+            throw new InvalidOperationException("家族已绝嗣，存档不可继续推进。");
+        }
+
         // ① 结算。引擎绑定到这个具体状态上（既有调用点的同款形状）；抛出 ⇒ 本回合不存档。
         var settlement = new MonthlySettlementEngine(_randomService, new GameStateClock(state), _nameGenerator).Settle(state);
 
-        // ② 没注入存档服务 ⇒ 自动存档关，直接返回（结算照跑，结果不受影响：US2 AS4）。
-        if (_saveService is null)
+        // ② 成就与绝嗣判定（008 新增）。先读全局档案的只读面（缺文件 ⇒ 空档案），再判：
+        //    判据要读全局档案的「出身达成」段（ACH-047），且本次新解锁项要进档内队列。
+        var archive = _achievementStore?.Read() ?? AchievementArchive.Empty;
+        var archiveMarks = new List<AchievementMark>(archive.Achievements.Count);
+        foreach (var completed in archive.Achievements)
         {
-            return new TurnOutcome(
-                settlement,
-                SaveCadencePolicy.CompletedTurnsAt(state.CurrentDate),
-                Saved: false,
-                BackedUp: false);
+            archiveMarks.Add(new AchievementMark(completed.Achievement, completed.Difficulty, completed.CompletedAt));
         }
+
+        var achievement = AchievementAdjudicator.Judge(state, settlement, archiveMarks, archive.Origins);
+
+        var turns = SaveCadencePolicy.CompletedTurnsAt(state.CurrentDate);
+        var saved = false;
+        var backedUp = false;
 
         // ③ 覆盖当前档。MUST 与手动存档走同一个 Save 入口（没有第二条序列化路径）。
-        _saveService.Save(state, _slot, overwrite: true);
-
-        // ④ 备份严格在 ③ 成功之后：备份的是「刚写下的内容」。
-        var turns = SaveCadencePolicy.CompletedTurnsAt(state.CurrentDate);
-        var backedUp = false;
-        if (SaveCadencePolicy.ShouldBackup(turns))
+        //    没注入存档服务 ⇒ 自动存档关：跳过 ③④（结算照跑：US2 AS4），但 ⑤ 仍执行。
+        if (_saveService is not null)
         {
-            _saveService.Backup(_slot);
-            backedUp = true;
+            _saveService.Save(state, _slot, overwrite: true);
+            saved = true;
+
+            // ④ 备份严格在 ③ 成功之后：备份的是「刚写下的内容」。
+            if (SaveCadencePolicy.ShouldBackup(turns))
+            {
+                _saveService.Backup(_slot);
+                backedUp = true;
+            }
         }
 
-        return new TurnOutcome(settlement, turns, Saved: true, BackedUp: backedUp);
+        // ⑤ 全局成就落盘（唯一落盘点；MUST NOT 进结算步骤表，FR-035）。
+        return new TurnOutcome(settlement, turns, saved, backedUp)
+        {
+            AchievementFlush = FlushAchievements(state, achievement),
+        };
+    }
+
+    /// <summary>⑤ 全局落盘：成功则清空档内队列，失败则队列保留（契约二十三「条款 18/23」）。</summary>
+    /// <remarks>
+    /// 未配置成就存储、或档内队列为空时不写盘并返回 <c>null</c>（「条款 20」）。
+    /// 写盘内容由存储层负责「既有记录 ∪ 本次增量」（「条款 23」）——本层只交增量。
+    /// </remarks>
+    private AchievementFlushResult? FlushAchievements(GameState state, AchievementOutcome achievement)
+    {
+        if (_achievementStore is null)
+        {
+            return null;
+        }
+
+        var pending = state.Achievements.PendingUnlocks;
+        if (pending.Count == 0)
+        {
+            return null;
+        }
+
+        var result = _achievementStore.Flush(pending, BuildOriginAdditions(state, achievement, pending));
+        if (result.IsSuccess)
+        {
+            // 落盘成功才清空队列：失败保留，下一次回合带着**原始**解锁年月重试（FR-024）。
+            state.Achievements.RestorePendingUnlocks([]);
+        }
+
+        return result;
+    }
+
+    /// <summary>构造本次的「出身达成」增量：只认绝嗣与百年世家（契约二十三「条款 38」）。</summary>
+    /// <remarks>
+    /// 千秋万代**不**入 <c>Origins</c>——规格书 §14 只把「出身达成」定义为绝嗣 / 百年世家两类。
+    /// 日期取「已结束则 <c>EndedAt</c>，否则 <c>CurrentDate</c>」：绝嗣触发于本月，而玩家选择
+    /// 结束游戏后 <c>CurrentDate</c> 不再推进（结束态冻结），故以结束日为准。
+    /// 增量取自**队列本身**（而非本次判定结果）：⑤ 失败后队列原样保留，重试那一回合也要能补齐。
+    /// </remarks>
+    private static List<OriginRecord> BuildOriginAdditions(
+        GameState state,
+        AchievementOutcome achievement,
+        IReadOnlyList<PendingUnlock> pending)
+    {
+        _ = achievement;
+        List<OriginRecord>? additions = null;
+        var at = state.Ending.EndedAt ?? state.CurrentDate;
+
+        foreach (var unlock in pending)
+        {
+            var milestone = unlock.Achievement switch
+            {
+                AchievementId.FamilyExtinct => OriginMilestone.Extinction,
+                AchievementId.CenturyHouse => OriginMilestone.CenturyFamily,
+                _ => (OriginMilestone?)null,
+            };
+
+            if (milestone is null)
+            {
+                continue;
+            }
+
+            additions ??= [];
+            additions.Add(new OriginRecord(state.Origin, milestone.Value, at, state.Id));
+        }
+
+        return additions ?? [];
     }
 
     /// <summary>退出时存档（UI 轨 U1 的进程退出钩子会调它）。</summary>

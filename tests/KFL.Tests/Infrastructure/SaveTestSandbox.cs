@@ -50,6 +50,20 @@ public sealed class SaveTestSandbox : IDisposable
     public void BlockRootWithFile() =>
         File.WriteAllBytes(Root, [0x01]); // arch-guard:allow 测试沙箱：造「根路径被文件占住」的现场
 
+    /// <summary>在给定路径处造一个**目录**，令该路径上的原子写必然失败（008 的成就档案写失败面）。</summary>
+    /// <param name="path">目标文件路径。</param>
+    /// <remarks>
+    /// 目录不会被存在性判定认成文件，因此读向仍表现为「档案不存在」——正是「读得到、写不进」
+    /// 这一写失败场景（区别于损坏隔离）。
+    /// </remarks>
+    public static void BlockFileWithDirectory(string path) =>
+        Directory.CreateDirectory(path); // arch-guard:allow 测试沙箱：在目标文件路径上建目录，令原子写的改名步骤失败
+
+    /// <summary>撤掉 <see cref="BlockFileWithDirectory"/> 造出的挡路目录，让后续写入恢复正常。</summary>
+    /// <param name="path">目标文件路径。</param>
+    public static void UnblockFile(string path) =>
+        Directory.Delete(path); // arch-guard:allow 测试沙箱：撤掉挡路目录（该目录恒为空）
+
     /// <summary>备份目录（<c>&lt;root&gt;/backups</c>）。</summary>
     public string BackupsDirectory =>
         SaveCatalog.Combine(Root, SaveFileFormat.BackupsDirectoryName);
@@ -86,11 +100,23 @@ public sealed class SaveTestSandbox : IDisposable
     /// <returns>文件路径。</returns>
     public IReadOnlyList<string> BackupFiles() => ListFiles(BackupsDirectory);
 
+    /// <summary>
+    /// 确保存档根目录存在（**损坏注入的前置条件**：008 的成就档案在沙箱里可能还没有任何存档落过盘，
+    /// 而 <see cref="WriteBytes"/> 不会自建目录）。复用 004 的建目录单点，MUST NOT 在测试里自建目录访问调用。
+    /// </summary>
+    public void EnsureRoot() => SaveCatalog.EnsureDirectory(Root);
+
     /// <summary>读文件全部字节。</summary>
     /// <param name="path">路径。</param>
     /// <returns>字节。</returns>
     public static byte[] ReadBytes(string path) =>
         File.ReadAllBytes(path); // arch-guard:allow 测试沙箱：读字节供断言与「损坏注入」
+
+    /// <summary>取文件最后写入时刻（UTC），用于「拒绝推进时存档文件未被触碰」这一面。</summary>
+    /// <param name="path">路径。</param>
+    /// <returns>最后写入时刻。</returns>
+    public static DateTime LastWriteTimeUtc(string path) =>
+        File.GetLastWriteTimeUtc(path); // arch-guard:allow 测试沙箱：读修改时间，断言零写入
 
     /// <summary>写文件全部字节（**损坏注入**用：截断、改版本号、投毒）。</summary>
     /// <param name="path">路径。</param>

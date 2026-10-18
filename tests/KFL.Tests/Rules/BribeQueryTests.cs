@@ -172,14 +172,20 @@ public class BribeQueryTests
         Assert.Contains(snapshot.Bribes, fact => fact.Caught);
         Assert.Contains(snapshot.CollectivePunishments, fact => fact.Outcome == CollectiveOutcome.DegreeDemoted);
 
-        // 本特性 MUST NOT 自行解锁任何成就：规则层没有任何成就类型（FR-030）。
-        var achievements = typeof(PunishmentQueries).Assembly
+        // FR-030 的「本特性不自行解锁成就」在 008 落地后由**接缝**承担：006 只经
+        // `AchievementAdjudicator.Report(..., AchievementTrigger.LoanOriginated)` 上报触发
+        // （契约二十二 §3 第 4 行），判定与落盘都在 008 的 `KFL.Rules.Achievements` 与回合末 ⑤。
+        // 008 修订（T057 / E-22）：原断言「程序集内不存在任何成就类型」被 008 的实现证伪，
+        // 改为断言「惩罚命名空间内没有任何成就类型」——本特性的职责边界不变。
+        var achievementsInPunishmentNamespace = typeof(PunishmentQueries).Assembly
             .GetTypes()
+            .Where(type => type.Namespace is not null
+                && type.Namespace.StartsWith("KFL.Rules.Punishment", StringComparison.Ordinal))
             .Where(type => type.Name.Contains("Achievement", StringComparison.OrdinalIgnoreCase)
                 || type.Name.Contains("成就", StringComparison.Ordinal))
             .ToArray();
 
-        Assert.Empty(achievements);
+        Assert.Empty(achievementsInPunishmentNamespace);
 
         // 成就所需的**事实**（而非成就本身）都必须能从只读面取到。
         Assert.NotEmpty(typeof(PunishmentSnapshot).GetProperties(BindingFlags.Public | BindingFlags.Instance));

@@ -95,6 +95,17 @@ public sealed class GameState
     public Family Family { get; }
 
     /// <summary>
+    /// 档内成就累计量与解锁记录（FR-013；SC-014；008 data-model §2.3）。**只读引用**：
+    /// 变化必须经聚合自己的写通道。
+    /// </summary>
+    public AchievementState Achievements { get; } = new();
+
+    /// <summary>
+    /// 终局状态与冻结的编年史快照（FR-016/FR-017；008 data-model §2.5）。
+    /// </summary>
+    public EndingState Ending { get; } = new();
+
+    /// <summary>
     /// 家族经济聚合（资金流动的唯一入口，data-model §3.6）。**只读引用**：
     /// 内部状态的变化必须经聚合自己的方法，而不是替换整个聚合。
     /// </summary>

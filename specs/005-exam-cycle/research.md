@@ -121,7 +121,7 @@ public static bool CanRegister(Person person, GameDate date);     // 窗口 ∧ 
 public static void Register(Person person, GameDate date);        // !CanRegister ⇒ InvalidOperationException，MUST NOT 改任何字段
 public static IReadOnlyList<Person> EligibleUnapplied(Family family, GameDate date);   // 纯查询
 public static bool SpecialTributeEligible(Person person, GameDate date);
-public static void AcceptSpecialTribute(Person person, GameDate date, IRandomService random);
+public static void AcceptSpecialTribute(Person person, GameDate date, IRandomService random, GameState? state = null);   // state 为 008 追加的可选尾参（T055/E-20），传入时上报成就触发器
 ```
 
 「在册」复用既有的 `CountedMembers.IsRegistered(Person)`（002 已定义、唯一出处），不新写一份。

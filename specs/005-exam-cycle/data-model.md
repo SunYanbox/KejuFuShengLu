@@ -130,7 +130,8 @@ public static class ExamRegistration
     public static void Register(Person person, GameDate date);
     public static IReadOnlyList<Person> EligibleUnapplied(Family family, GameDate date);
     public static bool SpecialTributeEligible(Person person, GameDate date);
-    public static void AcceptSpecialTribute(Person person, GameDate date, IRandomService random);
+    public static void AcceptSpecialTribute(
+        Person person, GameDate date, IRandomService random, GameState? state = null);
 }
 ```
 
@@ -151,6 +152,9 @@ public static class ExamRegistration
 - `AcceptSpecialTribute`：`!SpecialTributeEligible` ⇒ `InvalidOperationException`，MUST NOT 改任何字段；
   否则 `AppointmentEntry.Begin(person, AppointmentTrack.SpecialTribute, date, random)`。
   **MUST NOT 追加任何功名记录**（FR-012、Q3 裁决）。
+  008 起追加**可选尾参** `GameState? state = null`（形状变更授权：008 `tasks.md` T055，登记 E-20）：
+  `state is not null` 时成功后上报 `AchievementTrigger.ExamInquiryAnswered`（契约二十二 §3 第 11 行），
+  `null` 时与 005 原签名逐字段相同；资格判定与 `random` 消耗次序 MUST NOT 受影响。
 
 ### 3.3 `ExamAdmission`（`src/KFL.Rules/Exam/ExamAdmission.cs`）
 

@@ -142,7 +142,17 @@
 | ACH-032 | `Family.RegisteredMembers.Count >= 20` | `LargeHouseholdMembers = 20` |
 | ACH-033 | 累计出生（含夭折）≥ 50 | `ClanBirthCount = 50`；读 ② |
 | ACH-034 | 历史上出现过 `Kind == ImperialProposal` 的提议（**含被拒**） | — |
-| ACH-035 | 当月 `MarriageFact.IsDegreeMarriage == true` | — |
+| ACH-035 | 当月 `MarriageFact.IsDegreeMarriage == true` **∨** 状态面兜底：家族台账出现过 `DegreeMarriageFeePaid`（娶入）或 `DegreeMarriageDowryReceived`（嫁出） | — |
+
+> **勘误 E-24（2026-10-18，执行期）**：上表的 ACH-035 行原写「当月 `MarriageFact.IsDegreeMarriage`」，
+> 但 007 的 ⑧-a（`src/KFL.Rules/Family/PopulationAdvance.cs:43-45`）只把 `PendingProposal` 写进快照，
+> **从不填 `LifecycleSnapshot.Marriages`** ⇒ 当月面恒空，该成就按原口径**永不可达**（触发器 8 亦然，
+> 因为动作型即时判定的 `Settlement` 为 `null`）。按 FR-008「同时消费**状态面**与当月报告面」补
+> **状态面兜底**：台账里出现过买功名婚姻的款项即算达成（与规格书 §14.1「完成一次『买功名婚姻』
+> （娶入或嫁出）」的历史口径一致）。此改动**不新增数值、不放宽任何既有期望**；实现落点 =
+> `src/KFL.Rules/Achievements/AchievementPredicates.cs` 的 `HasDegreeMarriageRecord`。
+> 同时**登记待接线候选**：若要恢复「当月面」的严格口径，需 007 在 ⑧-a 补记婚配事实（属 007 的形状变更，
+> 不在 008 的授权范围）。
 | ACH-036 | 当月死亡事实 `Cause == Childbirth` 且亡者为女性 | — |
 | ACH-037 | 当月死亡事实的亡者 `AgeAt(死亡月) < 3` | `InfantDeathMaxAge = 3`（`<`） |
 | ACH-038 | `Holdings.FarmlandMu >= 100` | `FarmlandHundredMu = 100` |
@@ -213,7 +223,7 @@
 | 8 | `DegreeMarriagePurchased` | 8 | `TryMatchmake` / `RespondToProposal` 的 `buyDegreeMarriage: true` 分支成功后（**无独立入口**，见 E-11） | ACH-035 |
 | 9 | `PersonPurchased` | 9 | `LifecycleEntry.BuyPerson`（`src/KFL.Rules/Family/LifecycleEntry.cs:461`）成功后 | ACH-032 |
 | 10 | `BribeSubmitted` | 10 | `BribeEntry.Bribe`（`src/KFL.Rules/Bribery/BribeEntry.cs:41`）成功后 | ACH-049~054 |
-| 11 | `ExamInquiryAnswered` | 11 | `ExamRegistration.AcceptSpecialTribute`（`src/KFL.Rules/Exam/ExamRegistration.cs:170`）成功后 | ACH-027、ACH-028 |
+| 11 | `ExamInquiryAnswered` | 11 | `ExamRegistration.AcceptSpecialTribute`（`src/KFL.Rules/Exam/ExamRegistration.cs:170`）成功后——008 起该入口追加**可选尾参** `GameState? state = null`，仅在 `state is not null` 时上报（E-20） | ACH-027、ACH-028 |
 | 12 | `DebugWakeReported` | 12 | FR-041 ⑥ 的上报接缝（U4 未来调用） | ACH-064~068 |
 
 **条款 11（为什么是 12 而不是 13）**：「捉婿提议产出」**不**是触发器。它由 `MonthlySettlementEngine`
@@ -232,6 +242,7 @@
 | ACH-041 商海浮沉 | 谓词 `IsTradeLoss(ctx)` 读「经商亏损事件」事实；本次无产生者 ⇒ 恒 false | 规格书日后补「经商亏损事件」时接（§17 裁决块已登记该缺口） |
 | ACH-064~068 调试秘辛 | `AchievementTrigger.DebugWakeReported` + `AchievementCounters.ReportsDebugWake(state, count)` + `AchievementAdjudicator.Report(state, DebugWakeReported)` | U4 调试控制台（规格书 §13）；本次只提供入口并使 ⑥ 可被单测直接推进 |
 | ACH-047 四民皆历 | `IAchievementStore.Read()` 返回的 `AchievementArchive.Origins` 由 `TurnRunner` 传给 `Judge` | 本特性已接（读面 + 判据齐备），仅界面轨未展示 |
+| trigger ⑪ `ExamInquiryAnswered` | `ExamRegistration.AcceptSpecialTribute(..., GameState? state = null)` 的可选尾参 | U2 界面（真实应答方）；本特性只提供接缝，未传 `state` 的既有调用不上报（E-20） |
 
 **条款 13**：`ReportsDebugWake` MUST 校验 `count >= 1`（抛 `ArgumentOutOfRangeException`），
 并把 ⑥ 的累加与「ACH-064~068 的即时判定」放在同一次调用里，使 U4 只需一个调用点。

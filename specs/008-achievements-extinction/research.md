@@ -183,8 +183,8 @@ public static class TukeyTrimean
 **与 ③ 的关系**：`Lifespans` 是「已故成员享年**完整序列**」（FR-013 ③），不是「和 + 个数」——
 因为三均值不是线性统计量，无法由和与个数重算。序列里的每个值 = 该成员死亡当月的 `Person.AgeAt(月份)`
 （`src/KFL.Core/Entities/Person.cs:495`，实现在 `src/KFL.Core/Entities/GameDate.cs:59-74`）。
-「完整序列」的下界可由不变量校验：`Lifespans.Count == Family.Members.Count(p => p.Status.HasFlag(StatusFlag.Deceased))`
-（见契约二十三 §7）。
+「完整序列」的**上界**可由不变量校验：`Lifespans.Count <= Family.Members.Count(p => p.Status.HasFlag(StatusFlag.Deceased))`
+（见契约二十三 §7；**E-21 修订**：处决与株连在 `DeathRegister` 之外置 `Deceased`、不记享年 ⇒ 只能取上界）。
 
 **替代方案与否决原因**：
 
@@ -442,7 +442,7 @@ Infrastructure 侧只实现 JSON 读写与解析，**不实现** MessagePack 侧
 | --- | --- | --- |
 | 1 | `Completed` 中 `(Id, Difficulty)` 唯一 | FR-011 幂等 |
 | 2 | `PendingUnlocks ⊆ Completed`（按 `(Id, Difficulty)`） | FR-013 ⑦⑧ 的集合关系 |
-| 3 | `Lifespans.Count == Members.Count(Deceased)` 且每项 `>= 0` | FR-013 ③ 的「完整序列」 |
+| 3 | `Lifespans.Count <= Members.Count(Deceased)` 且每项 `>= 0`（**E-21**：上界，处决不记享年） | FR-013 ③ 的「完整序列」 |
 | 4 | `SuccessfulBribeCount >= 0 ∧ BirthCount >= 0 ∧ DebugWakeCount >= 0 ∧ PeakTotalAssets >= 0` | 域合法性 |
 | 5 | `IsEnded ⇔ EndedAt.HasValue ∧ Chronicle.HasValue` | R-08 的联动不变量 |
 | 6 | `IsEnded` ⇒ `Family.RegisteredMembers.Count == 0` | FR-026/R-07 |

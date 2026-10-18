@@ -63,6 +63,8 @@ public static class SaveStateMapper
                 Lifecycle = ToDto(family.Lifecycle),
             },
             Economy = ToDto(state.Economy),
+            Achievements = ToDto(state.Achievements),
+            Ending = ToDto(state.Ending),
         };
     }
 
@@ -302,6 +304,51 @@ public static class SaveStateMapper
         {
             PendingDifficulty = dto.PendingDifficulty,
         };
+
+        // ⑨′ 成就累计量与终局（008-achievements-extinction；契约二十三 §6「条款 25」、契约二十四 §1）。
+        //     次序 MUST NOT 反转：先复原 Achievements（其 ⑦ 是**档内**已完成集合、⑧ 是待落盘队列，
+        //     两者都是盘上事实），再由 Ending 复原编年史快照。累计量 MUST NOT 反向读编年史——
+        //     快照是终局当刻的**冻结值**，与当前累计量在语义上并不相等（SC-011）。
+        var achievementsDto = Required(dto.Achievements, nameof(dto.Achievements));
+        state.Achievements.Restore(
+            achievementsDto.SuccessfulBribeCount,
+            achievementsDto.BirthCount,
+            [.. Required(achievementsDto.Lifespans, "lifespans")],
+            Money.FromWen(achievementsDto.PeakTotalAssets),
+            achievementsDto.EverHadLoan,
+            achievementsDto.DebugWakeCount,
+            [.. Required(achievementsDto.Completed, "completed").Select(mark => new AchievementMark(
+                (AchievementId)mark.Achievement,
+                (Difficulty)mark.Difficulty,
+                new GameDate(mark.CompletedYear, mark.CompletedMonth)))],
+            [.. Required(achievementsDto.PendingUnlocks, "pendingUnlocks").Select(unlock => new PendingUnlock(
+                (AchievementId)unlock.Achievement,
+                (Difficulty)unlock.Difficulty,
+                new GameDate(unlock.UnlockedYear, unlock.UnlockedMonth),
+                unlock.SourceSaveId))]);
+
+        if (dto.Ending is { } endingDto)
+        {
+            var chronicleDto = Required(endingDto.Chronicle, "ending.chronicle");
+            state.Ending.Restore(
+                true,
+                new GameDate(endingDto.EndedYear, endingDto.EndedMonth),
+                new ChronicleSnapshot
+                {
+                    SurvivedYears = chronicleDto.SurvivedYears,
+                    Generations = chronicleDto.Generations,
+                    PeakTotalAssets = Money.FromWen(chronicleDto.PeakTotalAssets),
+                    HighestDegree = (DegreeLevel)chronicleDto.HighestDegree,
+                    TotalJinShi = chronicleDto.TotalJinShi,
+                    AverageLifespan = chronicleDto.AverageLifespan,
+                    Genealogy = [.. Required(chronicleDto.Genealogy, "genealogy").Select(id => new PersonId(id))],
+                });
+        }
+        else
+        {
+            // 未结束：DTO 的 null 就是「家族仍存续」，写成显式的 (false, null, null)。
+            state.Ending.Restore(false, null, null);
+        }
 
         return state;
     }
@@ -652,6 +699,78 @@ public static class SaveStateMapper
         },
     };
 
+    /// <summary>
+    /// 把档内成就累计量拍成瞬态 DTO（008-achievements-extinction；契约二十三 §6、data-model §7.1）。
+    /// </summary>
+    /// <remarks>
+    /// 逐项搬运**持久面**（恰 8 项），**不含**任何派生量：已解锁数、七系进度、加速集都不入档，
+    /// 由复原方从 ⑦ 重建（SC-014）。
+    /// </remarks>
+    /// <param name="achievements">档内成就累计量。</param>
+    private static AchievementStateDto ToDto(AchievementState achievements) => new()
+    {
+        SuccessfulBribeCount = achievements.SuccessfulBribeCount,
+        BirthCount = achievements.BirthCount,
+        Lifespans = [.. achievements.Lifespans],
+        PeakTotalAssets = achievements.PeakTotalAssets.Wen,
+        EverHadLoan = achievements.EverHadLoan,
+        DebugWakeCount = achievements.DebugWakeCount,
+        Completed = [.. achievements.Completed.Select(ToDto)],
+        PendingUnlocks = [.. achievements.PendingUnlocks.Select(ToDto)],
+    };
+
+    /// <summary>一条完成记录 ↔ 瞬态 DTO（008；编号按底层整数写，年月拆两个键）。</summary>
+    /// <param name="mark">完成记录。</param>
+    private static AchievementMarkDto ToDto(AchievementMark mark) => new()
+    {
+        Achievement = (int)mark.Achievement,
+        Difficulty = (int)mark.Difficulty,
+        CompletedYear = mark.CompletedAt.Year,
+        CompletedMonth = mark.CompletedAt.Month,
+    };
+
+    /// <summary>一条待落盘解锁 ↔ 瞬态 DTO（008；与完成记录的差别只有末键）。</summary>
+    /// <param name="unlock">待落盘解锁。</param>
+    private static PendingUnlockDto ToDto(PendingUnlock unlock) => new()
+    {
+        Achievement = (int)unlock.Achievement,
+        Difficulty = (int)unlock.Difficulty,
+        UnlockedYear = unlock.UnlockedAt.Year,
+        UnlockedMonth = unlock.UnlockedAt.Month,
+        SourceSaveId = unlock.SourceSaveId,
+    };
+
+    /// <summary>
+    /// 把终局状态拍成瞬态 DTO（008；契约二十三「条款 26」）。
+    /// </summary>
+    /// <remarks>
+    /// 未结束 ⇒ <c>null</c>。不变量 `IsEnded ⇔ EndedAt.HasValue ∧ Chronicle is not null` 由
+    /// <c>EndingState</c> 与第 ⑳ 条校验共同保证，这里只需把它翻译成 DTO 侧的两态表示。
+    /// </remarks>
+    /// <param name="ending">终局状态。</param>
+    private static EndingStateDto? ToDto(EndingState ending) =>
+        ending.IsEnded && ending.EndedAt is { } endedAt && ending.Chronicle is { } chronicle
+            ? new EndingStateDto
+            {
+                EndedYear = endedAt.Year,
+                EndedMonth = endedAt.Month,
+                Chronicle = ToDto(chronicle),
+            }
+            : null;
+
+    /// <summary>编年史七项 ↔ 瞬态 DTO（008；合约二十四 §1，次序与规格书 §15 一致）。</summary>
+    /// <param name="chronicle">编年史快照。</param>
+    private static ChronicleDto ToDto(ChronicleSnapshot chronicle) => new()
+    {
+        SurvivedYears = chronicle.SurvivedYears,
+        Generations = chronicle.Generations,
+        PeakTotalAssets = chronicle.PeakTotalAssets.Wen,
+        HighestDegree = (int)chronicle.HighestDegree,
+        TotalJinShi = chronicle.TotalJinShi,
+        AverageLifespan = chronicle.AverageLifespan,
+        Genealogy = [.. chronicle.Genealogy.Select(id => id.Value)],
+    };
+
     /// <summary>取必需子对象；为 <c>null</c> 即结构错误（缺成员，或显式写了 <c>null</c>）。</summary>
     /// <summary>
     /// 契约十 §3 条款 1 / data-model §3.10：枚举 MUST 是本版本定义的具名成员，越界整数 ⇒ 结构不符（第 ⑦ 步）。
@@ -694,6 +813,26 @@ public static class SaveStateMapper
         }
 
         EnsureDefined(Required(economy.Famine, "famine").Stage, "stage");
+
+        // 008-achievements-extinction：两个新 DTO 的枚举字段同样是**底层整数**，
+        // 越界值（二进制侧读得出来）MUST 在进入 Core 之前拒掉。
+        var achievements = Required(dto.Achievements, nameof(dto.Achievements));
+        foreach (var mark in Required(achievements.Completed, "completed"))
+        {
+            EnsureDefined((AchievementId)mark.Achievement, "achievement");
+            EnsureDefined((Difficulty)mark.Difficulty, "difficulty");
+        }
+
+        foreach (var unlock in Required(achievements.PendingUnlocks, "pendingUnlocks"))
+        {
+            EnsureDefined((AchievementId)unlock.Achievement, "achievement");
+            EnsureDefined((Difficulty)unlock.Difficulty, "difficulty");
+        }
+
+        if (dto.Ending is { } ending)
+        {
+            EnsureDefined((DegreeLevel)Required(ending.Chronicle, "ending.chronicle").HighestDegree, "highestDegree");
+        }
     }
 
     /// <summary>值 MUST 是具名枚举成员。</summary>
