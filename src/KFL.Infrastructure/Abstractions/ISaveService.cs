@@ -90,7 +90,7 @@ public interface ISaveService
     /// <summary>从该槽位读档，返回一个**新建**的状态。</summary>
     /// <remarks>
     /// 判定次序固定为八步（存在 → 头可读 → 剩余字节足量 → 版本相符 → 主体可解析 →
-    /// 必需成员齐备 → 逐字段复原 → 九条一致性校验），失败按类抛
+    /// 必需成员齐备 → 逐字段复原 → 十五条一致性校验），失败按类抛
     /// <see cref="SaveFileException"/>（契约十 §6）。版本闸门 MUST 在任何主体解析**之前**生效。
     /// </remarks>
     /// <param name="slot">档名 + 格式。</param>
