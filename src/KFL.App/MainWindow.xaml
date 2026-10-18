@@ -38,7 +38,10 @@
                         </Grid.ColumnDefinitions>
 
                         <DockPanel Grid.Column="0" Margin="4">
-                            <TextBlock DockPanel.Dock="Top" Text="在册成员（卡片墙）" Style="{StaticResource SectionHeader}" />
+                            <TextBlock DockPanel.Dock="Top" Text="成员（可筛选）" Style="{StaticResource SectionHeader}" />
+                            <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding MemberFilters}" DisplayMemberPath="Text"
+                                      SelectedItem="{Binding SelectedMemberFilter, Mode=TwoWay}" />
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding MemberCountText}" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
                             <TextBlock DockPanel.Dock="Bottom" Text="归档 = 亡故 / 外嫁" Style="{StaticResource Secondary}" />
                             <ListBox ItemsSource="{Binding Members}"
                                      SelectedItem="{Binding Selected, Mode=TwoWay}"
@@ -113,6 +116,12 @@
                                     <Button Content="取 10 贯" Command="{Binding DoCommand}" CommandParameter="money:cash:10" />
                                     <Button Content="还贷 10 贯" Command="{Binding DoCommand}" CommandParameter="repay:10" />
                                 </WrapPanel>
+                                <WrapPanel>
+                                    <Button Content="商本投入 10 贯" Command="{Binding DoCommand}" CommandParameter="merchant:in:10"
+                                            ToolTip="从现银划入商本（经商收益按商本计，可随时抽回）" />
+                                    <Button Content="商本抽回 10 贯" Command="{Binding DoCommand}" CommandParameter="merchant:out:10"
+                                            ToolTip="从商本划回现银" />
+                                </WrapPanel>
 
                                 <TextBlock Text="婚育与人事" Style="{StaticResource SectionHeader}" />
                                 <WrapPanel>
@@ -128,13 +137,8 @@
                                     <Button Content="立为家主" Command="{Binding DoCommand}" CommandParameter="head" />
                                 </WrapPanel>
 
-                                <TextBlock Text="司法（调试用）" Style="{StaticResource SectionHeader}" />
-                                <WrapPanel>
-                                    <Button Content="释放" Command="{Binding DoCommand}" CommandParameter="release" />
-                                    <Button Content="免死" Command="{Binding DoCommand}" CommandParameter="pardon" />
-                                    <Button Content="解本人禁令" Command="{Binding DoCommand}" CommandParameter="clearbans" />
-                                    <Button Content="解全族禁令" Command="{Binding DoCommand}" CommandParameter="clearfamilybans" />
-                                </WrapPanel>
+                                <TextBlock Text="调试入口" Style="{StaticResource SectionHeader}" />
+                                <TextBlock Text="按键 S-U-N-T-I-O-N 激活控制台，再按反引号 ` 开关。司法调试（释放 / 免死 / 解禁令 / 解全族禁令）与加钱、悟道、治愈、病故等已全部移入控制台。" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
 
                                 <TextBlock Text="存档" Style="{StaticResource SectionHeader}" />
                                 <WrapPanel>
@@ -152,8 +156,105 @@
                     <DockPanel Margin="6">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
                             <Button Content="导出流水账 CSV" Command="{Binding DoCommand}" CommandParameter="export" />
-                            <TextBlock Text="图表以文字汇总替代（见 推断.md）" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            <TextBlock Text="三张折线图按月聚合自族流水账，可左右滚动；下方仍保留文字汇总。" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="8,0,0,0" />
                         </StackPanel>
+
+                        <ScrollViewer DockPanel.Dock="Top" Height="316" HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled" Margin="0,0,0,6">
+                            <ItemsControl ItemsSource="{Binding Charts}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#FFBFAE8E" BorderThickness="1" CornerRadius="3"
+                                                Margin="0,0,8,0" Padding="8" Background="{StaticResource PanelBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="Bold" />
+                                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Secondary}" Width="420" />
+                                                <Canvas Width="{Binding Width}" Height="{Binding Height}" ClipToBounds="False">
+                                                    <!-- 网格底：坐标轴 -->
+                                                    <Line X1="0" Y1="0" X2="0" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                                                    <Line X1="0" Y1="{Binding Height}" X2="{Binding Width}" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                                                    <!-- 折线：每条系列一条 Polyline -->
+                                                    <ItemsControl ItemsSource="{Binding Series}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <Canvas />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Polyline Points="{Binding Points}" Stroke="{Binding BrushKey, Converter={StaticResource BrushKey}}"
+                                                                          StrokeThickness="2" Fill="Transparent" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <!-- Y 轴刻度 -->
+                                                    <ItemsControl ItemsSource="{Binding YTicks}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <Canvas />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemContainerStyle>
+                                                            <Style TargetType="ContentPresenter">
+                                                                <Setter Property="Canvas.Left" Value="2" />
+                                                                <Setter Property="Canvas.Top" Value="{Binding Position}" />
+                                                            </Style>
+                                                        </ItemsControl.ItemContainerStyle>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding Text}" Margin="0,-9,0,0" FontSize="12" Foreground="#FF5A5A5A" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <!-- X 轴刻度 -->
+                                                    <ItemsControl ItemsSource="{Binding XTicks}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <Canvas />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemContainerStyle>
+                                                            <Style TargetType="ContentPresenter">
+                                                                <Setter Property="Canvas.Left" Value="{Binding Position}" />
+                                                                <Setter Property="Canvas.Top" Value="{Binding DataContext.XTickTop, RelativeSource={RelativeSource AncestorType=Canvas}}" />
+                                                            </Style>
+                                                        </ItemsControl.ItemContainerStyle>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding Text}" FontSize="12" Foreground="#FF5A5A5A" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Canvas>
+                                                <!-- 图例 -->
+                                                <ItemsControl ItemsSource="{Binding Series}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal" Margin="0,2,10,0">
+                                                                <Rectangle Width="16" Height="4" VerticalAlignment="Center"
+                                                                           Fill="{Binding BrushKey, Converter={StaticResource BrushKey}}" />
+                                                                <TextBlock Text="{Binding Name}" Margin="4,0,0,0" FontSize="13" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <TextBlock Text="{Binding StatisticsText}" FontFamily="Consolas, Microsoft YaHei" />
                         </ScrollViewer>
@@ -168,17 +269,19 @@
                         </StackPanel>
                         <Grid DockPanel.Dock="Top" Margin="4,2">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="120" />
-                                <ColumnDefinition Width="110" />
-                                <ColumnDefinition Width="230" />
-                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="190" />
+                                <ColumnDefinition Width="70" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="280" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="系列" FontWeight="Bold" />
                             <TextBlock Grid.Column="1" Text="编号" FontWeight="Bold" />
                             <TextBlock Grid.Column="2" Text="名称" FontWeight="Bold" />
                             <TextBlock Grid.Column="3" Text="状态" FontWeight="Bold" />
-                            <TextBlock Grid.Column="4" Text="达成于（难度 年/月）" FontWeight="Bold" />
+                            <TextBlock Grid.Column="4" Text="达成条件" FontWeight="Bold" />
+                            <TextBlock Grid.Column="5" Text="达成于（难度 年/月 · 本机时刻）" FontWeight="Bold" />
                         </Grid>
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding Achievements}">
@@ -186,17 +289,19 @@
                                     <DataTemplate>
                                         <Grid Margin="4,2">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="120" />
-                                                <ColumnDefinition Width="110" />
-                                                <ColumnDefinition Width="230" />
-                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="190" />
+                                                <ColumnDefinition Width="70" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="280" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="{Binding Series}" />
                                             <TextBlock Grid.Column="1" Text="{Binding Code}" />
                                             <TextBlock Grid.Column="2" Text="{Binding Name}" TextWrapping="Wrap" />
                                             <TextBlock Grid.Column="3" Text="{Binding StateText}" />
-                                            <TextBlock Grid.Column="4" Text="{Binding Note}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Column="4" Text="{Binding Description}" TextWrapping="Wrap" Foreground="#FF444444" />
+                                            <TextBlock Grid.Column="5" Text="{Binding Detail}" FontSize="12" />
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -221,6 +326,9 @@
 
                         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="12,0,0,0">
+                                <TextBlock Text="选中存档概览" Style="{StaticResource SectionHeader}" />
+                                <TextBlock Text="{Binding SaveOverviewText}" FontFamily="Consolas, Microsoft YaHei" />
+
                                 <TextBlock Text="随时切换难度（次月生效）" Style="{StaticResource SectionHeader}" />
                                 <WrapPanel>
                                     <Button Content="简单" Command="{Binding DoCommand}" CommandParameter="difficulty:Easy" />
@@ -230,7 +338,10 @@
                                 </WrapPanel>
 
                                 <TextBlock Text="当前存档名（另存为用）" Style="{StaticResource SectionHeader}" />
-                                <TextBox Text="{Binding SaveName, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left" />
+                                <WrapPanel>
+                                    <TextBox Text="{Binding SaveName, UpdateSourceTrigger=PropertyChanged}" Width="220" />
+                                    <ComboBox ItemsSource="{Binding SaveFormats}" DisplayMemberPath="Text" SelectedItem="{Binding SelectedSaveFormat, Mode=TwoWay}" />
+                                </WrapPanel>
                                 <WrapPanel>
                                     <Button Content="另存为" Command="{Binding DoCommand}" CommandParameter="saveas" />
                                     <Button Content="返回主菜单" Command="{Binding DoCommand}" CommandParameter="menu" />
@@ -253,7 +364,7 @@
             </DockPanel>
         </Grid>
 
-        <Border Background="#EEFDF6E9" Visibility="{Binding IsMenuVisible, Converter={StaticResource BoolToVis}}">
+        <Border Background="#FFFDF6E9" Visibility="{Binding IsMenuVisible, Converter={StaticResource BoolToVis}}">
             <StackPanel Width="560" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock Text="科举浮生录" FontSize="34" FontWeight="Bold" Foreground="#FF8B1A1A" HorizontalAlignment="Center" />
                 <TextBlock Text="一姓之兴衰，自此月始。" HorizontalAlignment="Center" Margin="0,4,0,16" />
@@ -276,7 +387,7 @@
             </StackPanel>
         </Border>
 
-        <Border Background="#F2FDF6E9" Visibility="{Binding IsEnded, Converter={StaticResource BoolToVis}}">
+        <Border Background="#FFFDF6E9" Visibility="{Binding IsEnded, Converter={StaticResource BoolToVis}}">
             <StackPanel Width="760" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock Text="家族绝嗣 · 结局" FontSize="28" FontWeight="Bold" Foreground="#FF8B1A1A" HorizontalAlignment="Center" />
                 <ScrollViewer Height="430" Margin="0,12,0,12">
@@ -289,19 +400,22 @@
             </StackPanel>
         </Border>
 
-        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="760" Height="400" Margin="12"
+        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="820" Height="440" Margin="12"
                 Background="#F5201F1F" BorderBrush="#FFD8C48A" BorderThickness="2" CornerRadius="4"
                 Visibility="{Binding ConsoleVisible, Converter={StaticResource BoolToVis}}">
             <DockPanel Margin="8">
                 <TextBlock DockPanel.Dock="Top" Text="调试控制台（反引号 ` 开关）" Foreground="#FFECD9A0" FontWeight="Bold" />
                 <WrapPanel DockPanel.Dock="Bottom">
-                    <Button Content="wake" Command="{Binding ConsoleQuickCommand}" CommandParameter="wake 1" />
+                    <Button Content="唤醒 ×1" Command="{Binding ConsoleQuickCommand}" CommandParameter="wake 1" />
                     <Button Content="+100 贯" Command="{Binding ConsoleQuickCommand}" CommandParameter="money 100" />
-                    <Button Content="heal" Command="{Binding ConsoleQuickCommand}" CommandParameter="heal" />
-                    <Button Content="kill" Command="{Binding ConsoleQuickCommand}" CommandParameter="kill" />
+                    <Button Content="治愈" Command="{Binding ConsoleQuickCommand}" CommandParameter="heal" />
+                    <Button Content="病故" Command="{Binding ConsoleQuickCommand}" CommandParameter="kill" />
                     <Button Content="清行贿" Command="{Binding ConsoleQuickCommand}" CommandParameter="bribe-reset" />
-                    <Button Content="难度表" Command="{Binding ConsoleQuickCommand}" CommandParameter="difficulty-list" />
-                    <Button Content="成就" Command="{Binding ConsoleQuickCommand}" CommandParameter="ach" />
+                    <Button Content="释放" Command="{Binding ConsoleQuickCommand}" CommandParameter="release" />
+                    <Button Content="免死" Command="{Binding ConsoleQuickCommand}" CommandParameter="pardon" />
+                    <Button Content="解禁令" Command="{Binding ConsoleQuickCommand}" CommandParameter="clearbans" />
+                    <Button Content="解全族禁令" Command="{Binding ConsoleQuickCommand}" CommandParameter="clearfamilybans" />
+                    <Button Content="帮助" Command="{Binding ConsoleQuickCommand}" CommandParameter="help" />
                     <Button Content="隐藏" Command="{Binding DoCommand}" CommandParameter="console" />
                 </WrapPanel>
                 <TextBox DockPanel.Dock="Bottom" Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}"
@@ -311,7 +425,7 @@
                     </TextBox.InputBindings>
                 </TextBox>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding ConsoleOutput}" Foreground="#FFD8D8D8" FontFamily="Consolas" />
+                    <TextBlock Text="{Binding ConsoleOutput}" Foreground="#FFD8D8D8" FontFamily="Consolas" TextWrapping="Wrap" />
                 </ScrollViewer>
             </DockPanel>
         </Border>

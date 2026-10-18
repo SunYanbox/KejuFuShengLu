@@ -42,6 +42,10 @@ public sealed class MainViewModel : ObservableObject
     private string _newSurname = string.Empty;
     private string _newSeed = string.Empty;
     private bool _isEnded;
+    private Choice<string> _selectedMemberFilter;
+    private Choice<SaveFormat> _selectedSaveFormat;
+    private string _saveOverviewText = "（选中左侧存档后显示概览）";
+    private string _memberCountText = string.Empty;
 
     public MainViewModel()
     {
@@ -84,11 +88,29 @@ public sealed class MainViewModel : ObservableObject
             new Choice<AssetKind>(AssetKind.UrbanHouse, "城市宅（100 贯）"),
             new Choice<AssetKind>(AssetKind.Shop, "商铺（300 贯，月租 20%）"),
         ];
+        MemberFilters =
+        [
+            new Choice<string>("registered", "在册成员"),
+            new Choice<string>("all", "全部（在册 + 归档）"),
+            new Choice<string>("archived", "已归档（亡故 / 外嫁）"),
+            new Choice<string>("deceased", "已死亡"),
+            new Choice<string>("marriedout", "已外嫁"),
+            new Choice<string>("serving", "服刑中"),
+            new Choice<string>("awaiting", "待阙中"),
+            new Choice<string>("banned", "禁考 / 禁升"),
+        ];
+        SaveFormats =
+        [
+            new Choice<SaveFormat>(SaveFormat.Binary, "二进制 .dat（默认）"),
+            new Choice<SaveFormat>(SaveFormat.Json, "JSON .json（可读）"),
+        ];
 
         SelectedOrigin = Origins[0];
         SelectedDifficulty = Difficulties[1];
         SelectedLivingStandard = LivingStandards[1];
         SelectedAssetKind = AssetKinds[0];
+        _selectedMemberFilter = MemberFilters[0];
+        _selectedSaveFormat = SaveFormats[0];
         _newSeed = Environment.TickCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
@@ -122,6 +144,62 @@ public sealed class MainViewModel : ObservableObject
 
     public IReadOnlyList<Choice<AssetKind>> AssetKinds { get; }
 
+    public IReadOnlyList<Choice<string>> MemberFilters { get; }
+
+    public IReadOnlyList<Choice<SaveFormat>> SaveFormats { get; }
+
+    /// <summary>统计页图表（按月聚合自族流水账，可左右滚动）。</summary>
+    public ObservableCollection<ChartFrame> Charts { get; } = [];
+
+    /// <summary>家族成员筛选（已归档 / 已死亡 / 已外嫁 / 服刑中 / 在册…）。</summary>
+    public Choice<string> SelectedMemberFilter
+    {
+        get => _selectedMemberFilter;
+        set
+        {
+            if (Set(ref _selectedMemberFilter, value))
+            {
+                RefreshMembers();
+            }
+        }
+    }
+
+    /// <summary>存档概览筛选后的成员计数文案。</summary>
+    public string MemberCountText
+    {
+        get => _memberCountText;
+        private set => Set(ref _memberCountText, value);
+    }
+
+    /// <summary>存档写入格式（存档 / 另存为 / 自动存档 均遵循；切换后立即对新格式生效）。</summary>
+    public Choice<SaveFormat> SelectedSaveFormat
+    {
+        get => _selectedSaveFormat;
+        set
+        {
+            if (!Set(ref _selectedSaveFormat, value) || _session is null)
+            {
+                return;
+            }
+
+            var error = _session.SetSaveFormat(value.Value);
+            if (error.Length > 0)
+            {
+                _session.Note(error);
+            }
+
+            RefreshLog();
+            RefreshAll();
+        }
+    }
+
+    /// <summary>选中存档的概览（成员、资产、负债、功名分布、最后游玩时间）。</summary>
+    public string SaveOverviewText
+    {
+        get => _saveOverviewText;
+        private set => Set(ref _saveOverviewText, value);
+    }
+
     public Choice<Origin> SelectedOrigin { get; set; }
 
     public Choice<Difficulty> SelectedDifficulty { get; set; }
@@ -133,7 +211,13 @@ public sealed class MainViewModel : ObservableObject
     public Choice<SaveSlot>? SelectedSave
     {
         get => _selectedSave;
-        set => Set(ref _selectedSave, value);
+        set
+        {
+            if (Set(ref _selectedSave, value))
+            {
+                RefreshSaveOverview();
+            }
+        }
     }
 
     public bool IsLoaded => _session is not null;
@@ -268,6 +352,33 @@ public sealed class MainViewModel : ObservableObject
         Attach();
     }
 
+    /// <summary>
+    /// 抓图/自检用：按 <c>月数[:出身中文前缀]</c> 规格自动开局并推进若干月。
+    /// 由环境变量 <c>KFL_UI_PLAY</c> 触发，正常启动不走这里。
+    /// </summary>
+    public void AutoPlay(string spec)
+    {
+        var parts = spec.Split(':', 2);
+        var months = int.TryParse(parts[0], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : 0;
+        if (parts.Length > 1)
+        {
+            var origin = Origins.FirstOrDefault(option => option.Text.StartsWith(parts[1], StringComparison.Ordinal));
+            if (origin is not null)
+            {
+                SelectedOrigin = origin;
+            }
+        }
+
+        StartNewGame();
+        DoCommand.Execute("autoexam");
+        for (var i = 0; i < months; i++)
+        {
+            DoCommand.Execute("advance");
+        }
+    }
+
     public void LoadGame(SaveSlot slot)
     {
         try
@@ -337,18 +448,7 @@ public sealed class MainViewModel : ObservableObject
         var family = state.Family;
 
         var previousSelectedId = Selected?.Person.Id;
-        Members.Clear();
-        foreach (var person in family.RegisteredMembers.OrderByDescending(p => family.HeadId == p.Id).ThenBy(p => p.Id.Value))
-        {
-            Members.Add(new MemberRow(person, family, date));
-        }
-
-        Archived.Clear();
-        foreach (var person in family.ArchivedMembers.OrderByDescending(p => p.Id.Value))
-        {
-            Archived.Add(new MemberRow(person, family, date, archived: true));
-        }
-
+        RefreshMembers();
         if (previousSelectedId is { } id)
         {
             Selected = Members.Concat(Archived).FirstOrDefault(row => row.Person.Id == id);
@@ -397,6 +497,65 @@ public sealed class MainViewModel : ObservableObject
         ChronicleText = BuildChronicle();
     }
 
+    /// <summary>按「筛选器」重建成员卡片列表（玩家反馈：需要按在册 / 归档 / 亡故 / 外嫁 / 服刑筛选）。</summary>
+    private void RefreshMembers()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        var state = _session.State;
+        var family = state.Family;
+        var date = state.CurrentDate;
+
+        Members.Clear();
+        foreach (var person in family.RegisteredMembers.OrderByDescending(p => family.HeadId == p.Id).ThenBy(p => p.Id.Value))
+        {
+            Members.Add(new MemberRow(person, family, date));
+        }
+
+        Archived.Clear();
+        foreach (var person in family.ArchivedMembers.OrderByDescending(p => p.Id.Value))
+        {
+            Archived.Add(new MemberRow(person, family, date, archived: true));
+        }
+
+        var all = Members.Concat(Archived).ToList();
+        var filter = _selectedMemberFilter?.Value ?? "registered";
+        var shown = filter switch
+        {
+            "all" => all,
+            "archived" => all.Where(row => row.IsArchived).ToList(),
+            "deceased" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.Deceased)).ToList(),
+            "marriedout" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.MarriedOut)).ToList(),
+            "serving" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.ServingSentence)).ToList(),
+            "awaiting" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.AwaitingPost)).ToList(),
+            "banned" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.ExamBanned) || row.Person.Status.HasFlag(StatusFlag.PromotionBanned)).ToList(),
+            _ => Members.ToList(),
+        };
+
+        Members.Clear();
+        foreach (var row in shown)
+        {
+            Members.Add(row);
+        }
+
+        MemberCountText = $"筛选「{_selectedMemberFilter?.Text ?? "在册成员"}」：{shown.Count} 人 ｜ 在册 {family.RegisteredMembers.Count} 人 ｜ 归档 {family.ArchivedMembers.Count} 人";
+    }
+
+    /// <summary>选中存档的概览：加载该档读取状态（不写入、不推进），外加文件最后写入时间。</summary>
+    private void RefreshSaveOverview()
+    {
+        if (SelectedSave is not { } chosen)
+        {
+            SaveOverviewText = "（选中左侧存档后显示概览）";
+            return;
+        }
+
+        SaveOverviewText = GameSession.DescribeSave(chosen.Value);
+    }
+
     private void RefreshStatistics()
     {
         if (_session is null)
@@ -422,7 +581,7 @@ public sealed class MainViewModel : ObservableObject
 
         foreach (var (category, total) in state.Economy.Ledger.TotalsByCategory(start, date))
         {
-            lines.Add($"　{category}：{Display.Money(total)}");
+            lines.Add($"　{Display.Category(category)}：{Display.Money(total)}");
         }
 
         lines.Add("── 人口 ──");
@@ -432,6 +591,12 @@ public sealed class MainViewModel : ObservableObject
         }
 
         StatisticsText = string.Join(Environment.NewLine, lines);
+
+        Charts.Clear();
+        foreach (var frame in StatsCharts.Build(state))
+        {
+            Charts.Add(frame);
+        }
     }
 
     private void RefreshSaves()
@@ -439,7 +604,14 @@ public sealed class MainViewModel : ObservableObject
         Saves.Clear();
         foreach (var slot in GameSession.ListSaves())
         {
-            Saves.Add(new Choice<SaveSlot>(slot, $"{slot.Name}（{slot.Format}）"));
+            var format = slot.Format == SaveFormat.Json ? "JSON" : "二进制";
+            Saves.Add(new Choice<SaveSlot>(slot, $"{slot.Name} ｜ {format}"));
+        }
+
+        // 存档页一进来就能看到概览：默认选中最近写过的那个档。
+        if (_selectedSave is null && Saves.Count > 0)
+        {
+            SelectedSave = Saves[0];
         }
     }
 
@@ -452,13 +624,26 @@ public sealed class MainViewModel : ObservableObject
         }
 
         var state = _session.State;
+        _session.ObserveUnlockTimes();
         foreach (var definition in AchievementCatalog.All.OrderBy(d => d.Code, StringComparer.Ordinal))
         {
+            var marks = state.Achievements.Completed.Where(m => m.Achievement == definition.Id).ToList();
             var completed = AchievementQuery.IsCompleted(state, definition.Id);
             var note = completed
-                ? string.Join('、', state.Achievements.Completed.Where(m => m.Achievement == definition.Id).Select(m => $"{Display.Difficulty(m.Difficulty)} {m.CompletedAt.Year}/{m.CompletedAt.Month}"))
+                ? string.Join('、', marks.Select(m => $"{Display.Difficulty(m.Difficulty)} {m.CompletedAt.Year}/{m.CompletedAt.Month}"
+                    + (m.CompletedAt.Year == 1 && m.CompletedAt.Month == 1 ? "（开局即达成）" : string.Empty)))
                 : string.Empty;
-            Achievements.Add(new AchievementRow(definition.Code, definition.Name, Display.Series(definition.Series), completed, note));
+            var local = completed
+                ? string.Join("、", marks.Select(m => _session.UnlockTimes.LocalText(m)))
+                : string.Empty;
+            Achievements.Add(new AchievementRow(
+                definition.Code,
+                definition.Name,
+                Display.Series(definition.Series),
+                completed,
+                note,
+                AchievementDescriptions.Describe(definition.Id),
+                local));
         }
 
         var total = AchievementCatalog.All.Count;
@@ -519,7 +704,7 @@ public sealed class MainViewModel : ObservableObject
             $"状态：{Display.StatusOf(person, date)}"
                 + $"　配偶：{(person.SpouseId is { } spouseId ? family.TryGet(spouseId)?.Name ?? "—" : "—")}"
                 + (person.IsTutoredByMaster ? "　名师：是" : string.Empty),
-            $"报考：{ExamRegistration.TargetLevelOf(person)?.ToString() ?? "无可报考"}"
+            $"报考：{(ExamRegistration.TargetLevelOf(person) is { } targetLevel ? Display.ExamLevel(targetLevel) : "无可报考")}"
                 + $"　本月可报名：{(ExamRegistration.CanRegister(person, date) ? "是" : "否")}"
                 + $"　特奏名：{(ExamRegistration.SpecialTributeEligible(person, date) ? "符合" : "否")}"
                 + $"　持续报考：{(family.AutoExamApplication ? "开" : "关")}",
@@ -668,7 +853,7 @@ public sealed class MainViewModel : ObservableObject
                 error = _session.Save();
                 break;
             case "saveas":
-                error = _session.SaveAs(SaveName, SaveFormat.Binary);
+                error = _session.SaveAs(SaveName, SelectedSaveFormat.Value);
                 break;
             case "export":
                 error = _session.ExportLedgerCsv();
@@ -810,6 +995,38 @@ public sealed class MainViewModel : ObservableObject
         RefreshAll();
     }
 
+    /// <summary>调试控制台命令表：用法与说明成对维护，渲染时对齐（玩家反馈：原先只列命令名）。</summary>
+    private static readonly (string Usage, string Description)[] ConsoleCommands =
+    [
+        ("help", "显示本帮助"),
+        ("wake [N]", "悟道 N 次（省略为 1）；累计可解锁「调试秘辛」系列成就"),
+        ("money <贯>", "家族现银 +贯（可小数，负数即扣款）"),
+        ("heal", "治愈选中成员（清患病与疗程标记）"),
+        ("kill", "令现任家主病故（用于验证继承 / 绝嗣）"),
+        ("release", "释放选中成员（清除服刑与刑期）"),
+        ("pardon", "免死：清除选中成员的死刑判决"),
+        ("clearbans", "解除选中成员的禁考 / 禁升禁令"),
+        ("clearfamilybans", "解除全族禁考 / 禁升禁令（连坐用）"),
+        ("bribe-reset", "清空选中成员解试 / 省试 / 殿试行贿次数与乘数"),
+        ("tutor", "切换选中成员的「名师」开关（月费由结算扣）"),
+        ("difficulty <档>", "easy | normal | hard | hell（次月生效）"),
+        ("difficulty-list", "列出四档难度的收益 / 支出 / 风险 / 负面系数"),
+        ("ach", "成就进度一览（七系列）"),
+        ("date", "当前游戏年月与回合数"),
+        ("close", "关闭控制台（等同反引号）"),
+    ];
+
+    private static string ConsoleHelpText()
+    {
+        var lines = new List<string>(ConsoleCommands.Length + 2)
+        {
+            "科举浮生录 · 调试控制台命令（参数 <必填> [可选]）",
+        };
+        lines.AddRange(ConsoleCommands.Select(command => $"  {command.Usage.PadRight(18)}{command.Description}"));
+        lines.Add("提示：禁考 / 禁升 / 服刑 / 免死等调试按钮已从主界面移入本控制台。");
+        return string.Join('\n', lines);
+    }
+
     private string ExecuteConsole(string command)
     {
         if (_session is null)
@@ -821,7 +1038,7 @@ public sealed class MainViewModel : ObservableObject
         switch (parts[0])
         {
             case "help":
-                return "wake N｜money G｜heal｜kill｜tutor｜bribe-reset｜clearbans｜clearfamilybans｜difficulty easy|normal|hard|hell｜difficulty-list｜ach｜date｜close";
+                return ConsoleHelpText();
             case "wake":
                 return parts.Length > 1 && int.TryParse(parts[1], out var count)
                     ? _session.DebugWake(count)
@@ -863,6 +1080,7 @@ public sealed class MainViewModel : ObservableObject
     public void ActivateConsole()
     {
         ConsoleVisible = true;
-        ConsoleOutput = $"{ConsoleOutput}\nConsole Activated";
+        // 玩家反馈：原先只列命令名、看不到参数说明，因此激活时直接把带参数的帮助贴出来。
+        ConsoleOutput = $"{ConsoleOutput}\nConsole Activated\n\n{ConsoleHelpText()}";
     }
 }
