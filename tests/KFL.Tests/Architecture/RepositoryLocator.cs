@@ -9,7 +9,7 @@ namespace KFL.Tests.Architecture;
 /// </remarks>
 public static class RepositoryLocator
 {
-    private static readonly string[] IgnoredPathSegments = [".git", "bin", "obj"];
+    private static readonly string[] IgnoredPathSegments = [".git", ".agents", "bin", "obj"];
 
     /// <summary>
     /// 定位仓库根：从 <see cref="AppContext.BaseDirectory"/> 向上逐级查找 <c>*.slnx</c>，
@@ -99,13 +99,20 @@ public static class RepositoryLocator
     }
 
     /// <summary>
-    /// 递归枚举匹配文件，**在进入目录之前**就剪掉 <c>.git</c>/<c>bin</c>/<c>obj</c>。
+    /// 递归枚举匹配文件，**在进入目录之前**就剪掉 <c>.git</c>/<c>.agents</c>/<c>bin</c>/<c>obj</c>。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// MUST NOT 先枚举后过滤：<c>Directory.EnumerateFiles(…, AllDirectories)</c> 会先递归进
     /// <c>tests/KFL.Tests/bin/…/save-tests/&lt;guid&gt;</c> 之类的目录，而测试并行跑时那类目录可能
     /// 正在被创建或删除，于是扫描抛 <c>UnauthorizedAccessException</c>——门禁就会出现「与代码无关的
     /// 非确定性失败」。
+    /// </para>
+    /// <para>
+    /// <c>.agents</c> 的剪枝是必需的：<c>.agents/worktrees/&lt;name&gt;</c> 里可能有**另一特性**的嵌套检出
+    /// （自带 <c>KejuFuShengLu.slnx</c>、<c>src/*/*.csproj</c> 与 <c>*.cs</c>），未剪枝会被 G-01 误判为
+    /// 「仓库里有第二个 <c>.slnx</c>」；本工程**MUST NOT** 触碰别特性的工作树，只能在扫描侧排除。
+    /// </para>
     /// </remarks>
     /// <param name="root">仓库根。</param>
     /// <param name="pattern">文件模式。</param>

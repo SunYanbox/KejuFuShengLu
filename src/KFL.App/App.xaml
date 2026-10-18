@@ -3,5 +3,43 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- 一甲名次配色（规格书 §12.2：第 1 金 / 第 2 紫 / 第 3 蓝） -->
+        <SolidColorBrush x:Key="PlacementGoldBrush" Color="#B8860B" />
+        <SolidColorBrush x:Key="PlacementPurpleBrush" Color="#7B2D8B" />
+        <SolidColorBrush x:Key="PlacementBlueBrush" Color="#1F5FA8" />
+        <SolidColorBrush x:Key="PlacementInkBrush" Color="#2B2B2B" />
+
+        <SolidColorBrush x:Key="PanelBrush" Color="#FFF8F0E3" />
+        <SolidColorBrush x:Key="InkBrush" Color="#2B2B2B" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#8B1A1A" />
+
+        <Style TargetType="Button">
+            <Setter Property="Margin" Value="0,0,4,4" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="MinWidth" Value="72" />
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="0,0,4,4" />
+            <Setter Property="Padding" Value="3,2" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Margin" Value="0,0,4,4" />
+            <Setter Property="MinWidth" Value="120" />
+        </Style>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Margin" Value="0,6,0,2" />
+        </Style>
+        <Style x:Key="Secondary" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#5A5A5A" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
     </Application.Resources>
 </Application>

@@ -190,7 +190,10 @@ Select-String -Path "specs\007-family-lifecycle\data-model.md" -Pattern "成就|
 
 **期望**：004 契约的键表已到 **10** 键、版本闸门已写 `== 5`、常量登记已含五个新 `*MemberCount`、
 一致性校验已写 **22** 条（15 + 7）；004 的 `data-model.md` 版本行已同步；规格书已追加
-「裁决块：2026-10-18（逻辑轨 ⑧ 的空白填充，Q1~Q6）」；007 的 `data-model.md` 已补
-「⑧ 消费本特性事实表」的两行交叉引用。
+「裁决块：2026-10-18（逻辑轨 ⑧ 的空白填充，Q1~Q6）」；007 的 `data-model.md` 已在 §3.2 补
+「008 消费注」（六类当月事实的逐条读向），并在 §4 形状变更汇总表与 §7 持久化形状与版本各补
+**一行 008 交叉引用**——前者写明 ⑧ 只读消费 + `EndingState` 与 `Family.Lifecycle` **正交**，
+后者写明 `Version` 4 → **5** 与 `EndingStateDto` 的键表增量（`Select-String` 应能看到
+`008 交叉引用` 两处命中、`EndingState` 至少两处命中）。
 **且**：`specs/*/tasks.md` 的既有条目、`specs/001-core-skeleton/implementation-notes.md`、
 既有 `checklists/` **MUST NOT** 被回改（历史记录类工件）——`git diff` 中不得出现这三类的语义改写。
