@@ -477,3 +477,18 @@ Task: "T035 [P] [US1] AchievementStoreFailureTests.cs（SC-007）"
 
 - [X] 全仓 `grep` 复查残留：`六系列` / `Year == 103` / `Year == 303` / `SurvivedAgainstOdds` / `AcedTheLot` / 系列计数 `12 + 8 + 11 + 12 + 16` 在 `specs/008-achievements-extinction/` 内 0 命中（`tasks.md` 的勘误/收敛段与 `plan.md` 的勘误表作为**登记文本**除外）
 - [X] 门禁四条：`dotnet build` 0 警告 0 错误、`dotnet test` 全绿、`.slnx` 恰六工程、无 `.sln`（本次只改工件与注释，不改行为）
+
+---
+
+## Phase 9: Convergence
+
+> 本节由 `$speckit-converge` **追加登记**：不回改上文任何既有条目，不复用/重排既有编号（既有最大编号 = T097）。
+> 来源 = 008 的 `spec.md` / `plan.md` / `tasks.md` 与**当前代码与工件**的收敛比对（CF-01~CF-06）。
+> 每条末尾括号为缺口类型；全部**不含新增数值**（FR-004），不新增界面（FR-031）。
+
+- [ ] T098 修复门禁的架构守卫误报：`tests/KFL.Tests/Architecture/RepositoryLocator.cs:17` 的 `IgnoredPathSegments = [".git","bin","obj"]` 增补 `.agents`（或改为从 `.gitignore` / `git rev-parse --show-toplevel` 派生忽略集），使嵌套检出 `.agents/worktrees/009-debug-console/`（自带 `KejuFuShengLu.slnx` 与 `src/*/*.csproj`、`*.cs`）不再被当作仓库本体；**MUST NOT 删除或改动 009 的 worktree**；随后重跑门禁四条（`dotnet build` 0 警告 0 错误、`dotnet test` 全绿、`dotnet sln list` 恰六工程、无 `*.sln`）并留档——当前 `G-01 仓库`、`用例六`、`DependencyDirectionTests` 3 条、`TargetFrameworkTests` 2 条共 **7 条失败 / 1279 通过** per FR-044 + 章程「技术栈与工程约束」+ AGENTS.md 门禁四条 (partial)
+- [ ] T099 补齐 007 的回写义务：在 `specs/007-family-lifecycle/data-model.md` 的形状变更汇总表（`:376-390`）与持久化节（`:429-467`）各补一行交叉引用——「⑧ 消费 `LifecycleSnapshot` 的六类当月事实（只读）」与「⑧ 新增 `EndingState`，与 `Family.Lifecycle` 正交」；并订正 `specs/008-achievements-extinction/quickstart.md:180,194` 的「已补两行」措辞（当前全仓 `EndingState` 在 007 目录 0 命中，仅有 `:273-287` 的消费注，未补全即声明完成） per plan.md:178（回写义务第 7 行）+ T095 + FR-038 + AGENTS.md「活工件 MUST 与当前实现一致」 (partial)
+- [ ] T100 对齐「逐条双测」的实测口径：把 `tests/KFL.Tests/Rules/AchievementPredicateTests.cs:47`、`specs/008-achievements-extinction/tasks.md:190`（T030）与 `plan.md` Project Structure 的「68 条成就各取『正侧』与『邻位侧』」改为实测表述——矩阵 136 行 = **61 真 / 75 假**，覆盖 **60 个标识为真 / 67 个为假**；同处点名 `ACH-044/048`（`tests/KFL.Tests/Rules/ExtinctionTests.cs:136-150`、`tests/KFL.Tests/Rules/AchievementAdjudicatorTests.cs:145-146`）与 `ACH-064~068`（`tests/KFL.Tests/Architecture/AchievementPendingWiringTests.cs:222-227`、`:267-268`）的实际覆盖位置；并把 **ACH-041 无触发用例**（判据恒假，属 FR-042 / Q1-A 的待接线）与 **ACH-001 无不触发用例**（无条件成立）登记为 FR-045 的两处**逐字例外**，避免「68 条逐条双测」被后续审计读成既成事实 per FR-045 (partial)
+- [ ] T101 补 8 号触发点的 ACH-035 断言并删除陈旧备注：`tests/KFL.Tests/Rules/AchievementTriggerTests.cs:34-37` 的「ACH-035 在即时判定里无法解锁」已因 E-24 的状态面兜底（`src/KFL.Rules/Achievements/AchievementPredicates.cs:123-125` 的 `|| HasDegreeMarriageRecord(ctx.State)`）而失真，须删除或改写；在触发器八（`:231-247` 买功名婚姻成功路径）上补断言 `AchievementQuery.IsCompleted(state, AchievementId.DegreeMarriage)` 为真，并保留 `Report` 幂等断言 per FR-009（12 个动作入口之第 8 行）+ 契约二十二 §3 第 8 行 + E-24 (partial)
+- [ ] T102 同步 008 自身活工件的判定入口签名：`specs/008-achievements-extinction/data-model.md:335-336` 的 `Judge(...)` 声明与 `:557` 的调用示例都补第 4 个参数 `IReadOnlyList<OriginRecord> archiveOrigins`（实现为 4 参：`src/KFL.Rules/Achievements/AchievementAdjudicator.cs:43-47` 同时校验 `archiveMarks` 与 `archiveOrigins`；`:392-393` 的 `AchievementContext` 已含该面，供 ACH-047 使用） per FR-040 + FR-036 + AGENTS.md「活工件 MUST 与当前实现一致」 (partial)
+- [ ] T103 清掉两处陈旧的存档版本文案：`src/KFL.Infrastructure/Save/SaveFileException.cs:21` 的 `FormatVersion != 3` 与 `src/KFL.Infrastructure/Save/Serialization/JsonSaveFormat.cs:16` 的 `{"FormatVersion":4,…` 一律改为当前 `SaveFileFormat.Version`（= 5，参照 `src/KFL.Infrastructure/Save/SaveFileHeader.cs:21`「本版本恒为 5」），不改任何行为 per FR-036 / Q3 裁决 + 契约二十三 §6 (partial)

@@ -1,4 +1,4 @@
-# .NET 构建产物与测试结果
+﻿# .NET 构建产物与测试结果
 bin/
 obj/
 TestResults/
@@ -24,3 +24,8 @@ __pycache__/
 
 # Spec Kit 工作流登记表：内嵌本机安装时间戳，且无自建工作流需要跟踪
 .specify/workflows/workflow-registry.json
+# 本地调试产物：UI 截图、崩溃日志、无界面自检报告
+artifacts/
+crash-*.log
+smoke-*.txt
+*-err.txt

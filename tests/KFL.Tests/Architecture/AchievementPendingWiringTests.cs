@@ -96,7 +96,7 @@ public sealed class AchievementPendingWiringTests
         @"src\KFL.Rules\Config\GameConfig.cs",
     ];
 
-    /// <summary>上报唤醒的唯一接缝：状态累加器 + 计数器门面，别无他处（不存在调试控制台唤醒路径）。</summary>
+    /// <summary>上报唤醒的唯一接缝：状态累加器 + 计数器门面；界面层只能经门面（U4 调试控制台）的复数包装取用。</summary>
     private static readonly string[] DebugWakeSeamFiles =
     [
         @"src\KFL.Core\Entities\AchievementState.cs",
@@ -137,7 +137,7 @@ public sealed class AchievementPendingWiringTests
     }
 
     [Fact]
-    public void 生产代码零自造经商亏损规则且零调试控制台实现()
+    public void 生产代码零自造经商亏损规则且调试控制台仅限界面层()
     {
         var product = ProductSources();
 
@@ -162,12 +162,14 @@ public sealed class AchievementPendingWiringTests
         // 判据恒不成立：不存在任何经商亏损判定实现。
         Assert.False(AchievementPredicates.IsSatisfied(AchievementId.TradeLoss, ContextOf(NewState())));
 
-        // 调试控制台/`Suntion` 唤醒路径：生产代码 0 处实现。
-        Assert.DoesNotContain(product, file => file.Value.Contains("Suntion", StringComparison.OrdinalIgnoreCase));
-        Assert.DoesNotContain(product, file => file.Value.Contains("Console", StringComparison.Ordinal));
+        // 调试控制台（规格书 §13）：U 轨 U4 已交付，`Suntion` 唤醒文本只允许出现在界面层 `KFL.App`。
+        Assert.Contains(product, file => file.Key.StartsWith(@"src\KFL.App\", StringComparison.OrdinalIgnoreCase)
+            && file.Value.Contains("Suntion", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(product, file => !file.Key.StartsWith(@"src\KFL.App\", StringComparison.OrdinalIgnoreCase)
+            && file.Value.Contains("Suntion", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(product, file => file.Key.Contains("DebugConsole", StringComparison.OrdinalIgnoreCase));
 
-        // 唤醒只能经状态累加器与计数器门面进入，别处没有第二条路径。
+        // 唤醒只能经状态累加器与计数器门面进入（界面层调用门面，不直接写计数器），别处没有第二条路径。
         var wakeFiles = product
             .Where(file => file.Value.Contains("ReportDebugWake", StringComparison.Ordinal))
             .Select(file => file.Key)
@@ -299,28 +301,30 @@ public sealed class AchievementPendingWiringTests
     }
 
     /// <summary>
-    /// T096 / FR-031：本特性**不实现界面**——`KFL.Presentation` 与 `KFL.App` 两个工程的源码里
-    /// MUST NOT 出现任何成就、绝嗣、编年史或待落盘相关标识符（界面消费留待 U 轨；
-    /// 章程原则 III「MUST NOT 复制规则」与原则 VI「MUST NOT 自造未交付的逻辑入口」）。
+    /// T096 / FR-031（U 轨 U3/U4 交付后修正）：界面轨已按规格书 §14.1/§15/§16 消费成就、绝嗣与编年史，
+    /// 故本用例反转为**正向接线守卫**——两个界面工程 MUST 出现成就与编年史接线，
+    /// 但 MUST NOT 复制规则层判据（`AchievementPredicates`）或三均值算法（`TukeyTrimean`）。
     /// 判据与 <see cref="ProductSources"/> 同源：只看**源码文本**，不加载程序集。
     /// </summary>
     [Fact]
-    public void 界面两层源码不得出现成就相关标识符()
+    public void 界面两层已接线成就与编年史且不复制规则判据()
     {
-        string[] identifiers =
-        [
-            "Achievement",
-            "Extinction",
-            "Chronicle",
-            "EndingState",
-            "PendingUnlock",
-            "TukeyTrimean",
-        ];
+        string[] wired = ["Achievement", "Chronicle", "Ending"];
 
-        var offenders = ProductSources()
+        var uiSources = ProductSources()
             .Where(file => file.Key.StartsWith(@"src\KFL.Presentation\", StringComparison.OrdinalIgnoreCase)
                 || file.Key.StartsWith(@"src\KFL.App\", StringComparison.OrdinalIgnoreCase))
-            .Where(file => identifiers.Any(identifier => file.Value.Contains(identifier, StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.NotEmpty(uiSources);
+        foreach (var identifier in wired)
+        {
+            Assert.Contains(uiSources, file => file.Value.Contains(identifier, StringComparison.Ordinal));
+        }
+
+        string[] forbidden = ["AchievementPredicates", "TukeyTrimean", "PendingUnlock"];
+        var offenders = uiSources
+            .Where(file => forbidden.Any(identifier => file.Value.Contains(identifier, StringComparison.Ordinal)))
             .Select(file => file.Key)
             .ToArray();
 

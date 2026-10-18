@@ -404,6 +404,12 @@ public enum LifecycleRejectReason
 | `TurnRunner` | `KFL.Rules/Save/TurnRunner.cs:54` | ctor +1 参 `INameGenerator` | 组合根 `KFL.App` |
 | `SaveFileFormat` | `KFL.Infrastructure/Save/SaveFileFormat.cs:31` | `Version = 3` → `4` | 004 契约、`SaveFormatContractTests` |
 
+> **008 交叉引用（2026-10-18，逻辑轨 ⑧）**：⑧ **只读**消费 §3.2 的 `LifecycleSnapshot` 六类当月事实
+> （`Births` / `Deaths` / `Marriages` / `PendingProposal?.Kind` / `Crossings` / `Purchases`，逐条见 §3.2 的
+> 「008 消费注」），**不**回写快照，也**不**要求本特性的任何类型变形状；⑧ 另新增
+> `EndingState`（`KFL.Core/Entities/EndingState.cs`，`IsEnded` / `EndedAt` / `Chronicle`），它与
+> `Family.Lifecycle` **正交**——生命周期不因绝嗣增删状态位，`EndingState` 也不读写 `Family.Lifecycle`。
+
 ## 5. 状态转移
 
 | 转移 | 触发 | 载体变化 | 子步 |
@@ -466,6 +472,14 @@ public enum LifecycleRejectReason
 /`MarriageProposalMemberCount = 19`；`Skip` 序列在 `:237`（Family 0-2 之后）插 `memberCount` 消费后的
 lifecycle 分支、在 `:309`（Person 22-27 之后）插 `Skip(1)`（`isTutoredByMaster`）、在 `:295` 把
 `Skip(4)` 改 `Skip(6)`。`EnsureFamilyShape`（`:234`）/`EnsurePersonShape`（`:284`）/`EnsureLifecycleShape` 逐一校验键数。
+
+> **008 交叉引用（2026-10-18，逻辑轨 ⑧）**：⑧ 把 `SaveFileFormat.Version` 由 **4** 再升为 **5**
+> （无迁移路径，`!= 5` 一律 `UnsupportedVersion`），`SaveStateDto` 8 → **10** 键（尾部
+> `[8] AchievementStateDto achievements` / `[9] EndingStateDto? ending`），并新增 5 个成员数常量
+> （`AchievementStateMemberCount = 8` / `AchievementMarkMemberCount = 4` / `PendingUnlockMemberCount = 5` /
+> `EndingStateMemberCount = 3` / `ChronicleMemberCount = 7`）；`EndingStateDto`（3 键）与本节既有
+> `FamilyLifecycleDto`（7 键）**正交**、互不引用；⑧ 只读消费本特性的当月事实，
+> **MUST NOT** 为此新增任何生命周期持久字段。回写真源见 008 契约二十三 §6。
 
 `SaveStateMapper`：`ToDto`（`:38`）补三个新段；`Build`（`:100`）在 `:222`（`RestoreOutsiderBookkeeping`）
 之后追加 `family.Lifecycle.RestoreBookkeeping(...)`（**七参**，末参为托媒申请）、在成员标量段
