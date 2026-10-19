@@ -13,7 +13,8 @@ public sealed class MemberRow
         GameDate date,
         bool archived = false,
         bool childbirthPending = false,
-        bool purchased = false)
+        bool purchased = false,
+        bool headHeir = false)
     {
         Person = person;
         Name = person.Name;
@@ -34,6 +35,7 @@ public sealed class MemberRow
         IsArchived = archived;
         IsHead = family.HeadId == person.Id;
         IsPurchased = purchased;
+        IsHeadHeir = headHeir;
         ChildbirthPending = childbirthPending;
 
         // 状态标志（玩家反馈 3：卡片上直接表明「有没有病 / 有没有在治疗 / 已报名哪一级 / 名师 / 求子 / 入狱」）
@@ -84,10 +86,30 @@ public sealed class MemberRow
             badges.Add("待阙");
         }
 
+        if (person.Status.HasFlag(StatusFlag.ExamBanned))
+        {
+            badges.Add("禁考");
+        }
+
+        if (person.Status.HasFlag(StatusFlag.PromotionBanned))
+        {
+            badges.Add("禁升");
+        }
+
         if (person.Status.HasFlag(StatusFlag.MarriedOut))
         {
             // 方向取词（§12.2 / §17 第七轮 Q3）：本人出嫁 ⇒「外嫁」；外来夫婿 ⇒「女婿」。
             badges.Add(person.Gender == Gender.Male ? "女婿" : "外嫁");
+        }
+
+        if (person.Status.HasFlag(StatusFlag.Retired))
+        {
+            badges.Add("致仕");
+        }
+
+        if (person.Status.HasFlag(StatusFlag.Deceased))
+        {
+            badges.Add("身故");
         }
 
         BadgeText = badges.Count > 0 ? string.Join(" ｜ ", badges) : string.Empty;
@@ -134,6 +156,12 @@ public sealed class MemberRow
     /// <summary>是否由「收养」引入家族（或其是否显示收养标记，由视图模型开关决定）。</summary>
     public bool IsPurchased { get; }
 
+    /// <summary>
+    /// 是否属于「家主一脉嫡系男性」：家主本人（男性时）与沿嫡出子链向下的男性后裔
+    /// （<c>GenealogyQueries.HeadDirectLineMaleIds</c>）。只影响卡片样式，MUST NOT 影响任何数值。
+    /// </summary>
+    public bool IsHeadHeir { get; }
+
     /// <summary>是否已「申请生育」（本会话内标记，见 MainViewModel）。</summary>
     public bool ChildbirthPending { get; }
 
@@ -155,9 +183,10 @@ public sealed class MemberRow
     /// <summary>卡片状态徽记串（空串表示无状态标记）。</summary>
     public string BadgeText { get; }
 
-    public string HeadMark => IsHead ? "家主" : string.Empty;
+    /// <summary>「家主」标记（家谱卡片与成员详情共用；玩家反馈 9：卡片名称旁也要标出）。</summary>
+    public string HeadMark => IsHead ? "【家主】" : string.Empty;
 
-    public string Caption => $"{Name}（{GenderText}{Age}）";
+    public string Caption => $"{Name}{HeadMark}（{GenderText}{Age}）";
 
     public string PlacementBrushKey => Display.PlacementBrushKey(Person.CurrentPlacement);
 

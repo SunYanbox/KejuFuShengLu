@@ -16,6 +16,17 @@
     <SolidColorBrush x:Key="InkBrush" Color="#2B2B2B" />
     <SolidColorBrush x:Key="AccentBrush" Color="#8B1A1A" />
 
+    <!-- 关系按钮配色（规格书 §17 第九轮：按亲属状态换色以便区分） -->
+    <SolidColorBrush x:Key="RelationBrush" Color="#1F5FA8" />
+    <SolidColorBrush x:Key="RelationIllBrush" Color="#C0392B" />
+    <SolidColorBrush x:Key="RelationSentenceBrush" Color="#5D4037" />
+    <SolidColorBrush x:Key="RelationDeceasedBrush" Color="#8A8A8A" />
+    <SolidColorBrush x:Key="RelationWarnBrush" Color="#B8860B" />
+
+    <!-- 家主一脉嫡系男性的卡片样式（规格书 §17 第九轮） -->
+    <SolidColorBrush x:Key="HeadHeirBrush" Color="#8B1A1A" />
+    <SolidColorBrush x:Key="HeadHeirFill" Color="#FFF3D9" />
+
     <!-- 统计图配色（ChartBrush1..7 供 ChartSeries.BrushKey 按名取用） -->
     <SolidColorBrush x:Key="ChartBrush1" Color="#C0392B" />
     <SolidColorBrush x:Key="ChartBrush2" Color="#1F5FA8" />

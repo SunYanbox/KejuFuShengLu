@@ -566,3 +566,54 @@ Q1~Q4；②本节；③`src/KFL.Rules/Family/GenealogyQueries.cs`（新）、
 **回写登记（同一提交）**：①规格书 §17 第六轮裁决块与 §4.4 / §5 / §9.5 / §12.1~§12.3 / §16；
 ②本节；③`src/KFL.App/Views/FamilyTabView.xaml`、`src/KFL.Presentation/ViewModels/MemberRow.cs`、
 `src/KFL.Rules/Family/GenealogyQueries.cs`（注释）；④`tasks.md` 的回写范围登记。
+
+## 增补（2026-10-19，玩家反馈第九轮：家谱视口、关系称谓、升官概率与存档多选）
+
+> 依据：规格书 §17 裁决块（2026-10-19，玩家反馈第九轮）与 §12.1 / §12.2 / §14 的回写。
+> 本轮**不改任何数值、不改随机次序、不改账本与存档形状**；新增的查询一律为**只读派生**。
+
+1. **家谱 ↔ 成员详情分隔条**：`FamilyTabView.xaml` 三列改为 `420(MinWidth 240) / 6 / *(MinWidth 240) /
+   370(MinWidth 240)`，第 1 列放 `GridSplitter`（`ResizeBehavior="PreviousAndNext"`，带 `ToolTip`）。
+2. **缩放 / 平移 / 重置**（`FamilyTabView.xaml.cs`）：`MinZoom = 0.4d`、`MaxZoom = 2.5d`、
+   `ZoomStep = 1.15d`；`ApplyZoom(double target, Point? anchor)` 以锚点下的内容点不动为等式回填滚动偏移；
+   滚轮 `OnTreeWheel`（指针锚点）、按钮 `OnZoomIn/OnZoomOut`（视口中心）、`OnResetTreeView` 复位
+   100% 与左上角；左键拖动 `OnTreeDragStart/Move/End`（`Button` 祖先上不起拖）；缩放经
+   `TreeCanvas` 的 `Grid.LayoutTransform`（`ScaleTransform x:Name="TreeScale"`）生效。
+3. **关系按钮三行分组**：`FamilyRelations.RowsOf(Family, Person)` → 三行
+   `RelationRow(string Title, IReadOnlyList<RelationLink> Links)`（标题「父母与配偶」「兄弟姐妹」「子女」，
+   `IsEmpty` 的行不渲染）；`RelationLink` 新增 `State` / `BrushKey` / 计算属性 `ToolTip`。
+   长幼称谓由 `GenealogyQueries` 提供：`KinshipEntry(Person, string Title)`、
+   `SiblingTitles` / `ChildTitles` / `SiblingTitle(int rank, Gender, bool senior)` /
+   `ChildTitle(int rank, Gender, bool eldestSon)` / `OrdinalOf(int rank)`（1→大、10→十、21→二十一，
+   `rank < 1` 抛 `ArgumentOutOfRangeException`）；序号取**混合性别、含本人在内**的出生全序
+   （`OrderedByBirth`：年 → 月 → Id），本人序号占位保留。
+4. **关系按钮状态配色**：`FamilyRelations.BrushKeyOf(Person)` 依次判 身故 → 患病/治疗中 → 服刑 →
+   待阙/禁考/禁升/外嫁 → 默认，对应 `Theme.xaml` 的 `RelationDeceasedBrush` / `RelationIllBrush` /
+   `RelationSentenceBrush` / `RelationWarnBrush` / `RelationBrush`。
+5. **卡片徽章补齐与家主标记**：`MemberRow` 徽章顺序固定为 收养 → 患病 → 治疗中 → 入狱 → 已报X →
+   名师 → 求子 → 待阙 → 禁考 → 禁升 → 外嫁 → 致仕 → 身故；`HeadMark => IsHead ? "【家主】" : ""`，
+   `Caption` 把该标记插在姓名之后（成员详情「姓名」行同用）。
+6. **家主一脉嫡系男性**：`GenealogyQueries.HeadDirectLineMaleIds(Family) → IReadOnlySet<PersonId>`——
+   家主本人（男性时）+ 沿嫡出儿子链向下的男性后代（`IsLegitimateChild(parent, child)`：生母为该父/母的
+   当前或前任配偶）；`MemberRow` 新增末位参数 `bool headHeir = false` 与属性 `IsHeadHeir`，
+   `MainViewModel.Tree.RefreshMembers()` 传入；卡片样式由 XAML `DataTrigger` 施加
+   （`HeadHeirBrush` / `HeadHeirFill`）。**只影响样式**。
+7. **升官概率明细**：新增 `KFL.Rules.Career.PromotionForecast`（记录 + `Of(Person) → PromotionForecast?`，
+   无官职返回 `null`）与 `KFL.Presentation.PromotionReport.Lines(forecast, person)`（5 行）；
+   `MainViewModel.RefreshDetail()` 在录取率块后追加该块，无官职时给一行说明。**只读**：不掷骰、不写状态。
+8. **按钮浮窗帮助**：新增 `KFL.Presentation.HelpTexts`（静态只读属性，文本由各 `*Policy` 常量拼出），
+   `FamilyTabView.xaml` 的报名 / 受特奏名 / 行贿×3 / 托媒 / 买功名婚姻 / 提亲应允与婉拒 / 申请生育 /
+   收养 / 就医 / 名师开关 / 立为家主 / 快进到科举等按钮均绑定 `{x:Static presentation:HelpTexts.X}` 作
+   `ToolTip`；受特奏名浮窗写出四条件（§6）。
+9. **存档与备份多选**：`SaveSlotPanel.xaml` 的 `ListBox` 改 `SelectionMode="Extended"` 并挂
+   `SelectionChanged`；新增依赖属性 `CanAct`（bool）与 `SelectionHint`（string），读取按钮的
+   `IsEnabled` 绑 `CanAct`，选中数 > 1 时 `CanAct=false`、按钮的 `ToolTip` 显示原因；
+   `SelectedItem` 随多选同步为首项（删除/另存为/改名仍作用于单项）。
+
+**回写登记（同一提交）**：①规格书 §12.1 / §12.2 / §14 的 2026-10-19 **第九轮**回写块与 §17 裁决块
+Q1~Q8；②本节；③`src/KFL.Rules/Career/PromotionForecast.cs`（新）、`src/KFL.Presentation/PromotionReport.cs`（新）、
+`src/KFL.Presentation/HelpTexts.cs`（新）、`src/KFL.Rules/Family/GenealogyQueries.cs`（扩）、
+`src/KFL.Presentation/ViewModels/{RelationLink.cs,MemberRow.cs,MainViewModel.cs,MainViewModel.ViewState.cs,MainViewModel.Detail.cs,MainViewModel.Tree.cs}`、
+`src/KFL.App/Views/FamilyTabView.xaml`（+ `.xaml.cs`）、`src/KFL.App/Controls/SaveSlotPanel.xaml`（+ `.xaml.cs`）、
+`src/KFL.App/Resources/Theme.xaml`；④`tests/KFL.Tests/Rules/KinshipTitleTests.cs`（新）；
+⑤`tasks.md` 的回写范围登记。

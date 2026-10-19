@@ -3,6 +3,7 @@ using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Rules.Bribery;
+using KFL.Rules.Career;
 using KFL.Rules.Config;
 using KFL.Rules.Exam;
 using KFL.Rules.FamilyLifecycle;
@@ -19,6 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             DetailText = "（未选择成员）";
             RelationLinks.Clear();
+            RelationRows.Clear();
             return;
         }
 
@@ -32,6 +34,13 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (var link in FamilyRelations.LinksOf(family, person))
         {
             RelationLinks.Add(link);
+        }
+
+        // 三行分组（第九轮：父母与配偶 / 兄弟姐妹 / 子女各占一行，称谓带长幼序号与状态配色）。
+        RelationRows.Clear();
+        foreach (var row in FamilyRelations.RowsOf(family, person))
+        {
+            RelationRows.Add(row);
         }
 
         var lines = new List<string>
@@ -69,6 +78,16 @@ public sealed partial class MainViewModel : ObservableObject
         if (_session.AdmissionBreakdownOf(person) is { } admission)
         {
             lines.Add(GameSession.DescribeAdmissionBreakdown(admission));
+        }
+
+        // 升官概率明细（第九轮需求 6）：与录取率同款——结论概率 + 各输入 + 等价算式。
+        if (PromotionForecast.Of(person) is { } forecast)
+        {
+            lines.AddRange(PromotionReport.Lines(forecast, person));
+        }
+        else
+        {
+            lines.Add("升官概率：—（尚无官职；先由科举入仕，或受特奏名直接授官）");
         }
 
         // 自愈率明细（需求 18）：患病时才展示（未患病该值没有意义，只给一行占位）。

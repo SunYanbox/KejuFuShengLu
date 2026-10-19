@@ -3,16 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
     <!-- 存档槽列表（本机存档 / 备份存档两处共用）：
-         标题 + 列表 + 读取 / 删除按钮，删除带二次确认（玩家反馈 9）。 -->
+         标题 + 列表 + 读取 / 删除按钮，删除带二次确认（玩家反馈 9）。
+         列表支持多选，但「读取」只在**至多选中一项**时可用（第九轮需求 7）。 -->
     <DockPanel>
         <TextBlock DockPanel.Dock="Top" Text="{Binding Title, ElementName=Root}"
                    Style="{StaticResource SectionHeader}" />
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding SelectionHint, ElementName=Root}"
+                   Style="{StaticResource Secondary}" Margin="0,2,0,0" TextWrapping="Wrap" />
         <Button DockPanel.Dock="Bottom" Content="{Binding DeleteLabel, ElementName=Root}" Margin="0,2,0,0"
                 Foreground="#FF8B1A1A" Click="OnDeleteClick" />
         <Button DockPanel.Dock="Bottom" Content="{Binding LoadLabel, ElementName=Root}" Margin="0,2,0,0"
+                IsEnabled="{Binding CanAct, ElementName=Root}"
+                ToolTip="{Binding SelectionHint, ElementName=Root}"
                 Command="{Binding LoadCommand, ElementName=Root}"
                 CommandParameter="{Binding LoadToken, ElementName=Root}" />
-        <ListBox ItemsSource="{Binding ItemsSource, ElementName=Root}" DisplayMemberPath="Text"
+        <ListBox x:Name="SlotList" ItemsSource="{Binding ItemsSource, ElementName=Root}" DisplayMemberPath="Text"
+                 SelectionMode="Extended" SelectionChanged="OnSelectionChanged"
                  SelectedItem="{Binding SelectedItem, ElementName=Root, Mode=TwoWay}" />
     </DockPanel>
 </UserControl>

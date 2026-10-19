@@ -121,16 +121,19 @@ public sealed partial class MainViewModel : ObservableObject
         // 「收养」标记由账本派生（第五轮玩家反馈）；关掉开关即不写徽章。
         var purchasedIds = _showPurchaseMarks ? GenealogyQueries.PurchasedPersonIds(state) : null;
 
+        // 「家主一脉嫡系男性」的高亮样式由嫡出子链派生（第九轮玩家反馈）；与筛选器、开关无关。
+        var headHeirIds = GenealogyQueries.HeadDirectLineMaleIds(family);
+
         Members.Clear();
         foreach (var person in family.RegisteredMembers.OrderByDescending(p => family.HeadId == p.Id).ThenBy(p => p.Id.Value))
         {
-            Members.Add(new MemberRow(person, family, date, childbirthPending: _childbirthPending.Contains(person.Id.Value), purchased: purchasedIds?.Contains(person.Id) == true));
+            Members.Add(new MemberRow(person, family, date, childbirthPending: _childbirthPending.Contains(person.Id.Value), purchased: purchasedIds?.Contains(person.Id) == true, headHeir: headHeirIds.Contains(person.Id)));
         }
 
         Archived.Clear();
         foreach (var person in family.ArchivedMembers.OrderByDescending(p => p.Id.Value))
         {
-            Archived.Add(new MemberRow(person, family, date, archived: true, childbirthPending: _childbirthPending.Contains(person.Id.Value), purchased: purchasedIds?.Contains(person.Id) == true));
+            Archived.Add(new MemberRow(person, family, date, archived: true, childbirthPending: _childbirthPending.Contains(person.Id.Value), purchased: purchasedIds?.Contains(person.Id) == true, headHeir: headHeirIds.Contains(person.Id)));
         }
 
         var all = Members.Concat(Archived).ToList();
