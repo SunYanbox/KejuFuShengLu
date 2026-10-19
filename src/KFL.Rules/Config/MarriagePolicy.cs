@@ -17,7 +17,7 @@ namespace KFL.Rules.Config;
 public static class MarriagePolicy
 {
     /// <summary>托媒费（贯；再乘支出系数）。</summary>
-    public const int MatchmakerFeeGuan = 5;
+    public const int MatchmakerFeeGuan = 3;
 
     /// <summary>托媒成功概率。</summary>
     public const decimal MatchmakerSuccessChance = 0.50m;
@@ -55,8 +55,14 @@ public static class MarriagePolicy
     /// <summary>功名分档：官员压力达到本值 ⇒ 贡士（**MUST NOT 进士**）。</summary>
     public const decimal SpouseDegreeTributeThreshold = 3m;
 
-    /// <summary>买功名婚姻的费率（年俸 × 本比例）。</summary>
+    /// <summary>买功名婚姻的费率（**夫主为现任官员时**：自己年俸 × 本比例）。</summary>
     public const decimal DegreeMarriageFeeRatio = 1.5m;
+
+    /// <summary>买功名婚姻固定价：所买功名为举人（贯；再乘支出系数；夫主无官职时用）。</summary>
+    public const int DegreeMarriageJuRenFeeGuan = 60;
+
+    /// <summary>买功名婚姻固定价：所买功名为贡士（贯；再乘支出系数；夫主无官职时用）。</summary>
+    public const int DegreeMarriageGongShiFeeGuan = 180;
 
     /// <summary>降级为贡士后的配偶学业重掷均值。</summary>
     public const int TributeSpouseStudyMean = 60;
@@ -71,22 +77,22 @@ public static class MarriagePolicy
     public const int JuRenSpouseStudySigma = 10;
 
     /// <summary>平民档聘礼（贯）。</summary>
-    public const int CommonerGiftGuan = 10;
+    public const int CommonerGiftGuan = 6;
 
     /// <summary>平民档嫁妆（贯）。</summary>
-    public const int CommonerDowryGuan = 20;
+    public const int CommonerDowryGuan = 12;
 
     /// <summary>士人档聘礼（贯）。</summary>
-    public const int ScholarGiftGuan = 20;
+    public const int ScholarGiftGuan = 12;
 
     /// <summary>士人档嫁妆（贯）。</summary>
-    public const int ScholarDowryGuan = 30;
+    public const int ScholarDowryGuan = 18;
 
     /// <summary>仕族档聘礼（贯）。</summary>
-    public const int OfficialGiftGuan = 50;
+    public const int OfficialGiftGuan = 30;
 
     /// <summary>仕族档嫁妆（贯）。</summary>
-    public const int OfficialDowryGuan = 100;
+    public const int OfficialDowryGuan = 60;
 
     /// <summary>阶层加权分档：总资产下界（低于本值即「贫」）。</summary>
     public const int ClassWealthThresholdLow = 100;

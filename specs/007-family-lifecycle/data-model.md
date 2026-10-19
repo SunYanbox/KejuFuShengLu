@@ -347,7 +347,7 @@ public static class LifecycleQueries
 ```csharp
 public enum LifecycleRejectReason
 {
-    None = 0, NotMarriageable, InsufficientFunds, NoLowerDegree,
+    None = 0, NotMarriageable, InsufficientFunds, DegreeMarriageBrideIntoOnly,
     FertilityWindowClosed, AlreadyAppliedThisYear, HeadVacant,
     NoPendingProposal, NotHead, NoRegisteredMale, AlreadyAppliedThisMonth,
 }
@@ -380,9 +380,9 @@ public enum LifecycleRejectReason
 
 | 文件 | 承载数值（真源 §） |
 | --- | --- |
-| `Config/GrowthPolicy.cs` | 读书 +1.5/月、名师 +2.25/月 与 5 贯/月、士出身 +10%、遗忘 −0.5/月、遗忘门槛 16、体质 +1/月、上限 100（§4.3） |
+| `Config/GrowthPolicy.cs` | 读书 +1.5/月、名师 +2.25/月 与 2 贯/月、士出身 +10%、遗忘 −0.5/月（仅已指派非读书职业者）、遗忘门槛 16、体质 +1/月、上限 100（§4.3；2026-10-19 第七轮 Q5/Q6） |
 | `Config/IllnessPolicy.cs` | 概率锚点 0.25%/40%、插值分母 99、体质 clamp 1~100、四组 `m_p`/`m_q`、`2+8s`、`0.05+0.45s`、基础痊愈 `×1.00`、疗程式 `×1.10 + 0.20`、疗程 3 月、免病年龄 3、年龄增益 0.60/0.30/0 与边界 3/12/24（§4.3 + Q2/Q4/Q5/Q6） |
-| `Config/MarriagePolicy.cs` | 托媒 5 贯 / 50%、对象年龄差 5、提亲 base 5%、捉婿 base 30%、捉婿金额 500~1000、`w(L)` 锚点 0.02/1.50 与边界 1/18、功名分档阈值 1/3、阶层加权三档（100/1000 贯；70/25/5、45/40/15、20/50/30）、婚嫁金额表（10/20、20/30、50/100）、买功名 150%（§9.1/§9.2 + Q1 + Q5） |
+| `Config/MarriagePolicy.cs` | 托媒 3 贯 / 50%、对象年龄差 5、提亲 base 5%、捉婿 base 30%、捉婿金额 500~1000、`w(L)` 锚点 0.02/1.50 与边界 1/18、功名分档阈值 1/3、阶层加权三档（100/1000 贯；70/25/5、45/40/15、20/50/30）、婚嫁金额表（6/12、12/18、30/60）、买功名（官员年俸 150% / 无官职档位价 60、180）（§9.1/§9.2 + Q1 + Q5 + 2026-10-19 第七轮 Q1~Q4） |
 | `Config/ChildbirthPolicy.cs` | 生育 10 贯、女方 16~45、每年一次、分娩死亡 5%/2.5/7、遗传 σ 常数 5 与学业折半 0.5、体质下限 20、夭折 10%/5/12 与 3 次（§4.2/§9.4 + Q3） |
 | `Config/PopulationPurchasePolicy.cs` | 递增基数 10 贯、年龄 8~16、性别 50/50（§9.5） |
 
@@ -419,7 +419,7 @@ public enum LifecycleRejectReason
 | 健康 → 患病（疗程） | `LifecycleEntry.StartTreatment` | `Timers.TreatmentRemainingMonths = 3`，`Ill` 保持 | 玩家动作 |
 | 疗程推进 | 每月扣药费 | `TreatmentRemainingMonths--`，归零后仍患则停付 | ⑧-c（第一段） |
 | 在册 → 已亡 | 寿终 / 病亡 / 饥馑 / 夭折 / 分娩 | `Status \|= Deceased`、进 `ArchivedMembers`、落 `MemberDeceased` | ⑧-g |
-| 在册 → 外嫁 | 嫁出成婚 | `Status \|= MarriedOut`、进 `ArchivedMembers`、落 `MemberMarriedOut` | `LifecycleEntry`（动作） |
+| 在册 → 外嫁 | 嫁出成婚 | `Status \|= MarriedOut`、进 `ArchivedMembers`、落 `MemberMarriedOut`（徽记：出嫁女性「外嫁」/ 男性婿「女婿」） | `LifecycleEntry`（动作） |
 | `HeadId` → 他人 | 现家主已亡或被嫁出 | `Family.SetHead` | ⑧-h |
 | `HeadId` → `null` | 无在册男性 | `SetHead(null)` | ⑧-h |
 

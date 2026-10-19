@@ -199,18 +199,38 @@ public static class LifecycleQueries
         return DowryAmount(state, ClassOf(state, member));
     }
 
-    /// <summary>买功名婚姻的功名费：<c>自己年俸 × 150%</c>（规格书 §9.3；不乘支出系数）。</summary>
+    /// <summary>买功名婚姻中配偶所得的功名（规格书 §9.3）。</summary>
+    /// <param name="member">我方成员（婚配中的夫主）。</param>
+    /// <returns>本人功名降一级；举人 / 白身无更低档时退一档买 <see cref="DegreeLevel.JuRen"/>（恒非白身）。</returns>
+    public static DegreeLevel SpouseDegreeFor(Person member)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+        return LowerDegreeOf(member.CurrentDegree) ?? DegreeLevel.JuRen;
+    }
+
+    /// <summary>买功名婚姻的功名费（规格书 §9.3；不乘支出系数）。</summary>
+    /// <remarks>
+    /// 现任官员：<c>自己年俸 × 150%</c>（原口径）；**无官职**：按所买功名档位的固定价
+    /// （举人 <c>60</c> 贯 / 贡士 <c>180</c> 贯，见 <see cref="MarriagePolicy"/>）。
+    /// </remarks>
     /// <param name="state">游戏状态。</param>
     /// <param name="member">我方成员。</param>
-    /// <returns>功名费；无官职时为 0。</returns>
+    /// <returns>功名费。</returns>
     public static Money DegreeMarriageFee(GameState state, Person member)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(member);
 
-        return member.Rank is { } rank
-            ? Money.FromGuan(SalaryTable.AnnualSalaryGuan(rank.Level) * MarriagePolicy.DegreeMarriageFeeRatio)
-            : Money.Zero;
+        if (member.Rank is { } rank)
+        {
+            return Money.FromGuan(SalaryTable.AnnualSalaryGuan(rank.Level) * MarriagePolicy.DegreeMarriageFeeRatio);
+        }
+
+        return Money.FromGuan(SpouseDegreeFor(member) switch
+        {
+            DegreeLevel.JinShi or DegreeLevel.GongShi => MarriagePolicy.DegreeMarriageGongShiFeeGuan,
+            _ => MarriagePolicy.DegreeMarriageJuRenFeeGuan,
+        });
     }
 
     /// <summary>分娩费用：<c>10 贯 × 支出系数</c>（规格书 §9.4）。</summary>
@@ -247,12 +267,13 @@ public static class LifecycleQueries
             : state.Family.Lifecycle.HasAppliedForMatchmaking(member.Id, state.CurrentDate)
                 ? LifecycleRejectReason.AlreadyAppliedThisMonth
                 : LifecycleRejectReason.None;
-        var lowerDegree = LowerDegreeOf(member.CurrentDegree);
-        var degreeAvailable = state.Family.HasShiStatus && member.Rank is not null && lowerDegree is not null;
+        // 买功名婚姻：MUST NOT 要求官职或已有功名（规格书 §9.3 / §17 2026-10-19 第七轮 Q1、Q2）；
+        // 仅**娶入**可用——嫁出方向配偶不入本家籍，为其买功名只利他人（Q1）。
+        var degreeAvailable = available && direction == MarriageDirection.BrideInto;
         var degreeReason = degreeAvailable
             ? LifecycleRejectReason.None
-            : state.Family.HasShiStatus && member.Rank is not null
-                ? LifecycleRejectReason.NoLowerDegree
+            : available
+                ? LifecycleRejectReason.DegreeMarriageBrideIntoOnly
                 : LifecycleRejectReason.NotMarriageable;
 
         var factor = DifficultyRates.ExpenseFactor(state.Difficulty);

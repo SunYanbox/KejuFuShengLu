@@ -11,21 +11,25 @@
 | 项 | 规则 | 配置成员 |
 | --- | --- | --- |
 | 读书加成 | `Occupation == Occupation.Studying` ⇒ 每月 `+1.5` | `GrowthPolicy.StudyPerMonth` |
-| 延名师 | `Person.IsTutoredByMaster` ⇒ 每月额外 `+2.25`，且**先**扣 `5 贯 × ExpenseFactor` | `TutorStudyBonusPerMonth`、`TutorFeeGuanPerMonth` |
+| 延名师 | `Person.IsTutoredByMaster` ⇒ 每月额外 `+2.25`，且**先**扣 `2 贯 × ExpenseFactor` | `TutorStudyBonusPerMonth`、`TutorFeeGuanPerMonth` |
 | 士出身 | `Origin == Scholar` ⇒ 乘 `1.10` | `ScholarStudyMultiplier` |
-| 遗忘 | `AgeAt > 16` 且 `Occupation != Studying` ⇒ 每月 `-0.5` | `ForgetPerMonth`、`ForgetAgeThreshold` |
+| 遗忘 | `AgeAt > 16` **且** `Occupation` ∈ {`Farming`, `Crafting`, `Trading`} ⇒ 每月 `-0.5` | `ForgetPerMonth`、`ForgetAgeThreshold` |
 | 患病期 | `Ill` 置位 ⇒ **当月全部学业变化减半** | `IllnessStudyPenaltyDivisor` |
 | 上限 | `Study <= 100` | `AttributeLimits.Max` |
 
 **取整口径（Assumption 13，封印）**：全部加成先用 `decimal` **累加**（含患病减半），
 最后一次 `MidpointRounding.AwayFromZero` 取整，再 `Math.Clamp(0, 100)` 后写入 `Person.Study`。
 
-**名师费次序**：①核对 `CanCover(5 贯 × ExpenseFactor)` → ②付得起则 `Pay(TutorFee)` 并给加成；
+**名师费次序**：①核对 `CanCover(2 贯 × ExpenseFactor)` → ②付得起则 `Pay(TutorFee)` 并给加成；
 付不起 ⇒ **按普通速度**、`IsTutoredByMaster` **保持**、MUST NOT 转贷款（Assumption 9）。
 付费**先于**加成计算。
 
 `AgeAt > 16` 的边界：`AgeAt == 16` 不遗忘、`AgeAt == 17` 起遗忘（「16 岁以上」取严格大于；
 该边界 MUST 与 `GrowthPolicy.ForgetAgeThreshold == 16` 单点对应）。
+
+**遗忘的第二个条件（2026-10-19 第七轮 Q5）**：`Occupation.None`（未指派生计）者 MUST NOT 遗忘——
+本仓当前无职业指派入口（`Person.Occupation` 只有存档还原一条写入通道），若对未指派者施加遗忘，
+等于全体 17 岁以上成员逐月无端倒退；遗忘只对**已指派非读书职业**（务农 / 做工 / 经商）者生效。
 
 ## 2. 体质（三向变化 + 饥馑，分属三个子步）
 

@@ -550,3 +550,22 @@ T048 IllnessTests.cs   T049 LifespanTests.cs   T050 FamilyLifecycleTests.cs
 本轮回写**未触碰** `contracts/marriage-birth.md` / `contracts/lifecycle.md` 的随机次序表
 （⑧-a0 子步 0 随机；写入侧清理发生在既有步骤内部，不新增步骤、不新增随机消费）；
 `FamilyLifecycleDto` 键数不变（只**清空**既有字段，不新增字段），故 `SaveFileFormat.Version` 仍为 5。
+
+## 回写范围登记（2026-10-19，玩家反馈第七轮：婚配门槛、婚配方向与成本、教育平衡）
+
+> 本节由第七轮玩家反馈（三条 BUG：无官职不能婚配 / 托媒把全体成员变成婚出 / 无名师学业倒退）**追加登记**，
+> 不回改 T001~T105 既有条目，不复用既有编号。
+> 授权落点 = 规格书 §4.3、§9.1、§9.2、§9.3、§12.2 的第七轮回写，以及文末新增的
+> `### 裁决块：2026-10-19（玩家反馈第七轮：婚配门槛、婚配方向与教育平衡）` 与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| **婚配门槛**：买功名婚姻取消 `HasShiStatus` 与「本人须有功名（`Rank`）」两个前置，仅保留「仅娶入方向」；目标功名 = `SpouseDegreeFor(member)` = `LowerDegreeOf(CurrentDegree) ?? DegreeLevel.JuRen`；价格 = 现任官员 `年俸 × 150%`，无官职者按档位价 `举人 60 贯 / 贡士 180 贯`（再乘支出系数） | 规格书 §9.3 第七轮回写、文末裁决块 Q1/Q2；[spec.md](./spec.md) 第七轮增补 §1；`contracts/marriage-birth.md` §3/§7；`contracts/config-registry.md`（`DegreeMarriageJuRenFeeGuan` / `DegreeMarriageGongShiFeeGuan`）；`data-model.md` 买功名行；`src/KFL.Rules/{Config/MarriagePolicy.cs,Family/LifecycleQueries.cs,Family/LifecycleEntry.cs,Family/LifecycleOutcome.cs}`；`src/KFL.Presentation/Display.cs`；`tests/KFL.Tests/Rules/MarriageTests.DegreePurchaseAndMarriageOut.cs` |
+| **拒绝原因改名**：`LifecycleRejectReason.NoLowerDegree` → `DegreeMarriageBrideIntoOnly`（同为 `= 3`，语义从「无更低档功名」变为「仅娶入可买功名」） | `research.md` R-20；`contracts/marriage-birth.md` §8 枚举清单；`src/KFL.Rules/Family/LifecycleOutcome.cs`；`src/KFL.Presentation/Display.cs` |
+| **婚配方向与成本**：方向判定仍唯一由性别派生（男 ⇒ 娶入、女 ⇒ 嫁出），但「外嫁」徽记改为按当事人性别取词（男性外来女婿显示「女婿」）；托媒费 5 → **3 贯**（× 支出系数）；聘礼/嫁妆表 ×0.6 = 平民 6/12、士人 12/18、仕族 30/60（均 × 支出系数） | 规格书 §9.1/§9.2 第七轮回写、§12.2 徽记行、文末裁决块 Q3/Q4；[spec.md](./spec.md) 增补 §2/§3；`contracts/marriage-birth.md` §3/§5/§6；`contracts/config-registry.md`；`data-model.md` 徽记与金额行；`plan.md` US1 叙述；`quickstart.md`；`src/KFL.Rules/Config/MarriagePolicy.cs`；`src/KFL.Presentation/{Display.cs,ViewModels/MemberRow.cs,ViewModels/MainViewModel.Detail.cs}`；`tests/KFL.Tests/Rules/{MarriageTests.DegreePurchaseAndMarriageOut,LifecycleQueriesTests}.cs` |
+| **教育平衡**：名师费 5 → **2 贯/月**（× 支出系数）；遗忘判定改为「`AgeAt > 16` 且 `Occupation` 为务农/做工/经商（**已指派非读书职业**）」，`Occupation.None`（未指派）与 `Studying` 均不遗忘；读书加成与名师加成不变（+1.5 / +2.25） | 规格书 §4.3 第七轮回写、文末裁决块 Q5/Q6；[spec.md](./spec.md) 增补 §4（FR-027）；`contracts/illness-lifespan.md` 读书加成与遗忘两行；`data-model.md` ⑧-d 行；`plan.md` US3 叙述；`src/KFL.Rules/{Config/GrowthPolicy.cs,Family/GrowthAdvance.cs}`；`tests/KFL.Tests/Rules/FamilyLifecycleTests.cs`（界面侧名师费与月度预览均直接读 `GrowthPolicy.TutorFeeGuanPerMonth`，无硬编码数值） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / **1319 通过 0 失败** / 恰六工程 / 无 `*.sln`。
+本轮回写**未触碰** `contracts/marriage-birth.md` 与 `contracts/lifecycle.md` 的随机次序表
+（买功名、托媒、成长各步的随机消费次数与次序均不变；仅数值与前置条件变化）；
+`FamilyLifecycleDto` 键数不变，`SaveFileFormat.Version` 仍为 5。

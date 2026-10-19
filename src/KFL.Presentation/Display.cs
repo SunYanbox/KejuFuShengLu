@@ -135,7 +135,7 @@ public static class Display
         LifecycleRejectReason.None => "可行",
         LifecycleRejectReason.NotMarriageable => "不满足婚配条件",
         LifecycleRejectReason.InsufficientFunds => "银钱不足",
-        LifecycleRejectReason.NoLowerDegree => "无可买功名（需现任官员）",
+        LifecycleRejectReason.DegreeMarriageBrideIntoOnly => "仅娶入方向可买功名",
         LifecycleRejectReason.FertilityWindowClosed => "生育窗口已关",
         LifecycleRejectReason.AlreadyAppliedThisYear => "本年已申请",
         LifecycleRejectReason.HeadVacant => "家主空缺",
@@ -181,7 +181,9 @@ public static class Display
 
         if (person.Status.HasFlag(StatusFlag.MarriedOut))
         {
-            flags.Add("外嫁");
+            // 方向取词（§12.2 / §17 2026-10-19 第七轮 Q3）：本人出嫁 ⇒「外嫁」；
+            // 嫁出婚姻随女入籍的外来夫婿 ⇒「女婿」（不计口，但 MUST NOT 被标成外嫁）。
+            flags.Add(person.Gender == KFL.Core.Enums.Gender.Male ? "女婿" : "外嫁");
         }
 
         if (person.Status.HasFlag(StatusFlag.Retired))

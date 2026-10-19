@@ -15,9 +15,9 @@
 | --- | --- | --- | --- | --- |
 | `StudyPerMonth` | 1.5m | decimal | §4.3 | 读书成员每月学业 |
 | `TutorStudyBonusPerMonth` | 2.25m | decimal | §4.3 | 延名师额外学业 |
-| `TutorFeeGuanPerMonth` | 5 | int | §4.3 | 名师月费（再乘支出系数） |
+| `TutorFeeGuanPerMonth` | 2 | int | §4.3 | 名师月费（再乘支出系数；2026-10-19 第七轮 Q5 由 5 下调） |
 | `ScholarStudyMultiplier` | 1.10m | decimal | §4.3 | 士出身藏书加成 |
-| `ForgetPerMonth` | 0.5m | decimal | §4.3 | 遗忘扣减（正值，内部取负） |
+| `ForgetPerMonth` | 0.5m | decimal | §4.3 | 遗忘扣减（正值，内部取负；仅对已指派非读书职业者施加） |
 | `ForgetAgeThreshold` | 16 | int | §4.3 | 「16 岁以上」严格大于 |
 | `IllnessStudyPenaltyDivisor` | 2m | decimal | §4.3 | 患病期学业减半 |
 | `HealthRecoverPerMonth` | 1 | int | §5.4 | 健康月体质 +1 |
@@ -69,7 +69,7 @@
 
 | 成员 | 值 | 类型 | 出处 | 用途 |
 | --- | --- | --- | --- | --- |
-| `MatchmakerFeeGuan` | 5 | int | §9.1 | 托媒费（再乘支出系数） |
+| `MatchmakerFeeGuan` | 3 | int | §9.1 | 托媒费（再乘支出系数；2026-10-19 第七轮 Q4 由 5 下调） |
 | `MatchmakerSuccessChance` | 0.50m | decimal | §9.1 | 单次成功判定 |
 | `CandidateAgeSpread` | 5 | int | §9.1 | 对象年龄差上限 |
 | `ProposalBaseChance` | 0.05m | decimal | §9.1 Q1 | 随机提亲 base（再乘负面事件系数） |
@@ -80,12 +80,14 @@
 | `PressureHighestLevel` / `LowestLevel` | 1 / 18 | int | §9.2 Q5 | `OfficialRank.Level` 边界（L1 最高） |
 | `SpouseDegreeScholarThreshold` | 1m | decimal | §9.2 Q5 | `P >= 1` ⇒ 举人 |
 | `SpouseDegreeTributeThreshold` | 3m | decimal | §9.2 Q5 | `P >= 3` ⇒ 贡士（**MUST NOT 进士**） |
-| `DegreeMarriageFeeRatio` | 1.5m | decimal | §9.3 | 买功名 = 年俸 × 150% |
+| `DegreeMarriageFeeRatio` | 1.5m | decimal | §9.3 | 买功名 = **现任官员**年俸 × 150% |
+| `DegreeMarriageJuRenFeeGuan` | 60 | int | §9.3 Q2 | **无官职者**买举人配偶的档位价（再乘支出系数） |
+| `DegreeMarriageGongShiFeeGuan` | 180 | int | §9.3 Q2 | **无官职者**买贡士配偶的档位价（再乘支出系数） |
 | `TributeSpouseStudyMean/Sigma` | 60 / 10 | int | §9.3 | 贡士配偶学业重掷 |
 | `JuRenSpouseStudyMean/Sigma` | 50 / 10 | int | §9.3 | 举人配偶学业重掷 |
-| `CommonerGiftGuan` / `CommonerDowryGuan` | 10 / 20 | int | §9.1 | 平民档 |
-| `ScholarGiftGuan` / `ScholarDowryGuan` | 20 / 30 | int | §9.1 | 士人档 |
-| `OfficialGiftGuan` / `OfficialDowryGuan` | 50 / 100 | int | §9.1 | 仕族档 |
+| `CommonerGiftGuan` / `CommonerDowryGuan` | 6 / 12 | int | §9.1 | 平民档（第七轮 Q4 由 10/20 下调） |
+| `ScholarGiftGuan` / `ScholarDowryGuan` | 12 / 18 | int | §9.1 | 士人档（第七轮 Q4 由 20/30 下调） |
+| `OfficialGiftGuan` / `OfficialDowryGuan` | 30 / 60 | int | §9.1 | 仕族档（第七轮 Q4 由 50/100 下调） |
 | `ClassWealthThresholdLow` / `HighGuan` | 100 / 1000 | int | §9.1 Q1 | 阶层加权分档（总资产） |
 | `ClassWeightsPoor` / `Middle` / `Rich` | 0.70/0.25/0.05、0.45/0.40/0.15、0.20/0.50/0.30 | decimal | §9.1 Q1 | 三档权重（平民/士人/仕族） |
 

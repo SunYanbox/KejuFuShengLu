@@ -17,8 +17,9 @@ namespace KFL.Rules.FamilyLifecycle;
 /// （含患病期减半），最后一次 <see cref="MidpointRounding.AwayFromZero"/> 取整，再
 /// <see cref="Math.Clamp(int, int, int)"/> 到 <c>0~100</c> 后写 <see cref="Person.Study"/>
 /// （setter 是抛异常守卫，不是静默 clamp）。次序：读书 <c>+1.5</c> → 延名师 <c>+2.25</c>
-/// （<b>先</b>扣 <c>5 贯 × 支出系数</c>）→ 士出身 <c>×1.10</c> → <c>AgeAt &gt; 16</c> 且未在读书
-/// <c>−0.5</c>（<b>16 岁不遗忘、17 岁起遗忘</b>）→ 患病期减半。
+/// （<b>先</b>扣 <c>2 贯 × 支出系数</c>）→ 士出身 <c>×1.10</c> → <c>AgeAt &gt; 16</c> 且未在读书
+/// <b>且已指派非读书职业</b> <c>−0.5</c>（16 岁不遗忘、17 岁起遗忘；<b>未指派者不遗忘</b>，
+/// §17 2026-10-19 第七轮 Q5）→ 患病期减半。
 /// </para>
 /// <para>
 /// 名师费付不起 ⇒ 按普通速度、<see cref="Person.IsTutoredByMaster"/> <b>保持</b>、
@@ -74,7 +75,12 @@ public static class GrowthAdvance
             delta *= GrowthPolicy.ScholarStudyMultiplier;
         }
 
-        if (age > GrowthPolicy.ForgetAgeThreshold && !studying)
+        // 遗忘：只施加于**已指派非读书职业**者——未指派（Occupation.None）不构成「未读书」，
+        // MUST NOT 因此扣学业（规格书 §4.3 / §17 2026-10-19 第七轮 Q5）。
+        var assignedToNonStudyWork = person.Occupation
+            is Occupation.Farming or Occupation.Crafting or Occupation.Trading;
+
+        if (age > GrowthPolicy.ForgetAgeThreshold && !studying && assignedToNonStudyWork)
         {
             delta -= GrowthPolicy.ForgetPerMonth;
         }
