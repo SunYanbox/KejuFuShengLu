@@ -27,14 +27,14 @@ public static class ExamPolicy
     /// <summary>报考年龄下限（周岁，生日当月生效；规格书 §6「报考资格」）。</summary>
     public const int MinimumAge = 14;
 
-    /// <summary>解试基础录取率 1%（规格书 §6）。</summary>
-    public const decimal JieShiBaseRate = 0.01m;
+    /// <summary>解试基础录取率 25%（规格书 §6；2026-10-19 平衡性裁决由 1% 上调）。</summary>
+    public const decimal JieShiBaseRate = 0.25m;
 
-    /// <summary>省试基础录取率 10%（规格书 §6）。</summary>
-    public const decimal ShengShiBaseRate = 0.10m;
+    /// <summary>省试基础录取率 30%（规格书 §6；2026-10-19 平衡性裁决由 10% 上调）。</summary>
+    public const decimal ShengShiBaseRate = 0.30m;
 
-    /// <summary>殿试基础进甲率 5%（规格书 §6）。</summary>
-    public const decimal ImperialPromotionBaseRate = 0.05m;
+    /// <summary>殿试基础进甲率 15%（规格书 §6；2026-10-19 平衡性裁决由 5% 上调）。</summary>
+    public const decimal ImperialPromotionBaseRate = 0.15m;
 
     /// <summary>学业系数基数（规格书 §6）。</summary>
     public const decimal StudyFactorBase = 0.4m;

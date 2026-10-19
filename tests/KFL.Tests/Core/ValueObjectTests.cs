@@ -281,12 +281,14 @@ public class ValueObjectTests
     {
         Assert.Equal(3, Enum.GetValues<ImperialClass>().Length);
         Assert.Equal(4, Enum.GetValues<SalaryMode>().Length);
-        Assert.Equal(4, Enum.GetValues<AppointmentTrack>().Length);
+        // 2026-10-19 需求 8/16：入仕途径新增「举人」（举人即授官），故为 5 个。
+        Assert.Equal(5, Enum.GetValues<AppointmentTrack>().Length);
 
-        // 甲第取值顺序即高低；入仕途径含特奏名。
+        // 甲第取值顺序即高低；入仕途径含特奏名与举人。
         Assert.True(ImperialClass.FirstClass < ImperialClass.SecondClass);
         Assert.True(ImperialClass.SecondClass < ImperialClass.ThirdClass);
         Assert.True(Enum.IsDefined(AppointmentTrack.SpecialTribute));
+        Assert.True(Enum.IsDefined(AppointmentTrack.JuRen));
         Assert.True(Enum.IsDefined(SalaryMode.None));
         Assert.True(Enum.IsDefined(SalaryMode.Active));
         Assert.True(Enum.IsDefined(SalaryMode.AwaitingPost));

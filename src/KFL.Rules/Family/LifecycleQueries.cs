@@ -295,16 +295,31 @@ public static class LifecycleQueries
             .ToList();
     }
 
-    /// <summary>当月未失效的提议（当月末即失效，非字段判据）。</summary>
+    /// <summary>未失效的提议（提议月与其后一月内有效，非字段判据）。</summary>
     /// <param name="family">家族。</param>
     /// <param name="date">判定月份。</param>
     /// <returns>提议；无或已过期时为 <c>null</c>。</returns>
+    /// <remarks>
+    /// 2026-10-19 修复（反馈 20「应答提亲没用」）：提议在**当月结算内**生成，而结算末尾会
+    /// <c>AdvanceMonth</c>，玩家看到界面时已是次月；原判据要求月份严格相等，于是永远查不到提议、
+    /// 「应答」必定失败。窗口因此放宽为「提议月 + 次月」，仍保证过期（两个月后）不再可应答。
+    /// </remarks>
     public static MarriageProposal? PendingProposal(Family family, GameDate date)
     {
         ArgumentNullException.ThrowIfNull(family);
 
         var proposal = family.Lifecycle.Proposal;
-        return proposal is not null && proposal.ProposedAt.Year == date.Year && proposal.ProposedAt.Month == date.Month
+
+        if (proposal is null)
+        {
+            return null;
+        }
+
+        var proposedAt = proposal.ProposedAt;
+        var sameMonth = proposedAt.Year == date.Year && proposedAt.Month == date.Month;
+        var monthAfter = proposedAt.NextMonth();
+
+        return (sameMonth || (monthAfter.Year == date.Year && monthAfter.Month == date.Month))
             ? proposal
             : null;
     }

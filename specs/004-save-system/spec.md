@@ -479,3 +479,26 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
 - **测试工程与平台**：测试全部在 `net10.0` 的 `tests/KFL.Tests` 内，MUST NOT 依赖
   `KFL.App`（其 TFM 为 `net10.0-windows`，物理上不可引用）——因此存档实现 MUST 留在
   **非 UI 层**才能被门禁覆盖（FR-001、FR-019）。
+
+## 增补（2026-10-19，玩家反馈批次：备份压缩、另存为换标识、备份读档）
+
+> 依据：规格书 §14 于 2026-10-19 新增的 `§17 裁决回写` 块。本节**取代**上文涉及下列三项的旧口径。
+
+1. **备份落点改为压缩包**（反馈 14）：`backups/<存档名><扩展名>` → **`backups/<存档名><扩展名>.zip`**，
+   单条目 zip（条目名 = 原档名含扩展名），`CompressionLevel.Optimal`。`FileBackupLanding`/契约里的
+   备份路径一并按 `SaveService.BackupSuffix = ".zip"` 口径；读回 = 解包该唯一条目。
+2. **另存为（save-as）铸造新存档标识**（反馈 13）：原 `SaveAs` 把**同一 UUID** 写到另一个档名下，
+   被 `SaveService.Save` 的「同标识异档名」不变量拒绝（`SaveIdentityConflictException`，崩溃栈见
+   反馈 13）。裁决：新增 `ISaveService.SaveAsFork(GameState, SaveSlot)` 在**基础设施层**铸造新 UUID
+   后写盘（规格书 §14「创建存档时初始化一个 UUID，用户改名不影响 UUID」的唯一性口径不变）；
+   **改名是纯移动、标识不变**（`ISaveService.Rename(SaveSlot, string)`）。因此「改名后再另存为」
+   不再冲突。
+3. **备份可读档**（反馈 15）：新增 `ISaveService.ListBackups()` 与 `ISaveService.LoadBackup(SaveSlot)`，
+   存档与设置界面提供「读取选中备份」入口。备份与当前档同格式，`LoadBackup` 走与 `Load` 相同的
+   格式解析 + 校验通路（解包后字节直接进 `FormatOf`）。
+
+**回写登记（同一提交）**：①规格书 §14 的 2026-10-19 `§17 裁决回写` 块；②本节；
+③`src/KFL.Infrastructure/Abstractions/ISaveService.cs`、`src/KFL.Infrastructure/Save/SaveService.cs`、
+`src/KFL.Presentation/GameSession.cs`、`src/KFL.App/MainWindow.xaml`（备份列表 + 读取按钮）；
+④`tests/KFL.Tests/Rules/RecordingSaveService.cs`（假实现的三个新成员）、
+`tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs`（`BackupPathOf` 加 `.zip`、`CopyBackupOverPrimary` 解包）。

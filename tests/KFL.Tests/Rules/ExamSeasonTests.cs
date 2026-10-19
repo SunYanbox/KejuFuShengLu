@@ -3,6 +3,7 @@ using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Infrastructure.Abstractions;
 using KFL.Infrastructure.Services;
+using KFL.Rules.Career;
 using KFL.Rules.Config;
 using KFL.Rules.Exam;
 using KFL.Rules.Settlement;
@@ -97,6 +98,55 @@ public class ExamSeasonTests
         Assert.Null(candidate.AppliedExam);
     }
 
+    /// <summary>
+    /// 玩家反馈 8 / 16（规格书 §8.2 的 2026-10-19 裁决）：中举**即授 L17 官职**，
+    /// 且 MUST NOT 设「待阙」——待阙会把该成员的省试资格一并挡掉（<c>AwaitingPost</c> 是失格条件）。
+    /// </summary>
+    [Fact]
+    public void 解试中第即授举人官阶且不待阙()
+    {
+        var candidate = Registered(BaiShen(7, study: 60), ExamLevel.JieShi);
+        var state = NewState(RulesHarness.FamilyOf(candidate), JieShiMonth);
+        var random = new RecordingRandom([0.0d]);
+
+        var snapshot = ExamSeasonRunner.Run(state, random);
+
+        var rank = candidate.Rank ?? throw new InvalidOperationException("测试前提失败：中举即授官。");
+        Assert.Equal(17, rank.Level);
+        Assert.Equal(OfficialCareerPolicy.InitialRankOf(AppointmentTrack.JuRen), rank.Level);
+        Assert.Equal(0, candidate.MonthsInOffice);
+
+        // 「举人即到任」不是「及第入仕」：没有 AwaitingPost、没有待阙入口轨迹。
+        Assert.False(candidate.Status.HasFlag(StatusFlag.AwaitingPost));
+        Assert.Null(candidate.EntryTrack);
+
+        var appointment = Assert.Single(snapshot.Appointments);
+        Assert.Equal(candidate.Id, appointment.PersonId);
+        Assert.Equal(AppointmentTrack.JuRen, appointment.Track);
+        Assert.Equal(0, appointment.AwaitingPostMonths);
+    }
+
+    /// <summary>玩家反馈 8 / 16：已受官的举人仍能应省试——官阶不是失格条件。</summary>
+    [Fact]
+    public void 已受官举人仍可被判定省试()
+    {
+        var candidate = JuRen(8, study: 60);
+        Assert.True(AppointmentEntry.BeginForJuRen(candidate));
+        Registered(candidate, ExamLevel.ShengShi);
+        var state = NewState(RulesHarness.FamilyOf(candidate), ShengShiMonth, cash: 20m);
+        var random = new RecordingRandom([0.0d]);
+
+        var snapshot = ExamSeasonRunner.Run(state, random);
+
+        var outcome = Assert.Single(snapshot.Outcomes);
+        Assert.True(outcome.Passed);
+        Assert.Equal(DegreeLevel.GongShi, candidate.CurrentDegree);
+
+        // 官阶不动：省试中第只是功名升了一级。
+        var rank = candidate.Rank ?? throw new InvalidOperationException("测试前提失败：举人应已有官阶。");
+        Assert.Equal(17, rank.Level);
+    }
+
     [Fact]
     public void 解试落第累计失败数且不追加功名()
     {
@@ -120,9 +170,9 @@ public class ExamSeasonTests
     [Fact]
     public void 资格不符者在判定前被跳过且不累计失败数()
     {
-        // 报名后失去资格：官阶在身（条件 ⑤）。
+        // 报名后失去资格：被禁考（条件 ④）。2026-10-19 需求 8/21 后「官阶在身」不再是失格条件。
         var candidate = Registered(BaiShen(3, study: 60), ExamLevel.JieShi);
-        candidate.Rank = new OfficialRank(18);
+        candidate.Status |= StatusFlag.ExamBanned;
         var state = NewState(RulesHarness.FamilyOf(candidate), JieShiMonth);
         var random = new RecordingRandom();
 
@@ -554,6 +604,46 @@ public class ExamSeasonTests
         // 自动报名 0 随机，且同月直接判定。
         Assert.Equal(1, random.NextDoubleCalls);
         Assert.Equal(DegreeLevel.JuRen, candidate.CurrentDegree);
+    }
+
+    /// <summary>
+    /// 玩家反馈 21：已经是举人的 MUST NOT 再被自动报考解试——举人的下一级是省试
+    /// （<see cref="ExamRegistration.TargetLevelOf"/> 是唯一口径，自动报名按它筛）。
+    /// </summary>
+    [Fact]
+    public void 已是举人者不被自动报考解试()
+    {
+        var juRen = JuRen(27, study: 60);
+        var family = RulesHarness.FamilyOf(juRen);
+        family.AutoExamApplication = true;
+
+        var state = NewState(family, JieShiMonth);
+        var random = new RecordingRandom();
+
+        var snapshot = ExamSeasonRunner.Run(state, random);
+
+        Assert.Empty(snapshot.AutoApplications);
+        Assert.Empty(snapshot.Outcomes);
+        Assert.Null(juRen.AppliedExam);
+        Assert.Equal(0, random.NextDoubleCalls);
+    }
+
+    /// <summary>玩家反馈 21 的另一半：到了省试月，同一个举人会被正常自动报名并判定。</summary>
+    [Fact]
+    public void 已是举人者到省试月被自动报名()
+    {
+        var juRen = JuRen(28, study: 60);
+        var family = RulesHarness.FamilyOf(juRen);
+        family.AutoExamApplication = true;
+
+        var state = NewState(family, ShengShiMonth, cash: 20m);
+        var random = new RecordingRandom([0.0d]);
+
+        var snapshot = ExamSeasonRunner.Run(state, random);
+
+        var application = Assert.Single(snapshot.AutoApplications);
+        Assert.Equal(ExamLevel.ShengShi, application.Level);
+        Assert.Equal(DegreeLevel.GongShi, juRen.CurrentDegree);
     }
 
     [Fact]

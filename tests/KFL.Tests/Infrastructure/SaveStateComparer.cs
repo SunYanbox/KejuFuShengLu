@@ -23,12 +23,20 @@ internal static class SaveStateComparer
     /// <summary>逐字段断言两个状态等价（含标度）。</summary>
     /// <param name="expected">期望（通常是内存中的原状态）。</param>
     /// <param name="actual">实际（读回的状态）。</param>
-    public static void AssertEquivalent(GameState expected, GameState actual)
+    /// <param name="compareId">
+    /// 是否连存档标识一起比。默认 <c>true</c>；**「另存为」的分支档按设计换了标识**，
+    /// 那条路径（规格书 §14 的 2026-10-19 裁决 ②）要传 <c>false</c>。
+    /// </param>
+    public static void AssertEquivalent(GameState expected, GameState actual, bool compareId = true)
     {
         ArgumentNullException.ThrowIfNull(expected);
         ArgumentNullException.ThrowIfNull(actual);
 
-        Assert.Equal(expected.Id, actual.Id);
+        if (compareId)
+        {
+            Assert.Equal(expected.Id, actual.Id);
+        }
+
         Assert.Equal(expected.CurrentDate, actual.CurrentDate);
         Assert.Equal(expected.Difficulty, actual.Difficulty);
         Assert.Equal(expected.PendingDifficulty, actual.PendingDifficulty);

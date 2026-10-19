@@ -11,6 +11,14 @@ namespace KFL.Rules.Settlement;
 public sealed record LivingCostComputation(IReadOnlyList<LivingCostLine> Lines, Money Payable);
 
 /// <summary>
+/// 逐成员生活费明细（玩家反馈：收支悬浮窗要「按人罗列」，故需要一个成员维度的投影）。
+/// </summary>
+/// <param name="PersonId">成员标识。</param>
+/// <param name="AgeBracket">年龄档（决定日耗与乘区）。</param>
+/// <param name="Amount">该成员当月生活费。</param>
+public sealed record LivingCostMemberLine(PersonId PersonId, AgeBracket AgeBracket, Money Amount);
+
+/// <summary>
 /// 生活费计算器（规格书 §5.1、§5.4；data-model §4.3；research R-17）。
 /// </summary>
 /// <remarks>
@@ -92,5 +100,56 @@ public static class LivingCostCalculator
         }
 
         return new LivingCostComputation(lines, payable);
+    }
+
+    /// <summary>
+    /// 逐成员生活费明细（玩家反馈：收支悬浮窗要「按人罗列」）。
+    /// </summary>
+    /// <remarks>
+    /// 与 <see cref="Compute"/> 用的是同一组乘区，区别只在**舍入点**：这里按人各自
+    /// <see cref="Money.FromWen"/>，故合计可能与档位级舍入相差数文——本方法**只供界面展示**，
+    /// 结算口径仍以 <see cref="Compute"/> 为准。
+    /// </remarks>
+    /// <param name="countedMembers">计口成员（在册且未服刑）。</param>
+    /// <param name="date">当月年月。</param>
+    /// <param name="livingStandard">当月生效的生活费档位。</param>
+    /// <param name="grainPriceIndex">当月生效的米价系数。</param>
+    /// <param name="difficulty">当月生效的难度。</param>
+    /// <param name="origin">存档出身。</param>
+    /// <param name="famineStage">判定前的饥馑阶段。</param>
+    /// <returns>逐成员明细，顺序与 <paramref name="countedMembers"/> 一致。</returns>
+    public static IReadOnlyList<LivingCostMemberLine> PerMember(
+        IReadOnlyList<Person> countedMembers,
+        GameDate date,
+        LivingStandard livingStandard,
+        decimal grainPriceIndex,
+        Difficulty difficulty,
+        Origin origin,
+        FamineStage famineStage)
+    {
+        ArgumentNullException.ThrowIfNull(countedMembers);
+
+        if (grainPriceIndex <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(grainPriceIndex), grainPriceIndex, "米价系数 MUST > 0（data-model §1.2）。");
+        }
+
+        var inRelief = famineStage == FamineStage.Relief;
+        var expenseFactor = DifficultyRates.ExpenseFactor(difficulty);
+        var lines = new List<LivingCostMemberLine>(countedMembers.Count);
+
+        foreach (var person in countedMembers)
+        {
+            var bracket = AgeBracketPolicy.Of(person, date);
+            var perMemberWen = LivingCostTable.DaysPerMonth * grainPriceIndex * expenseFactor
+                * LivingCostTable.DailyCost(livingStandard, bracket)
+                * LivingCostTable.FarmerMultiplierOf(origin, bracket)
+                * LivingCostTable.GeneralZoneFactor(bracket == AgeBracket.Child, inRelief);
+
+            lines.Add(new LivingCostMemberLine(person.Id, bracket, Money.FromWen(perMemberWen)));
+        }
+
+        return lines;
     }
 }

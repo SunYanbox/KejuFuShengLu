@@ -46,6 +46,17 @@ public sealed class MainViewModel : ObservableObject
     private Choice<SaveFormat> _selectedSaveFormat;
     private string _saveOverviewText = "（选中左侧存档后显示概览）";
     private string _memberCountText = string.Empty;
+    private string _monthlyBalanceText = string.Empty;
+    private bool _isBreakdownVisible;
+    private string _monthlyBreakdownText = "（点击上方「本月收支」查看按人、按来源的明细）";
+    private bool _isExamBreakdownVisible;
+    private string _examBreakdownText = "（双击顶部考试条查看录取率来源与算式）";
+    private bool _autoTreat;
+    private Choice<SaveSlot>? _selectedBackup;
+    private Choice<SaveSlot>? _selectedMenuSave;
+    private string _menuSaveOverviewText = "（选中存档后显示概览）";
+    private double _consoleHeight = 440;
+    private readonly HashSet<Guid> _childbirthPending = [];
 
     public MainViewModel()
     {
@@ -112,6 +123,9 @@ public sealed class MainViewModel : ObservableObject
         _selectedMemberFilter = MemberFilters[0];
         _selectedSaveFormat = SaveFormats[0];
         _newSeed = Environment.TickCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // 开局菜单（需求 1）：未开局时也要能列出本机已有存档并读取。
+        RefreshSaves();
     }
 
     public ICommand DoCommand { get; }
@@ -135,6 +149,12 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<string> LogLines { get; } = [];
 
     public ObservableCollection<Choice<SaveSlot>> Saves { get; } = [];
+
+    /// <summary>saves/backups 下的压缩备份（需求 15）。</summary>
+    public ObservableCollection<Choice<SaveSlot>> Backups { get; } = [];
+
+    /// <summary>主菜单里可直接读取的已有存档（需求 1）。</summary>
+    public ObservableCollection<Choice<SaveSlot>> MenuSaves { get; } = [];
 
     public IReadOnlyList<Choice<Origin>> Origins { get; }
 
@@ -169,6 +189,75 @@ public sealed class MainViewModel : ObservableObject
     {
         get => _memberCountText;
         private set => Set(ref _memberCountText, value);
+    }
+
+    /// <summary>当前设置下的每月收支摘要（需求 7）；点击弹出明细。</summary>
+    public string MonthlyBalanceText
+    {
+        get => _monthlyBalanceText;
+        private set => Set(ref _monthlyBalanceText, value);
+    }
+
+    /// <summary>收支明细悬浮窗是否可见（需求 7）。</summary>
+    public bool IsBreakdownVisible
+    {
+        get => _isBreakdownVisible;
+        set => Set(ref _isBreakdownVisible, value);
+    }
+
+    /// <summary>收支明细悬浮窗正文（按人、按来源）。</summary>
+    public string MonthlyBreakdownText
+    {
+        get => _monthlyBreakdownText;
+        private set => Set(ref _monthlyBreakdownText, value);
+    }
+
+    /// <summary>录取率明细悬浮窗是否可见（需求 18：双击顶部考试条开关）。</summary>
+    public bool IsExamBreakdownVisible
+    {
+        get => _isExamBreakdownVisible;
+        set => Set(ref _isExamBreakdownVisible, value);
+    }
+
+    /// <summary>录取率明细悬浮窗正文（各候选人 × 各影响因子的来源与算式）。</summary>
+    public string ExamBreakdownText
+    {
+        get => _examBreakdownText;
+        private set => Set(ref _examBreakdownText, value);
+    }
+
+    /// <summary>自动治疗开关（需求 10）：开启后每次结算完自动为患病成员开始治疗。</summary>
+    public bool AutoTreat
+    {
+        get => _autoTreat;
+        set => Set(ref _autoTreat, value);
+    }
+
+    /// <summary>选中的备份压缩包（需求 15）。</summary>
+    public Choice<SaveSlot>? SelectedBackup
+    {
+        get => _selectedBackup;
+        set => Set(ref _selectedBackup, value);
+    }
+
+    /// <summary>主菜单里选中的已有存档（需求 1）。</summary>
+    public Choice<SaveSlot>? SelectedMenuSave
+    {
+        get => _selectedMenuSave;
+        set
+        {
+            if (Set(ref _selectedMenuSave, value))
+            {
+                RefreshMenuSaveOverview();
+            }
+        }
+    }
+
+    /// <summary>主菜单里选中存档的概览。</summary>
+    public string MenuSaveOverviewText
+    {
+        get => _menuSaveOverviewText;
+        private set => Set(ref _menuSaveOverviewText, value);
     }
 
     /// <summary>存档写入格式（存档 / 另存为 / 自动存档 均遵循；切换后立即对新格式生效）。</summary>
@@ -394,6 +483,22 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>从 <c>saves/backups/*.zip</c> 读档（需求 15）。</summary>
+    public void LoadBackup(SaveSlot slot)
+    {
+        try
+        {
+            _session = GameSession.LoadBackup(slot, Environment.TickCount);
+            SaveName = _session.Slot.Name;
+            Attach();
+        }
+        catch (Exception ex) when (ex is KFL.Infrastructure.Save.SaveFileException or IOException or UnauthorizedAccessException)
+        {
+            ConsoleOutput = $"读备份失败：{ex.Message}";
+            ConsoleVisible = true;
+        }
+    }
+
     private void Attach()
     {
         RefreshLog();
@@ -482,16 +587,72 @@ public sealed class MainViewModel : ObservableObject
         }
 
         var level = ExamCalendar.LevelOf(date);
+
+        // 报名窗口是「考试当月及前一月」（需求 4 / 9）：先算窗口级别、可报名人数与已报名名单。
+        var registerLevel = ExamRegistration.RegisterLevelOf(date);
         var registrable = CountedMembers.Registered(family).Count(person => ExamRegistration.CanRegister(person, date));
-        ExamInfo = level is { } examLevel
-            ? $"本月为 {Display.ExamLevel(examLevel)} 月。"
-                + (examLevel == ExamLevel.DianShi ? "殿试无需报名。" : $"可报名 {registrable} 人（路费 {Display.Money(Money.FromGuan(ExamPolicy.ExamTravelCostGuan(state.Difficulty)))}）。")
+        var appliedList = CountedMembers.Registered(family)
+            .Where(person => person.AppliedExam is { } appliedLevel)
+            .OrderBy(person => person.Id.Value)
+            .Select(person => $"{person.Name}（{Display.ExamLevel(person.AppliedExam!.Value)}）")
+            .ToList();
+        var appliedText = appliedList.Count > 0 ? $" ｜ 已报名：{string.Join('、', appliedList)}" : " ｜ 已报名：无";
+
+        // 录取率提示（需求 5：随行贿次数实时更新）。
+        var rates = candidates
+            .Select(person => (Person: person, Rate: _session.AdmissionRateOf(person)))
+            .Where(pair => pair.Rate is not null)
+            .ToList();
+        var rateText = rates.Count > 0
+            ? $" ｜ 预估录取率：{string.Join('、', rates.Select(pair => $"{pair.Person.Name} {(pair.Rate!.Value * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}%"))}"
+            : string.Empty;
+
+        if (registerLevel is { } windowLevel)
+        {
+            var sameMonth = level == windowLevel;
+            ExamInfo = $"{(sameMonth ? "本月" : "下月")}为 {Display.ExamLevel(windowLevel)} 月。"
+                + (windowLevel == ExamLevel.DianShi
+                    ? "殿试无需报名。"
+                    : $"可报名 {registrable} 人（路费 {Display.Money(Money.FromGuan(ExamPolicy.ExamTravelCostGuan(state.Difficulty)))}）。")
                 + (candidates.Count > 0 ? $" 待报名：{string.Join('、', candidates.Select(c => c.Name))}" : string.Empty)
-            : $"本月非考期。下一场考试：{ExamCalendar.NextExamMonth(date).Year} 年 {ExamCalendar.NextExamMonth(date).Month} 月。";
+                + appliedText
+                + rateText;
+        }
+        else
+        {
+            var upcoming = ExamCalendar.NextExamMonth(date);
+            ExamInfo = $"本月非考期。下一场考试：{upcoming.Year} 年 {upcoming.Month} 月。"
+                + appliedText
+                + rateText;
+        }
+
+        // 每月收支（需求 7）：实时按当前设置推算；点击后弹出按人、按来源的明细。
+        var projectedIncome = MonthlyBreakdown.ProjectedIncome(state);
+        var projectedLiving = MonthlyBreakdown.ProjectedLivingCost(state);
+        var (tutorTotal, tutorCount) = MonthlyBreakdown.ProjectedTutorFee(state);
+        var incomeTotal = projectedIncome.Total;
+        var expenseTotal = Money.FromWen(projectedLiving.Sum(line => line.Amount.Wen) + tutorTotal.Wen);
+        var netTotal = incomeTotal - expenseTotal;
+        MonthlyBalanceText = $"本月收支（推算）｜ 收入 {MonthlyBreakdown.WithSign(incomeTotal)}"
+            + $" ｜ 支出 {MonthlyBreakdown.WithSign(Money.FromWen(-expenseTotal.Wen))}"
+            + $" ｜ 结余 {MonthlyBreakdown.WithSign(netTotal)}"
+            + (tutorCount > 0 ? $"（含名师束脩 {tutorCount} 人）" : string.Empty)
+            + " ｜ 点击查看明细";
+
+        if (IsBreakdownVisible)
+        {
+            MonthlyBreakdownText = MonthlyBreakdown.BuildPopupText(state);
+        }
+
+        if (IsExamBreakdownVisible)
+        {
+            ExamBreakdownText = BuildExamBreakdownText();
+        }
 
         RefreshAchievements();
         RefreshDetail();
         RefreshSaves();
+        RefreshBackups();
         RefreshStatistics();
         IsEnded = state.Ending.IsEnded;
         ChronicleText = BuildChronicle();
@@ -512,13 +673,13 @@ public sealed class MainViewModel : ObservableObject
         Members.Clear();
         foreach (var person in family.RegisteredMembers.OrderByDescending(p => family.HeadId == p.Id).ThenBy(p => p.Id.Value))
         {
-            Members.Add(new MemberRow(person, family, date));
+            Members.Add(new MemberRow(person, family, date, childbirthPending: _childbirthPending.Contains(person.Id.Value)));
         }
 
         Archived.Clear();
         foreach (var person in family.ArchivedMembers.OrderByDescending(p => p.Id.Value))
         {
-            Archived.Add(new MemberRow(person, family, date, archived: true));
+            Archived.Add(new MemberRow(person, family, date, archived: true, childbirthPending: _childbirthPending.Contains(person.Id.Value)));
         }
 
         var all = Members.Concat(Archived).ToList();
@@ -613,6 +774,36 @@ public sealed class MainViewModel : ObservableObject
         {
             SelectedSave = Saves[0];
         }
+
+        MenuSaves.Clear();
+        foreach (var slot in GameSession.ListSaves())
+        {
+            var format = slot.Format == SaveFormat.Json ? "JSON" : "二进制";
+            MenuSaves.Add(new Choice<SaveSlot>(slot, $"{slot.Name} ｜ {format}"));
+        }
+
+        SelectedMenuSave ??= MenuSaves.FirstOrDefault();
+    }
+
+    /// <summary>列出 <c>saves/backups</c> 下的压缩备份（需求 15）。</summary>
+    private void RefreshBackups()
+    {
+        Backups.Clear();
+        foreach (var slot in GameSession.ListBackups())
+        {
+            var format = slot.Format == SaveFormat.Json ? "JSON" : "二进制";
+            Backups.Add(new Choice<SaveSlot>(slot, $"{slot.Name} ｜ {format} ｜ 压缩备份"));
+        }
+
+        SelectedBackup ??= Backups.FirstOrDefault();
+    }
+
+    /// <summary>主菜单里选中存档的概览（需求 1）。</summary>
+    private void RefreshMenuSaveOverview()
+    {
+        MenuSaveOverviewText = SelectedMenuSave is { } chosen
+            ? GameSession.DescribeSave(chosen.Value)
+            : "（选中存档后显示概览）";
     }
 
     private void RefreshAchievements()
@@ -643,7 +834,8 @@ public sealed class MainViewModel : ObservableObject
                 completed,
                 note,
                 AchievementDescriptions.Describe(definition.Id),
-                local));
+                local,
+                hidden: AchievementCatalog.IsHidden(definition)));
         }
 
         var total = AchievementCatalog.All.Count;
@@ -694,9 +886,11 @@ public sealed class MainViewModel : ObservableObject
             $"姓名：{person.Name}　{Display.Gender(person.Gender)}　{person.AgeAt(date)} 岁　第 {person.Generation} 代"
                 + (family.HeadId == person.Id ? "　【家主】" : string.Empty)
                 + (Selected.IsArchived ? "　（归档）" : string.Empty),
+            $"父母：父 {Selected.FatherText}　母 {Selected.MotherText}",
             $"功名：{Display.Degree(person.CurrentDegree)}"
                 + (person.CurrentPlacement is { } placement ? $"（{Display.Placement(placement)}）" : string.Empty)
-                + $"　官职：{(person.Rank is { } rank ? rank.ToString() : "无")}"
+                + $"　官职：{(person.Rank is { } rank ? $"第 {rank.Level} 级" : "无")}"
+                + (person.Rank is { } currentRank ? $"（月俸 {Display.Money(Money.FromGuan(SalaryTable.MonthlySalaryGuan(currentRank.Level)))}）" : string.Empty)
                 + $"　政绩：{person.Merit}"
                 + (person.EntryTrack is { } track ? $"　入仕：{track}" : string.Empty),
             $"学业：{person.Study}　体质：{person.Health}　天命寿数：{person.Lifespan}"
@@ -704,12 +898,35 @@ public sealed class MainViewModel : ObservableObject
             $"状态：{Display.StatusOf(person, date)}"
                 + $"　配偶：{(person.SpouseId is { } spouseId ? family.TryGet(spouseId)?.Name ?? "—" : "—")}"
                 + (person.IsTutoredByMaster ? "　名师：是" : string.Empty),
+            $"标志：{BuildBadgeText(person)}",
             $"报考：{(ExamRegistration.TargetLevelOf(person) is { } targetLevel ? Display.ExamLevel(targetLevel) : "无可报考")}"
                 + $"　本月可报名：{(ExamRegistration.CanRegister(person, date) ? "是" : "否")}"
+                + (person.AppliedExam is { } appliedLevel ? $"　已报名：{Display.ExamLevel(appliedLevel)}" : "　已报名：无")
                 + $"　特奏名：{(ExamRegistration.SpecialTributeEligible(person, date) ? "符合" : "否")}"
                 + $"　持续报考：{(family.AutoExamApplication ? "开" : "关")}",
             $"解试累计失败 {person.JieShiFailureCount} / 省试累计失败 {person.ShengShiFailureCount}",
         };
+
+        // 月收支与来源明细（需求 3 / 7）。
+        lines.AddRange(MonthlyBreakdown.MemberLines(state, person));
+
+        // 录取率明细（需求 5 / 18）：已报名取报名级别，否则取派生级别。
+        if (_session.AdmissionBreakdownOf(person) is { } admission)
+        {
+            lines.Add(GameSession.DescribeAdmissionBreakdown(admission));
+        }
+
+        // 自愈率明细（需求 18）：患病时才展示（未患病该值没有意义，只给一行占位）。
+        var illness = LifecycleQueries.IllnessOf(person);
+        var treated = illness.TreatmentRemainingMonths is not null;
+        if (person.Status.HasFlag(StatusFlag.Ill) || treated)
+        {
+            lines.Add(GameSession.DescribeRecoveryBreakdown(_session.RecoveryBreakdownOf(person, treated)));
+        }
+        else
+        {
+            lines.Add("自愈率：—（未患病）");
+        }
 
         foreach (var level in new[] { ExamLevel.JieShi, ExamLevel.ShengShi, ExamLevel.DianShi })
         {
@@ -720,7 +937,6 @@ public sealed class MainViewModel : ObservableObject
                 + $"{(PunishmentQueries.IsLevelCapReached(state, person, level) ? "｜已达上限" : string.Empty)}]");
         }
 
-        var illness = LifecycleQueries.IllnessOf(person);
         if (illness.Ill)
         {
             lines.Add($"疾病：程度 {illness.SeverityBasisPoints} 磅值　疗程剩余 {(illness.TreatmentRemainingMonths is { } remaining ? remaining.ToString(System.Globalization.CultureInfo.InvariantCulture) : "未就医")} 月");
@@ -774,6 +990,47 @@ public sealed class MainViewModel : ObservableObject
                 if (_session.CanAdvance)
                 {
                     _session.AdvanceMonth();
+                    AfterAdvance();
+                }
+
+                break;
+            case "ffexam":
+                FastForwardToExam();
+                return;
+            case "balance":
+                IsBreakdownVisible = !IsBreakdownVisible;
+                break;
+            case "examdetail":
+                IsExamBreakdownVisible = !IsExamBreakdownVisible;
+                if (IsExamBreakdownVisible)
+                {
+                    ExamBreakdownText = BuildExamBreakdownText();
+                }
+
+                break;
+            case "autotreat":
+                AutoTreat = !AutoTreat;
+                _session.Note(AutoTreat ? "自动治疗：开。" : "自动治疗：关。");
+                break;
+            case "loadbackup":
+                if (SelectedBackup is { } backup)
+                {
+                    LoadBackup(backup.Value);
+                }
+                else
+                {
+                    error = "没有可读取的备份。";
+                }
+
+                break;
+            case "menuload":
+                if (SelectedMenuSave is { } menuSlot)
+                {
+                    LoadGame(menuSlot.Value);
+                }
+                else
+                {
+                    error = "没有可读取的存档。";
                 }
 
                 break;
@@ -855,6 +1112,9 @@ public sealed class MainViewModel : ObservableObject
             case "saveas":
                 error = _session.SaveAs(SaveName, SelectedSaveFormat.Value);
                 break;
+            case "rename":
+                error = _session.Rename(SaveName);
+                break;
             case "export":
                 error = _session.ExportLedgerCsv();
                 break;
@@ -916,7 +1176,14 @@ public sealed class MainViewModel : ObservableObject
             return $"生育不可行：{Display.LifecycleReason(feasibility.RejectReason)}。";
         }
 
-        return _session.ApplyChildbirth(couple);
+        var outcome = _session.ApplyChildbirth(couple);
+        if (outcome.Length == 0)
+        {
+            _childbirthPending.Add(person.Id.Value);
+            _childbirthPending.Add(spouse.Id.Value);
+        }
+
+        return outcome;
     }
 
     private static ExamLevel ParseExamLevel(string text) => text switch
@@ -927,7 +1194,138 @@ public sealed class MainViewModel : ObservableObject
         _ => ExamLevel.JieShi,
     };
 
+    // ───────────────────── 标志与月结钩子 ─────────────────────
+
+    /// <summary>成员详情与卡片共用的标志串（需求 3：患病 / 治疗 / 已报名 / 名师 / 求子 / 入狱 …）。</summary>
+    private string BuildBadgeText(Person person)
+    {
+        var badges = new List<string>();
+        if (person.Status.HasFlag(StatusFlag.Ill)) { badges.Add("患病"); }
+        if (person.Timers.TreatmentRemainingMonths is not null) { badges.Add("治疗中"); }
+        if (person.Status.HasFlag(StatusFlag.ServingSentence)) { badges.Add($"入狱（余 {person.Timers.SentenceRemainingMonths ?? 0} 月）"); }
+        if (person.AppliedExam is { } applied) { badges.Add($"已报{Display.ExamLevel(applied)}"); }
+        if (person.IsTutoredByMaster) { badges.Add("名师"); }
+        if (_childbirthPending.Contains(person.Id.Value)) { badges.Add("求子"); }
+        if (person.Status.HasFlag(StatusFlag.AwaitingPost)) { badges.Add($"待阙（余 {person.Timers.AwaitingPostRemainingMonths ?? 0} 月）"); }
+        if (person.Status.HasFlag(StatusFlag.ExamBanned)) { badges.Add("禁考"); }
+        if (person.Status.HasFlag(StatusFlag.PromotionBanned)) { badges.Add("禁升"); }
+        if (person.Status.HasFlag(StatusFlag.MarriedOut)) { badges.Add("外嫁"); }
+        if (person.Status.HasFlag(StatusFlag.Retired)) { badges.Add("致仕"); }
+        if (person.Status.HasFlag(StatusFlag.Deceased)) { badges.Add("身故"); }
+        return badges.Count > 0 ? string.Join(" ｜ ", badges) : "（无）";
+    }
+
+    /// <summary>
+    /// 录取率明细正文（需求 18：双击考试条查看）——列出本窗口内每位候选人的级别与完整算式，
+    /// 以及其自愈率来源（若患病）。数值随行贿次数、学业、仕天赋实时变化。
+    /// </summary>
+    private string BuildExamBreakdownText()
+    {
+        if (_session is null)
+        {
+            return "（尚未开始游戏）";
+        }
+
+        var state = _session.State;
+        var date = state.CurrentDate;
+        var lines = new List<string>();
+
+        var level = ExamRegistration.RegisterLevelOf(date);
+        lines.Add($"【{date.Year} 年 {date.Month} 月】"
+            + (level is { } windowLevel
+                ? $"报名窗口：{Display.ExamLevel(windowLevel)}（考试当月及前一月）"
+                : "当前不在任何考试的报名窗口内。"));
+
+        var targets = CountedMembers.Registered(state.Family)
+            .Where(person => _session.AdmissionBreakdownOf(person) is not null)
+            .OrderBy(person => person.Id.Value)
+            .ToList();
+
+        if (targets.Count == 0)
+        {
+            lines.Add("（当前没有可报考解试/省试的在册成员）");
+        }
+
+        foreach (var person in targets)
+        {
+            if (_session.AdmissionBreakdownOf(person) is not { } breakdown)
+            {
+                continue;
+            }
+
+            var applied = person.AppliedExam is { } mark ? $"已报名（{Display.ExamLevel(mark)}）" : "未报名";
+            lines.Add(string.Empty);
+            lines.Add($"◆ {person.Name}（{Display.ExamLevel(breakdown.Level)}，{applied}）");
+            lines.Add(GameSession.DescribeAdmissionBreakdown(breakdown));
+        }
+
+        var treated = CountedMembers.Registered(state.Family)
+            .Where(person => person.Status.HasFlag(StatusFlag.Ill))
+            .OrderBy(person => person.Id.Value)
+            .ToList();
+        if (treated.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add("── 自愈率（患病成员）──");
+            foreach (var person in treated)
+            {
+                lines.Add($"◆ {person.Name}");
+                lines.Add(GameSession.DescribeRecoveryBreakdown(
+                    _session.RecoveryBreakdownOf(person, person.Timers.TreatmentRemainingMonths is not null)));
+            }
+        }
+
+        lines.Add(string.Empty);
+        lines.Add("提示：行贿乘数随该级别的行贿次数实时变化；调试加成来自控制台 examrate / healrate 命令。");
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>推进一个月之后的钩子：自动治疗（需求 10）与生育申请标记清理。</summary>
+    private void AfterAdvance()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        if (AutoTreat)
+        {
+            _session.AutoTreatAll();
+        }
+
+        // 「申请生育」只在次月分娩，跨月后标记失效。
+        _childbirthPending.Clear();
+    }
+
     // ───────────────────────── 快进 ─────────────────────────
+
+    /// <summary>快进到下一次科举报名窗口（需求 6）；最多一年，避免死循环。</summary>
+    private void FastForwardToExam()
+    {
+        if (_session is null || !_session.CanAdvance)
+        {
+            return;
+        }
+
+        for (var step = 0; step < 12 && _session.CanAdvance; step++)
+        {
+            if (ExamRegistration.RegisterLevelOf(_session.State.CurrentDate) is not null)
+            {
+                break;
+            }
+
+            var pause = _session.AdvanceMonth();
+            AfterAdvance();
+            if (pause)
+            {
+                _session.Note(_session.State.Ending.IsEnded ? "快进停止：家族绝嗣。" : "快进停止：出现待决策事件。");
+                break;
+            }
+        }
+
+        RefreshLog();
+        RefreshAll();
+    }
 
     private void FastForward(string monthsText)
     {
@@ -950,6 +1348,7 @@ public sealed class MainViewModel : ObservableObject
         }
 
         var pause = _session.AdvanceMonth();
+        AfterAdvance();
         _fastForwardMonthsLeft--;
         Raise(nameof(AdvanceLabel));
 
@@ -973,6 +1372,13 @@ public sealed class MainViewModel : ObservableObject
     }
 
     // ───────────────────────── 调试控制台 ─────────────────────────
+
+    /// <summary>控制台高度（需求 17：可调，便于看清长输出）。</summary>
+    public double ConsoleHeight
+    {
+        get => _consoleHeight;
+        set => Set(ref _consoleHeight, Math.Clamp(value, 240, 900));
+    }
 
     private void RunConsoleCommand()
     {
@@ -1008,6 +1414,13 @@ public sealed class MainViewModel : ObservableObject
         ("clearbans", "解除选中成员的禁考 / 禁升禁令"),
         ("clearfamilybans", "解除全族禁考 / 禁升禁令（连坐用）"),
         ("bribe-reset", "清空选中成员解试 / 省试 / 殿试行贿次数与乘数"),
+        ("talent <农|商|仕|工> <0~100>", "改写选中成员的四项天赋点"),
+        ("attr <study|health|lifespan|merit> <值>", "改写选中成员的学业 / 体质 / 天命寿数 / 政绩"),
+        ("examrate <百分点>", "为选中成员本次考试录取率 +N 个百分点（如 20 = +20%）"),
+        ("healrate <百分点>", "为选中成员疾病自愈率 +N 个百分点"),
+        ("clear-overrides", "清空选中成员的全部调试加成"),
+        ("ach-unlock <ACH-064|64|all>", "强制解锁成就（含「调试秘辛」隐藏成就）"),
+        ("console-big / console-small", "放大 / 缩小控制台浮窗"),
         ("tutor", "切换选中成员的「名师」开关（月费由结算扣）"),
         ("difficulty <档>", "easy | normal | hard | hell（次月生效）"),
         ("difficulty-list", "列出四档难度的收益 / 支出 / 风险 / 负面系数"),
@@ -1053,6 +1466,38 @@ public sealed class MainViewModel : ObservableObject
                 return _session.State.Family.HeadId is { } headId ? _session.DebugKill(_session.State.Family.TryGet(headId)!) : "无家主。";
             case "bribe-reset":
                 return WithSelected(session => session.ResetBribe(Selected!.Person));
+            case "talent":
+                return parts.Length > 2 && int.TryParse(parts[2], out var talentValue)
+                    ? WithSelected(session => session.DebugSetTalent(Selected!.Person, parts[1], talentValue))
+                    : "用法：talent 农 80";
+            case "attr":
+                return parts.Length > 2 && int.TryParse(parts[2], out var attributeValue)
+                    ? WithSelected(session => session.DebugSetAttribute(Selected!.Person, parts[1], attributeValue))
+                    : "用法：attr study 100";
+            case "examrate":
+                return parts.Length > 1 && decimal.TryParse(parts[1], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var examPoints)
+                    ? WithSelected(session => session.DebugAddExamRateBonus(Selected!.Person, examPoints))
+                    : "用法：examrate 20";
+            case "healrate":
+                return parts.Length > 1 && decimal.TryParse(parts[1], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var healPoints)
+                    ? WithSelected(session => session.DebugAddHealRateBonus(Selected!.Person, healPoints))
+                    : "用法：healrate 20";
+            case "clear-overrides":
+                return _session.DebugClearOverrides();
+            case "ach-unlock":
+                return parts.Length > 1
+                    ? _session.DebugUnlockAchievement(parts[1])
+                    : "用法：ach-unlock 64 | ACH-064 | all";
+            case "console-big":
+                ConsoleHeight = 760;
+                return $"控制台高度 {ConsoleHeight:0}。";
+            case "console-small":
+                ConsoleHeight = 320;
+                return $"控制台高度 {ConsoleHeight:0}。";
+            case "release":
+                return WithSelected(session => session.Release(Selected!.Person));
+            case "pardon":
+                return WithSelected(session => session.Pardon(Selected!.Person));
             case "clearbans":
                 return WithSelected(session => session.ClearBans(Selected!.Person));
             case "clearfamilybans":

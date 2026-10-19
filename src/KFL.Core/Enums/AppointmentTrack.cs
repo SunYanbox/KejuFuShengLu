@@ -26,4 +26,7 @@ public enum AppointmentTrack
 
     /// <summary>特奏名（授 L18；触发与拒绝属逻辑轨 ⑤）。</summary>
     SpecialTribute,
+
+    /// <summary>举人（授 L17；2026-10-19 裁决：举人即授官，俸禄随功名上限逐级晋升）。</summary>
+    JuRen,
 }

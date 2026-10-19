@@ -39,8 +39,13 @@ public readonly record struct GameDate : IComparable<GameDate>, IComparable
     /// <summary>月份，1~12。</summary>
     public int Month { get; }
 
-    /// <summary>从本年月到 <paramref name="other"/> 的月差（可为负）。</summary>
-    /// <param name="other">另一个年月。</param>
+    /// <summary>下一个月（12 月 → 次年 1 月）。</summary>
+    /// <returns>本年月 + 1 个月。</returns>
+    public GameDate NextMonth() => Month == 12
+        ? new GameDate(Year + 1, 1)
+        : new GameDate(Year, Month + 1);
+
+    /// <summary>从本年月到 <paramref name="other"/> 的月差（可为负）。</summary>    /// <param name="other">另一个年月。</param>
     /// <returns>月差；<paramref name="other"/> 在后为正。</returns>
     /// <remarks>
     /// <b>极端年份的溢出行为（有意保留）</b>：年份是 <see cref="int"/> 全域，故

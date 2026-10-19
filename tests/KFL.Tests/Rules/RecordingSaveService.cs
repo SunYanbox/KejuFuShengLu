@@ -85,4 +85,24 @@ public sealed class RecordingSaveService : ISaveService
 
     /// <inheritdoc />
     public void Backup(SaveSlot slot) => Calls.Add(new SaveCall("Backup", slot, false));
+
+    /// <inheritdoc />
+    public IReadOnlyList<SaveSlot> ListBackups() => [];
+
+    /// <inheritdoc />
+    public GameState LoadBackup(SaveSlot slot) => Load(slot);
+
+    /// <inheritdoc />
+    public GameState SaveAsFork(GameState state, SaveSlot slot)
+    {
+        if (_states.ContainsKey(slot.Name))
+        {
+            throw new SaveNameConflictException($"存档名已存在：{slot.Name}");
+        }
+
+        _states[slot.Name] = state;
+        _lastSavedState = state;
+        Calls.Add(new SaveCall("Save", slot, false));
+        return state;
+    }
 }

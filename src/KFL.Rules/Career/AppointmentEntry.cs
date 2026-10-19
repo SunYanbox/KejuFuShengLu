@@ -69,6 +69,33 @@ public static class AppointmentEntry
     }
 
     /// <summary>
+    /// 举人入口（2026-10-19 裁决：中举即授官，直接授 L17，**不置待阙**）。
+    /// </summary>
+    /// <remarks>
+    /// 举人走「先授职、后科举」：任职不影响继续应省试（见 <c>ExamRegistration.IsEligible</c>），
+    /// 因此这里 MUST NOT 置 <see cref="StatusFlag.AwaitingPost"/>——待阙会挡住报考。
+    /// 幂等：已有官阶时不做任何写入。
+    /// </remarks>
+    /// <param name="person">刚中举的成员。</param>
+    /// <returns>是否真的授予了官阶。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="person"/> 为 <c>null</c>。</exception>
+    public static bool BeginForJuRen(Person person)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        if (person.Rank is not null)
+        {
+            return false;
+        }
+
+        person.Rank = new OfficialRank(
+            OfficialCareerPolicy.InitialRankOf(AppointmentTrack.JuRen));
+        person.MonthsInOffice = 0;
+        person.Merit = 0;
+        return true;
+    }
+
+    /// <summary>
     /// 通用入口（供逻辑轨 ⑤ 的特奏名复用）：按**显式**途径置入待阙。
     /// </summary>
     /// <param name="person">无官职的成员。</param>

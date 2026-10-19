@@ -44,10 +44,12 @@ public class ExamAdmissionTests
         {
             person.Study = study;
 
-            var expected = GameConfig.Exam.JieShiBaseRate
-                * GameConfig.Exam.StudyFactor(study)
-                * (decimal.One + (officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
-                * BribeMultiplier;
+            var expected = Math.Min(
+                GameConfig.Exam.JieShiBaseRate
+                    * GameConfig.Exam.StudyFactor(study)
+                    * (decimal.One + (officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
+                    * BribeMultiplier,
+                GameConfig.Exam.DiceRateCap);
 
             Assert.Equal(
                 expected,
@@ -57,17 +59,17 @@ public class ExamAdmissionTests
     }
 
     /// <summary>
-    /// T055 / FR-014 / SC-002：spec US1 AS1 的示例录取率——**勘误后**为
-    /// <c>0.01 × (0.4 + 0.012 × 60) × (1 + 60/400) × 1.0 × 1.0 = 0.01288</c>（即 1.288%），
-    /// **不是** 1.42%。该锚点把 plan.md「勘误登记」落到可执行断言上。
+    /// T055 / FR-014 / SC-002：spec US1 AS1 的示例录取率——**2026-10-19 平衡性裁决后**为
+    /// <c>0.25 × (0.4 + 0.012 × 60) × (1 + 60/400) × 1.0 × 1.0 = 0.322</c>（即 32.2%），
+    /// 原「勘误后 1.288%」因基础率上调而作废。
     /// </summary>
     /// <remarks>
     /// 期望值经 <see cref="GameConfig.Exam"/> 的数值成员组合（唯一数值来源仍是
-    /// <c>KFL.Rules/Config/ExamPolicy</c>）；本用例只出现被验证对象本身 <c>0.01288m</c>，
+    /// <c>KFL.Rules/Config/ExamPolicy</c>）；本用例只出现被验证对象本身 <c>0.322m</c>，
     /// 不书写任何规则数值。
     /// </remarks>
     [Fact]
-    public void 科举示例录取率等于勘误后的百分之一二八八()
+    public void 科举示例录取率等于当前基础率下的示例值()
     {
         var person = RulesHarness.Member(102, Gender.Male, 20, officialdom: 60);
         person.Study = 60;
@@ -77,8 +79,8 @@ public class ExamAdmissionTests
             * (decimal.One + (person.Talents.Officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
             * GameConfig.Bribe.UnitMultiplier;
 
-        // arch-guard:allow 锚点即被验证对象：spec US1 AS1 的勘误后示例值（非规则数值副本）
-        Assert.Equal(0.01288m, expected);
+        // arch-guard:allow 锚点即被验证对象：当前基础率下示例值（非规则数值副本）
+        Assert.Equal(0.322m, expected);
         Assert.Equal(
             expected,
             ExamAdmission.AdmissionRate(
@@ -96,10 +98,12 @@ public class ExamAdmissionTests
         {
             person.Study = study;
 
-            var expected = GameConfig.Exam.ShengShiBaseRate
-                * GameConfig.Exam.StudyFactor(study)
-                * (decimal.One + (officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
-                * BribeMultiplier;
+            var expected = Math.Min(
+                GameConfig.Exam.ShengShiBaseRate
+                    * GameConfig.Exam.StudyFactor(study)
+                    * (decimal.One + (officialdom / (decimal)GameConfig.Exam.OfficialdomDivisor))
+                    * BribeMultiplier,
+                GameConfig.Exam.DiceRateCap);
 
             Assert.Equal(
                 expected,

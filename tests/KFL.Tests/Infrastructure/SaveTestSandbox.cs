@@ -85,12 +85,12 @@ public sealed class SaveTestSandbox : IDisposable
     public string PathOf(string name, SaveFormat format) =>
         SaveCatalog.Combine(Root, name + SaveFileFormat.ExtensionOf(format));
 
-    /// <summary>备份路径。</summary>
+    /// <summary>备份路径（2026-10-19 需求 14：备份是压缩包，形如 <c>甲档.dat.zip</c>）。</summary>
     /// <param name="name">存档名。</param>
     /// <param name="format">格式。</param>
     /// <returns>路径。</returns>
     public string BackupPathOf(string name, SaveFormat format) =>
-        SaveCatalog.Combine(BackupsDirectory, name + SaveFileFormat.ExtensionOf(format));
+        SaveCatalog.Combine(BackupsDirectory, name + SaveFileFormat.ExtensionOf(format) + ".zip");
 
     /// <summary>列出存档根下的全部文件路径（目录不存在 ⇒ 空）。</summary>
     /// <returns>文件路径。</returns>
@@ -133,7 +133,7 @@ public sealed class SaveTestSandbox : IDisposable
         WriteBytes(path, bytes[..byteCount]);
     }
 
-    /// <summary>把备份**复制回**主档位置（FR-016 的回退路径）。</summary>
+    /// <summary>把备份**解压并复制回**主档位置（FR-016 的回退路径；备份是 zip，需先解包）。</summary>
     /// <param name="name">存档名。</param>
     /// <param name="format">格式。</param>
     public void CopyBackupOverPrimary(string name, SaveFormat format)
@@ -141,7 +141,12 @@ public sealed class SaveTestSandbox : IDisposable
         var backup = BackupPathOf(name, format);
         var primary = PathOf(name, format);
 
-        File.Copy(backup, primary, overwrite: true); // arch-guard:allow 测试沙箱：模拟「把备份复制回主文件」这一回退动作
+        using var stream = File.OpenRead(backup); // arch-guard:allow 测试沙箱：解包备份以模拟「把备份恢复到主档」这一回退动作
+        using var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read);
+        using var entry = archive.Entries[0].Open();
+        using var buffer = new MemoryStream();
+        entry.CopyTo(buffer);
+        WriteBytes(primary, buffer.ToArray());
     }
 
     /// <summary>删除沙箱根（递归），并尽力回收空的父目录。</summary>

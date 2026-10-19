@@ -31,7 +31,8 @@ public sealed class GameSession
     private readonly IAchievementStore _achievements;
     private readonly IRandomService _random;
     private readonly INameGenerator _names;
-    private TurnRunner _runner;    private readonly List<string> _log = [];
+    private TurnRunner _runner;
+    private readonly List<string> _log = [];
 
     private GameSession(
         GameState state,
@@ -51,7 +52,7 @@ public sealed class GameSession
         UnlockTimes = AchievementTimeLog.For(slot, saves.RootDirectory);
     }
 
-    public GameState State { get; }
+    public GameState State { get; private set; }
 
     public SaveSlot Slot { get; private set; }
 
@@ -228,6 +229,7 @@ public sealed class GameSession
         var before = State.Achievements.Completed.Select(static mark => mark.Achievement).ToHashSet();
         var outcome = _runner.Advance(State);
         DescribeTurn(outcome, before);
+        AutoRegisterForUpcomingExam();
 
         if (outcome.AchievementFlush is { IsSuccess: false } flush)
         {
@@ -237,6 +239,50 @@ public sealed class GameSession
         Changed?.Invoke();
         return State.Ending.IsEnded || HasPendingDecision();
     }
+
+    /// <summary>
+    /// 持续报考：进入「报名窗口」（考试当月及前一月）时**立刻**替全家报名
+    /// （2026-10-19 需求 9：原先只在考试月结算内部自动报名，玩家看不到、也来不及行贿）。
+    /// </summary>
+    public void AutoRegisterForUpcomingExam()
+    {
+        if (!State.Family.AutoExamApplication)
+        {
+            return;
+        }
+
+        var date = State.CurrentDate;
+        var level = ExamRegistration.RegisterLevelOf(date);
+
+        if (level is null)
+        {
+            return;
+        }
+
+        var registered = new List<string>();
+
+        foreach (var person in ExamRegistration.EligibleUnapplied(State.Family, date))
+        {
+            ExamRegistration.Register(person, date);
+            registered.Add(person.Name);
+        }
+
+        if (registered.Count > 0)
+        {
+            Note($"✎ 持续报考：为 {registered.Count} 人报名{ExamLevelText(level.Value)}（{string.Join("、", registered)}）。");
+        }
+    }
+
+    /// <summary>考试级别中文名。</summary>
+    /// <param name="level">级别。</param>
+    /// <returns>中文名。</returns>
+    public static string ExamLevelText(ExamLevel level) => level switch
+    {
+        ExamLevel.JieShi => "解试",
+        ExamLevel.ShengShi => "省试",
+        ExamLevel.DianShi => "殿试",
+        _ => level.ToString(),
+    };
 
     /// <summary>是否存在需要玩家决策的事件（婚配提议 / 特奏名询问 / 科举报名窗口）。</summary>
     public bool HasPendingDecision()
@@ -251,8 +297,10 @@ public sealed class GameSession
             return true;
         }
 
+        // 报名窗口 = 考试当月及前一月（2026-10-19：结算在「进入考试月」那一步就判完考试，
+        // 因此必须在**前一月**停下来，否则玩家永远没机会报名 / 行贿）。
         var date = State.CurrentDate;
-        if (ExamCalendar.LevelOf(date) is not null
+        if (ExamRegistration.RegisterLevelOf(date) is not null
             && CountedMembers.Registered(State.Family).Any(person =>
                 ExamRegistration.CanRegister(person, date) || ExamRegistration.SpecialTributeEligible(person, date)))
         {
@@ -868,6 +916,289 @@ public sealed class GameSession
         return string.Empty;
     }
 
+    /// <summary>调试：直接改写选中成员的某一项天赋（需求 17）。</summary>
+    /// <param name="person">成员。</param>
+    /// <param name="key">天赋名（农 / 商 / 仕 / 工）。</param>
+    /// <param name="value">新值（0~100）。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugSetTalent(Person person, string key, int value)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        var talents = person.Talents;
+        var clamped = Math.Clamp(value, 0, 100);
+        var updated = key switch
+        {
+            "农" or "agriculture" => (TalentSet?)new TalentSet(clamped, talents.Commerce, talents.Officialdom, talents.Craft),
+            "商" or "commerce" => new TalentSet(talents.Agriculture, clamped, talents.Officialdom, talents.Craft),
+            "仕" or "officialdom" => new TalentSet(talents.Agriculture, talents.Commerce, clamped, talents.Craft),
+            "工" or "craft" => new TalentSet(talents.Agriculture, talents.Commerce, talents.Officialdom, clamped),
+            _ => null,
+        };
+
+        if (updated is not { } next)
+        {
+            return "用法：talent <农|商|仕|工> <0~100>";
+        }
+
+        person.DebugSetTalents(next);
+        Note($"（调试）{person.Name} 天赋 {key} = {clamped}。");
+        Changed?.Invoke();
+        return $"{person.Name} 天赋 {key} = {clamped}。";
+    }
+
+    /// <summary>调试：直接改写选中成员的属性 / 学业 / 体质 / 天命寿数（需求 17）。</summary>
+    /// <param name="person">成员。</param>
+    /// <param name="key">属性名（study / health / lifespan / merit）。</param>
+    /// <param name="value">新值。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugSetAttribute(Person person, string key, int value)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        switch (key)
+        {
+            case "study" or "学业":
+                person.Study = Math.Clamp(value, 0, 100);
+                break;
+            case "health" or "体质":
+                person.Health = Math.Clamp(value, 1, 100);
+                break;
+            case "lifespan" or "寿数" or "天命":
+                person.DebugSetLifespan(Math.Max(1, value));
+                break;
+            case "merit" or "政绩":
+                person.Merit = Math.Clamp(value, 0, 100);
+                break;
+            default:
+                return "用法：attr <study|health|lifespan|merit> <数值>";
+        }
+
+        Note($"（调试）{person.Name} {key} = {value}。");
+        Changed?.Invoke();
+        return $"{person.Name} {key} = {value}。";
+    }
+
+    /// <summary>调试：为选中成员叠加「本次考试录取率」百分点加成（需求 17）。</summary>
+    /// <param name="person">成员。</param>
+    /// <param name="points">百分点（1 = +1%），可负。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugAddExamRateBonus(Person person, decimal points)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        DebugOverrides.AddExamRateBonus(person.Id, points / 100m);
+        Note($"（调试）{person.Name} 录取率加成 +{points}%（当前 {DebugOverrides.ExamRateBonusOf(person.Id) * 100m:0.##}%）。");
+        Changed?.Invoke();
+        return $"{person.Name} 录取率加成 +{points} 个百分点（累计 {DebugOverrides.ExamRateBonusOf(person.Id) * 100m:0.##}%）。";
+    }
+
+    /// <summary>调试：为选中成员叠加「疾病自愈率」百分点加成（需求 17）。</summary>
+    /// <param name="person">成员。</param>
+    /// <param name="points">百分点（1 = +1%），可负。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugAddHealRateBonus(Person person, decimal points)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        DebugOverrides.AddHealRateBonus(person.Id, points / 100m);
+        Note($"（调试）{person.Name} 自愈率加成 +{points}%（当前 {DebugOverrides.HealRateBonusOf(person.Id) * 100m:0.##}%）。");
+        Changed?.Invoke();
+        return $"{person.Name} 自愈率加成 +{points} 个百分点（累计 {DebugOverrides.HealRateBonusOf(person.Id) * 100m:0.##}%）。";
+    }
+
+    /// <summary>调试：清空全部在内存里的调试加成（需求 17）。</summary>
+    /// <returns>结果文本。</returns>
+    public string DebugClearOverrides()
+    {
+        DebugOverrides.Clear();
+        Changed?.Invoke();
+        return "已清空全部调试加成（录取率 / 自愈率）。";
+    }
+
+    /// <summary>调试：强制解锁成就（需求 12：调试秘辛系列）。</summary>
+    /// <param name="code">成就编号（<c>ACH-064</c> / <c>64</c> / <c>all</c>）。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugUnlockAchievement(string code)
+    {
+        var text = code.Trim().ToUpperInvariant();
+        var targets = new List<AchievementDefinition>();
+
+        if (text is "ALL" or "*")
+        {
+            targets.AddRange(AchievementCatalog.All);
+        }
+        else
+        {
+            var digits = text.StartsWith("ACH-", StringComparison.Ordinal) ? text[4..] : text;
+            if (!int.TryParse(digits, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var number))
+            {
+                return "用法：ach-unlock <ACH-064|64|all>";
+            }
+
+            var found = AchievementCatalog.All.FirstOrDefault(definition => definition.Code == $"ACH-{number:D3}");
+            if (found is null)
+            {
+                return $"未找到成就 ACH-{number:D3}。";
+            }
+
+            targets.Add(found);
+        }
+
+        var unlocked = 0;
+        foreach (var definition in targets)
+        {
+            if (AchievementQuery.IsCompleted(State, definition.Id))
+            {
+                continue;
+            }
+
+            var mark = new AchievementMark(definition.Id, State.Difficulty, State.CurrentDate);
+            if (State.Achievements.MarkCompletedAndEnqueue(mark, State.Id))
+            {
+                unlocked++;
+            }
+        }
+
+        Note($"（调试）强制解锁成就 {unlocked} 条。");
+        Changed?.Invoke();
+        return unlocked == 0 ? "没有可解锁的成就（都已达成）。" : $"已强制解锁 {unlocked} 条成就。";
+    }
+
+    // ───────────────────────── 概率与自愈率明细（需求 5 / 18） ─────────────────────────
+
+    /// <summary>某成员**当前应考级别**的录取率（已报名则取报名级别，否则取派生级别）。</summary>
+    /// <param name="person">成员。</param>
+    /// <returns>录取率；进士或无级别时为 <c>null</c>。</returns>
+    public decimal? AdmissionRateOf(Person person) => AdmissionBreakdownOf(person)?.Rate;
+
+    /// <summary>某成员当前级别录取率的逐项拆解。</summary>
+    /// <param name="person">成员。</param>
+    /// <returns>拆解；进士或无级别时为 <c>null</c>。</returns>
+    public ExamRateBreakdown? AdmissionBreakdownOf(Person person)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        var level = person.AppliedExam ?? ExamRegistration.TargetLevelOf(person);
+
+        if (level is not (ExamLevel.JieShi or ExamLevel.ShengShi))
+        {
+            return null;
+        }
+
+        return ExamAdmission.Breakdown(
+            level.Value, person, State.Family.HasShiStatus, BribeRules.MultiplierOf(level.Value, person));
+    }
+
+    /// <summary>把录取率拆解排成给玩家看的多行文本（需求 18）。</summary>
+    /// <param name="breakdown">拆解。</param>
+    /// <returns>多行说明。</returns>
+    public static string DescribeAdmissionBreakdown(ExamRateBreakdown breakdown)
+    {
+        var lines = new List<string>
+        {
+            $"{ExamLevelText(breakdown.Level)}录取率：{Percent(breakdown.Rate)}" +
+                (breakdown.RawRate > ExamPolicy.DiceRateCap ? $"（封顶前 {Percent(breakdown.RawRate)}）" : string.Empty),
+            $"  基础率：{Percent(breakdown.BaseRate)}",
+            $"  学业系数：×{Number(breakdown.StudyFactor)}（学业 {breakdown.Study}）",
+            $"  仕天赋：×{Number(breakdown.OfficialdomFactor)}（仕 {breakdown.Officialdom}，{Percent(breakdown.OfficialdomFactor - 1m)}）",
+            $"  行贿乘数：×{Number(breakdown.BribeMultiplier)}（本级累计行贿 {breakdown.BribeCount} 次）",
+            $"  仕族加成：×{Number(breakdown.ShiBonus)}",
+        };
+
+        if (breakdown.DebugBonus != 0m)
+        {
+            lines.Add($"  调试加成：+{Percent(breakdown.DebugBonus)}（百分点，直接加在乘积上）");
+        }
+
+        lines.Add(
+            $"  = {Percent(breakdown.BaseRate)} × {Number(breakdown.StudyFactor)} × {Number(breakdown.OfficialdomFactor)}" +
+            $" × {Number(breakdown.BribeMultiplier)} × {Number(breakdown.ShiBonus)}" +
+            (breakdown.DebugBonus != 0m ? $" + {Percent(breakdown.DebugBonus)}" : string.Empty) +
+            $" = {Percent(breakdown.RawRate + breakdown.DebugBonus)}" +
+            (breakdown.RawRate + breakdown.DebugBonus > ExamPolicy.DiceRateCap
+                ? $" → 封顶 {Percent(breakdown.Rate)}"
+                : string.Empty));
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>某成员当前的自愈率拆解（需求 18）。</summary>
+    /// <param name="person">成员。</param>
+    /// <param name="treated">是否正在治疗。</param>
+    /// <returns>拆解。</returns>
+    public HealRateBreakdown RecoveryBreakdownOf(Person person, bool treated) =>
+        IllnessQueries.RecoveryBreakdown(person, State.CurrentDate, treated);
+
+    /// <summary>把自愈率拆解排成给玩家看的多行文本（需求 18）。</summary>
+    /// <param name="breakdown">拆解。</param>
+    /// <returns>多行说明。</returns>
+    public static string DescribeRecoveryBreakdown(HealRateBreakdown breakdown)
+    {
+        var lines = new List<string>
+        {
+            $"自愈率：{Percent(breakdown.Rate)}（体质 {breakdown.Health}，{(breakdown.Treated ? "治疗中" : "未治疗")}，主导天赋 {breakdown.TalentName}）",
+            $"  体质项：{(breakdown.Treated
+                ? $"({breakdown.Health} × {Number(IllnessPolicy.TreatedRecoveryCoefficient)}% + {Number(IllnessPolicy.TreatedRecoveryOffset)})"
+                : $"{breakdown.Health} × {Number(IllnessPolicy.BaseRecoveryCoefficient)}%")}" +
+                $" = {Percent(breakdown.BasePart)}",
+            $"  天赋乘数：×{Number(breakdown.TalentMultiplier)}（{breakdown.TalentName}为最高项）",
+            $"  年龄增益：+{Percent(breakdown.AgeBonus)}（3~12 岁 +60%、12~24 岁 +30%）",
+        };
+
+        if (breakdown.DebugBonus != 0m)
+        {
+            lines.Add($"  调试加成：+{Percent(breakdown.DebugBonus)}");
+        }
+
+        lines.Add(
+            $"  = ({Percent(breakdown.BasePart)} × {Number(breakdown.TalentMultiplier)})" +
+            $" + {Percent(breakdown.AgeBonus)}" +
+            (breakdown.DebugBonus != 0m ? $" + {Percent(breakdown.DebugBonus)}" : string.Empty) +
+            $" = {Percent(breakdown.Rate)}");
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>自动治疗（需求 10）：把所有患病且未在治疗的成员一次性置入治疗。</summary>
+    /// <returns>本次开始治疗的人数。</returns>
+    public int AutoTreatAll()
+    {
+        var count = 0;
+
+        foreach (var person in CountedMembers.Registered(State.Family).OrderBy(member => member.Id.Value).ToList())
+        {
+            if ((person.Status & StatusFlag.Ill) != StatusFlag.Ill
+                || person.Timers.TreatmentRemainingMonths is not null)
+            {
+                continue;
+            }
+
+            var outcome = LifecycleEntry.StartTreatment(State, person);
+
+            if (outcome.Accepted)
+            {
+                count++;
+                Note($"✚ 自动治疗：{person.Name}（{IllnessPolicy.TreatmentMonths} 个月疗程）。");
+            }
+        }
+
+        if (count > 0)
+        {
+            Changed?.Invoke();
+        }
+
+        return count;
+    }
+
+    /// <summary>百分比文本（<c>0.25 ⇒ 25%</c>）。</summary>
+    private static string Percent(decimal value) =>
+        (value * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    /// <summary>系数文本（保留三位以内小数）。</summary>
+    private static string Number(decimal value) =>
+        value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
     // ───────────────────────── 存档 ─────────────────────────
 
     public string Save()
@@ -889,15 +1220,71 @@ public sealed class GameSession
         try
         {
             var slot = new SaveSlot(name, format);
-            _saves.Save(State, slot, overwrite: false);
+
+            // 另存为 = 以**新存档标识**复制一份（同一标识并存于两个档名是契约九 §5 禁止的状态，
+            // 旧的「直接 Save」正是「存档标识已存在于另一个档名下」崩溃的来源）。
+            State = _saves.SaveAsFork(State, slot);
             Slot = slot;
-            Note($"◆ 已另存为「{name}」。");
+            _runner = new TurnRunner(_random, _saves, Slot, _names, _achievements);
+            Note($"◆ 已另存为「{name}」（新存档标识）。");
+            Changed?.Invoke();
             return string.Empty;
         }
         catch (SaveFileException ex)
         {
             return $"另存失败：{ex.Message}";
         }
+    }
+
+    /// <summary>仅改档名，存档标识不变（契约九 §5：改名 MUST NOT 变更 SaveId）。</summary>
+    /// <param name="newName">新档名。</param>
+    /// <returns>失败原因；成功为空串。</returns>
+    public string Rename(string newName)
+    {
+        try
+        {
+            Slot = _saves.Rename(Slot, newName);
+            _runner = new TurnRunner(_random, _saves, Slot, _names, _achievements);
+            Note($"◆ 已改名为「{Slot.Name}」。");
+            Changed?.Invoke();
+            return string.Empty;
+        }
+        catch (SaveFileException ex)
+        {
+            return $"改名失败：{ex.Message}";
+        }
+    }
+
+    /// <summary>列出 <c>saves/backups</c> 下的全部压缩备份（2026-10-19 需求 15）。</summary>
+    /// <returns>备份槽位（按档名升序）。</returns>
+    public static IReadOnlyList<SaveSlot> ListBackups()
+    {
+        var saves = new SaveService();
+
+        try
+        {
+            return saves.ListBackups();
+        }
+        catch (SaveFileException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>从备份读档（2026-10-19 需求 15）：读回后即以此为当前档继续。</summary>
+    /// <param name="slot">备份槽位。</param>
+    /// <param name="seed">随机种子。</param>
+    /// <returns>会话。</returns>
+    public static GameSession LoadBackup(SaveSlot slot, int seed)
+    {
+        var random = new SeededRandomService(seed);
+        var names = new SongStyleNameGenerator(random);
+        var saves = new SaveService();
+        var achievements = new AchievementStore(saves);
+        var state = saves.LoadBackup(slot);
+        var session = new GameSession(state, slot, saves, random, names, achievements);
+        session.Note($"☆ 从备份读档 {slot.Name}：{state.Family.Name}家，{state.CurrentDate}。");
+        return session;
     }
 
     public string Backup()

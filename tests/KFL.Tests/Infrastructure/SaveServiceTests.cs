@@ -859,4 +859,96 @@ public sealed class SaveServiceTests
 
         Assert.Equal(SaveFileErrorKind.Missing, error.Kind);
     }
+
+    /// <summary>
+    /// 玩家反馈 13（规格书 §14 的 2026-10-19 裁决 ②）：改名后**另存为** MUST 成功，
+    /// 且新档持有**新的存档标识**——旧实现把同一 UUID 写到另一个档名下，被唯一性闸门拒绝。
+    /// </summary>
+    [Fact]
+    public void 改名后另存为铸造新标识且两档各自可读回()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var state = SaveFixtures.RichState();
+        var slot = new SaveSlot("旧名");
+
+        service.Save(state, slot, overwrite: false);
+        var renamed = service.Rename(slot, "新名");
+
+        // 改名后按旧实现（同标识写另一个档名）会抛 SaveIdentityConflictException。
+        var forked = service.SaveAsFork(state, new SaveSlot("分支名"));
+
+        Assert.NotEqual(state.Id, forked.Id);
+        Assert.Equal(new SaveSlot("分支名", SaveFormat.Binary), service.FindBySaveId(forked.Id));
+
+        // 原档保持不变、仍指向旧标识。
+        Assert.Equal(state.Id, service.Load(renamed).Id);
+        Assert.Equal(new SaveSlot("新名", SaveFormat.Binary), service.FindBySaveId(state.Id));
+
+        // 两个档各读各的：分支档是可独立推进的深拷贝，只换标识（故不比对 Id）。
+        SaveStateComparer.AssertEquivalent(state, service.Load(renamed));
+        SaveStateComparer.AssertEquivalent(state, service.Load(new SaveSlot("分支名")), compareId: false);
+    }
+
+    /// <summary>玩家反馈 13：另存为到已占用的档名 ⇒ 拒绝（与 <c>Save</c> 同口径）。</summary>
+    [Fact]
+    public void 另存为到已占用档名被拒()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var state = SaveFixtures.PlainState();
+
+        service.Save(state, new SaveSlot("甲档"), overwrite: false);
+
+        Assert.Throws<SaveNameConflictException>(
+            () => service.SaveAsFork(state, new SaveSlot("甲档")));
+    }
+
+    /// <summary>
+    /// 玩家反馈 14 / 15：备份落地为**压缩包**（<c>存档名.dat.zip</c>），
+    /// 且 <c>ListBackups</c> / <c>LoadBackup</c> 能把它读回。
+    /// </summary>
+    [Theory]
+    [InlineData(SaveFormat.Binary)]
+    [InlineData(SaveFormat.Json)]
+    public void 备份是压缩包且可被读回(SaveFormat format)
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("甲档", format);
+        var state = SaveFixtures.RichState();
+
+        service.Save(state, slot, overwrite: false);
+        service.Backup(slot);
+
+        // 扩展名是 .zip（也就是「备份是压缩包」这一句的可执行形式）。
+        var backup = Assert.Single(sandbox.BackupFiles());
+        Assert.EndsWith(".zip", backup, StringComparison.Ordinal);
+
+        var listed = Assert.Single(service.ListBackups());
+        Assert.Equal(slot, listed);
+        SaveStateComparer.AssertEquivalent(state, service.LoadBackup(listed));
+    }
+
+    /// <summary>玩家反馈 14：压缩包不是单条目 ⇒ 判为损坏（MUST NOT 猜内容）。</summary>
+    [Fact]
+    public void 备份压缩包条目数异常时报损坏()
+    {
+        using var sandbox = new SaveTestSandbox();
+        var service = sandbox.CreateService();
+        var slot = new SaveSlot("甲档");
+
+        service.Save(SaveFixtures.PlainState(), slot, overwrite: false);
+        service.Backup(slot);
+
+        // 重写成一个「零条目」的 zip：结构合法，但不是我们写出来的东西。
+        using (var stream = new FileStream(Assert.Single(sandbox.BackupFiles()), FileMode.Create, FileAccess.Write))
+        using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            _ = archive; // arch-guard:allow 测试要故意造一个空压缩包
+        }
+
+        var error = Assert.Throws<SaveFileException>(() => service.LoadBackup(slot));
+        Assert.Equal(SaveFileErrorKind.Malformed, error.Kind);
+    }
 }

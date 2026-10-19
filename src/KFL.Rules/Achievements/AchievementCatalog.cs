@@ -124,6 +124,50 @@ public static class AchievementCatalog
             ? definition
             : throw new ArgumentOutOfRangeException(nameof(id), id, "未定义的成就标识。");
 
+    /// <summary>「稀有」成就：非攒量型、单次或极难达成，未解锁时按隐藏成就展示（玩家反馈 12）。</summary>
+    private static readonly HashSet<AchievementId> RareIds =
+    [
+        AchievementId.GoldenList,
+        AchievementId.WealthOfTheRegion,
+        AchievementId.Longevity,
+        AchievementId.NarrowEscape,
+        AchievementId.Prefect,
+        AchievementId.Chancellor,
+        AchievementId.ImperialSweep,
+        AchievementId.BribeCapReached,
+        AchievementId.FamilyWideBan,
+        AchievementId.AllFourOrigins,
+        AchievementId.HellEnding,
+    ];
+
+    /// <summary>隐藏来源族：一次性的机运 / 结局类，条件本身即剧透（玩家反馈 12）。</summary>
+    private static readonly HashSet<AchievementSource> HiddenSources =
+    [
+        AchievementSource.Lifecycle,
+        AchievementSource.Ending,
+        AchievementSource.Pending,
+        AchievementSource.GlobalArchive,
+        AchievementSource.Famine,
+    ];
+
+    /// <summary>
+    /// 是否为隐藏成就：未达成时隐藏名称与达成条件，达成后自动揭示（玩家反馈 12）。
+    /// </summary>
+    /// <remarks>
+    /// 判据只看「系列 / 来源族 / 稀有清单」这类文档性元数据，不参与任何成就达成判定，
+    /// 因此不影响 <see cref="AchievementPredicates"/> 与存档格式。
+    /// </remarks>
+    /// <param name="definition">成就定义。</param>
+    /// <returns>隐藏则 <c>true</c>。</returns>
+    public static bool IsHidden(AchievementDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+
+        return definition.Series == AchievementSeries.DebugSecrets
+            || HiddenSources.Contains(definition.Source)
+            || RareIds.Contains(definition.Id);
+    }
+
     /// <summary>某个系列的行数（用于七系列计数断言）。</summary>
     /// <param name="series">系列。</param>
     /// <returns>该系列的条目数。</returns>

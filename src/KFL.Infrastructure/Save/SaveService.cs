@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using KFL.Core.Entities;
 using KFL.Infrastructure.Abstractions;
 using KFL.Infrastructure.Save.Serialization;
@@ -177,20 +178,93 @@ public sealed class SaveService : ISaveService
         // ① 文件存在吗 ⇒ 否 ⇒ Missing。
         //    判据取「读一下」而不是「先问存不存在」：目录不可读时存在性检查只会答「不存在」，
         //    把访问失败误报成缺档（契约九 §2、§4 条款 5）。
-        byte[] fileBytes;
+        var fileBytes = ReadFileOrThrow(path, name);
+
+        return ReadState(fileBytes, slot);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<SaveSlot> ListBackups()
+    {
+        var slots = new List<SaveSlot>();
+
+        foreach (var file in SaveCatalog.ListFiles(SaveCatalog.BackupsDirectoryOf(RootDirectory)))
+        {
+            if (!TryDescribeBackup(file, out var stem, out var format))
+            {
+                continue;
+            }
+
+            if (!slots.Exists(slot => slot.Format == format && SaveName.IsSameName(slot.Name, stem)))
+            {
+                slots.Add(new SaveSlot(stem, format));
+            }
+        }
+
+        slots.Sort((left, right) => string.Compare(left.Name, right.Name, StringComparison.OrdinalIgnoreCase));
+        return slots.AsReadOnly();
+    }
+
+    /// <inheritdoc />
+    public GameState LoadBackup(SaveSlot slot)
+    {
+        var name = SaveName.Validate(slot.Name);
+        var extension = SaveFileFormat.ExtensionOf(slot.Format);
+        var path = SaveCatalog.Combine(
+            SaveCatalog.BackupsDirectoryOf(RootDirectory), name + extension + BackupSuffix);
+
+        var zipBytes = ReadFileOrThrow(path, name + extension + BackupSuffix);
+
+        return ReadState(Unzip(zipBytes), slot);
+    }
+
+    /// <inheritdoc />
+    public GameState SaveAsFork(GameState state, SaveSlot slot)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        var name = SaveName.Validate(slot.Name);
+        var extension = SaveFileFormat.ExtensionOf(slot.Format);
+
+        if (FindSameNameFiles(name).Count > 0)
+        {
+            throw new SaveNameConflictException($"存档名已存在：{name}");
+        }
+
+        var payload = SaveStateMapper.ToDto(state);
+
+        // 另存为 MUST 换一个存档标识：同标识并存于两个档名是契约九 §5 明令禁止的外部坏状态。
+        payload.Id = Guid.NewGuid(); // arch-guard:allow 契约九 §5：另存为必须铸造新存档标识（基础设施层的唯一铸造点）
+
+        var fileBytes = FormatOf(slot.Format).Write(payload.Id, payload);
+        SaveCatalog.EnsureDirectory(RootDirectory);
+        _writer.Write(SaveCatalog.Combine(RootDirectory, name + extension), fileBytes);
+        RemoveStaleSiblings(name, extension, payload.Id);
+
+        // 从盘上读回：调用方拿到的是**独立**的新标识状态，与入参不发生共享。
+        return Load(new SaveSlot(name, slot.Format));
+    }
+
+    /// <summary>读整个文件；缺文件 / 不可读两类失败按契约九 §2 分类抛出。</summary>
+    private static byte[] ReadFileOrThrow(string path, string displayName)
+    {
         try
         {
-            fileBytes = SaveCatalog.ReadAllBytes(path);
+            return SaveCatalog.ReadAllBytes(path);
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
-            throw new SaveFileException(SaveFileErrorKind.Missing, $"存档不存在：{name}");
+            throw new SaveFileException(SaveFileErrorKind.Missing, $"存档不存在：{displayName}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             throw new SaveAccessException($"存档不可读：{path}", ex);
         }
+    }
 
+    /// <summary>字节 → 状态（Load / LoadBackup 共用的八步校验）。</summary>
+    private GameState ReadState(byte[] fileBytes, SaveSlot slot)
+    {
         // ②③④⑤⑥ 头 / 截断 / 版本闸门 / 主体解析 / 必需成员，全部由格式实现按契约十 §6 分类。
         var (header, payload) = FormatOf(slot.Format).Read(fileBytes);
 
@@ -258,8 +332,12 @@ public sealed class SaveService : ISaveService
         var backupsDirectory = SaveCatalog.BackupsDirectoryOf(RootDirectory);
         SaveCatalog.EnsureDirectory(backupsDirectory);
 
-        // 覆盖式、文件名 = 存档名 + 与当前档相同扩展名、每档只留一份、绝不追加时间戳（契约九 §7）。
-        _writer.Copy(sourcePath, SaveCatalog.Combine(backupsDirectory, name + extension));
+        // 覆盖式、文件名 = 存档名 + 与当前档相同扩展名 + .zip、每档只留一份、绝不追加时间戳
+        // （契约九 §7；2026-10-19 需求 14 起备份一律压缩）。
+        var bytes = SaveCatalog.ReadAllBytes(sourcePath);
+        _writer.Write(
+            SaveCatalog.Combine(backupsDirectory, name + extension + BackupSuffix),
+            Zip(name + extension, bytes));
 
         // 清掉 backups/ 下指向**同一标识**的其它备份（契约九 §7 第 7 条）：这条不变式对
         // 「本次保存 / 本次备份 / 本次格式切换」一律成立，故与 Save 复用同一个清理点。
@@ -332,7 +410,7 @@ public sealed class SaveService : ISaveService
     private void RenameBackup(string currentName, string newName, string extension)
     {
         var backupsDirectory = SaveCatalog.BackupsDirectoryOf(RootDirectory);
-        var sourcePath = SaveCatalog.Combine(backupsDirectory, currentName + extension);
+        var sourcePath = SaveCatalog.Combine(backupsDirectory, currentName + extension + BackupSuffix);
 
         if (!SaveCatalog.FileExists(sourcePath))
         {
@@ -340,7 +418,65 @@ public sealed class SaveService : ISaveService
         }
 
         // 备份改名 MUST NOT 损坏主档，且 MUST NOT 被吞（契约九 §6 第 5 条）。
-        _writer.Move(sourcePath, SaveCatalog.Combine(backupsDirectory, newName + extension));
+        _writer.Move(sourcePath, SaveCatalog.Combine(backupsDirectory, newName + extension + BackupSuffix));
+    }
+
+    /// <summary>备份文件名 = 存档名 + 原扩展名 + <c>.zip</c>（2026-10-19 需求 14）。</summary>
+    private const string BackupSuffix = ".zip";
+
+    /// <summary>把一份存档字节压进单条目 zip（条目名 = 原文件名，解压即得可读存档）。</summary>
+    private static byte[] Zip(string entryName, byte[] payload)
+    {
+        using var buffer = new MemoryStream();
+
+        using (var archive = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+
+            using var entryStream = entry.Open();
+            entryStream.Write(payload, 0, payload.Length);
+        }
+
+        return buffer.ToArray();
+    }
+
+    /// <summary>解开单条目 zip，取回内部存档字节。</summary>
+    private static byte[] Unzip(byte[] zipBytes)
+    {
+        using var buffer = new MemoryStream(zipBytes);
+        using var archive = new ZipArchive(buffer, ZipArchiveMode.Read);
+
+        if (archive.Entries.Count != 1)
+        {
+            throw new SaveFileException(
+                SaveFileErrorKind.Malformed, $"备份压缩包条目数异常：{archive.Entries.Count}（应为 1）。");
+        }
+
+        using var entryStream = archive.Entries[0].Open();
+        using var output = new MemoryStream();
+        entryStream.CopyTo(output);
+
+        return output.ToArray();
+    }
+
+    /// <summary>
+    /// 备份文件名 → 「档名 + 格式」。备份是 <c>&lt;档名&gt;&lt;扩展名&gt;.zip</c>，
+    /// 故先剥掉 <c>.zip</c> 再按普通存档文件名解析。
+    /// </summary>
+    private static bool TryDescribeBackup(string path, out string stem, out SaveFormat format)
+    {
+        stem = string.Empty;
+        format = default;
+
+        if (!string.Equals(SaveCatalog.ExtensionOf(path), BackupSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var inner = SaveCatalog.FileNameStemOf(path);   // 「狄家.dat.zip」→「狄家.dat」
+
+        return SaveFileFormat.TryFormatOfExtension(SaveCatalog.ExtensionOf(inner), out format)
+            && (stem = SaveCatalog.FileNameStemOf(inner)) is { Length: > 0 };
     }
 
     private void RemoveStaleSiblings(string name, string extension, Guid saveId)
@@ -375,7 +511,7 @@ public sealed class SaveService : ISaveService
         var backupsDirectory = SaveCatalog.BackupsDirectoryOf(RootDirectory);
         foreach (var file in SaveCatalog.ListFiles(backupsDirectory))
         {
-            if (!TryDescribe(file, out var stem, out var format))
+            if (!TryDescribeBackup(file, out var stem, out var format))
             {
                 continue;
             }
@@ -392,11 +528,31 @@ public sealed class SaveService : ISaveService
             }
 
             if (saveId is { } id
-                && TryReadHeader(file, out var header, out _)
+                && TryReadBackupHeader(file, format, out var header)
                 && header.SaveId == id)
             {
                 _writer.Delete(file);   // 同标识的其它备份
             }
+        }
+    }
+
+    /// <summary>从压缩备份里读头（备份是 zip，故先解压再走格式实现的只读头探针）。</summary>
+    private bool TryReadBackupHeader(string path, SaveFormat format, out SaveFileHeader header)
+    {
+        header = default;
+
+        try
+        {
+            header = FormatOf(format).ReadHeader(Unzip(SaveCatalog.ReadAllBytes(path)));
+            return true;
+        }
+        catch (SaveFileException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return false;
         }
     }
 }

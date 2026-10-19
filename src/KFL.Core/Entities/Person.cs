@@ -32,6 +32,8 @@ public sealed class Person
     private readonly ReadOnlyCollection<PersonId> _formerSpouseIdsView;
 
     private int _generation;
+private TalentSet _talents;
+private int _lifespan;
     private string _name = string.Empty;
     private int _study;
     private int _health;
@@ -99,8 +101,8 @@ public sealed class Person
         Name = name;
         Gender = gender;
         BirthDate = birthDate;
-        Talents = talents;
-        Lifespan = lifespan;
+        _talents = talents;
+        _lifespan = lifespan;
         FatherId = fatherId;
         MotherId = motherId;
         _generation = generation;
@@ -136,7 +138,11 @@ public sealed class Person
     public GameDate BirthDate { get; }
 
     /// <summary>四项天赋。**无公开写入通道**（出生即定，终生不可升降，规格书 §4.1）。</summary>
-    public TalentSet Talents { get; }
+    /// <remarks>
+    /// 唯一的例外是 <see cref="DebugSetTalents"/>：调试控制台按玩家要求改写四项天赋点；
+    /// 正常运行路径 MUST NOT 调用它（规格书 §4.1 的「终生不可升降」约束的是游戏内机制，不是调试入口）。
+    /// </remarks>
+    public TalentSet Talents => _talents;
 
     /// <summary>学业，0~100。</summary>
     public int Study
@@ -161,7 +167,26 @@ public sealed class Person
     }
 
     /// <summary>天命寿数（年）。**无公开写入通道**；只约束 <c>&gt;= 0</c>，**无上界**（逻辑轨 ⑦）。</summary>
-    public int Lifespan { get; }
+    /// <remarks>唯一例外是 <see cref="DebugSetLifespan"/>（调试控制台）。</remarks>
+    public int Lifespan => _lifespan;
+
+    /// <summary>调试写入：改写四项天赋（仅调试控制台调用；正常路径 MUST NOT 使用）。</summary>
+    /// <param name="talents">新的四项天赋。</param>
+    public void DebugSetTalents(TalentSet talents) => _talents = talents;
+
+    /// <summary>调试写入：改写天命寿数（仅调试控制台调用；正常路径 MUST NOT 使用）。</summary>
+    /// <param name="lifespan">新的寿数（年，<c>&gt;= 0</c>）。</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="lifespan"/> 为负。</exception>
+    public void DebugSetLifespan(int lifespan)
+    {
+        if (lifespan < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lifespan), lifespan, "天命寿数 MUST >= 0（规格书 §4.1）。");
+        }
+
+        _lifespan = lifespan;
+    }
 
     /// <summary>
     /// 功名变迁历史，追加式、按 <see cref="DegreeRecord.ChangedAt"/> 非降序。

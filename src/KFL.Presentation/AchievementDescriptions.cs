@@ -97,12 +97,12 @@ public static class AchievementDescriptions
         [AchievementId.ReliefRecoveredShortfall] = "达成条件：在“救济模式”结束后，当月结算仍无法付得起全额生活支出（导致体质继续下降或触发死亡判定）。",
         [AchievementId.FamineDeath] = "达成条件：家族中有成员因饥馑状态（体质降至 0）而死亡。",
 
-        // 系列七：调试秘辛（ACH-064~068，本版本恒不解锁）
-        [AchievementId.DebugWakeOne] = "达成条件：首次按 S-U-N-T-I-O-N 唤醒调试控制台。（本版本恒不解锁）",
-        [AchievementId.DebugWakeTen] = "达成条件：累计唤醒调试控制台 10 次。（本版本恒不解锁）",
-        [AchievementId.DebugWakeHundred] = "达成条件：累计唤醒调试控制台 100 次。（本版本恒不解锁）",
-        [AchievementId.DebugWakeThousand] = "达成条件：累计唤醒调试控制台 1000 次。（本版本恒不解锁）",
-        [AchievementId.DebugWakeTenThousand] = "达成条件：累计唤醒调试控制台 10000 次。（本版本恒不解锁）",
+        // 系列七：调试秘辛（ACH-064~068；隐藏成就，达成前不显示条件）
+        [AchievementId.DebugWakeOne] = "达成条件：首次唤醒调试控制台。（隐藏成就）",
+        [AchievementId.DebugWakeTen] = "达成条件：累计唤醒调试控制台 10 次。（隐藏成就）",
+        [AchievementId.DebugWakeHundred] = "达成条件：累计唤醒调试控制台 100 次。（隐藏成就）",
+        [AchievementId.DebugWakeThousand] = "达成条件：累计唤醒调试控制台 1000 次。（隐藏成就）",
+        [AchievementId.DebugWakeTenThousand] = "达成条件：累计唤醒调试控制台 10000 次。（隐藏成就）",
     };
 
     /// <summary>取一条成就的「达成条件」中文描述。</summary>

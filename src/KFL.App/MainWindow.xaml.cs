@@ -72,6 +72,18 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>双击顶部考试条：开关「录取率来源与算式」悬浮窗（需求 18）。</summary>
+    private void OnExamInfoMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount < 2)
+        {
+            return;
+        }
+
+        _viewModel.DoCommand.Execute("examdetail");
+        e.Handled = true;
+    }
+
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key is Key.Oem3 or Key.OemTilde)
