@@ -87,7 +87,7 @@ public sealed class AchievementPendingWiringTests
         @"src\KFL.Rules\Achievements\AchievementPredicates.cs",
         @"src\KFL.Rules\Achievements\AchievementSource.cs",
         @"src\KFL.Rules\Config\AchievementPolicy.cs",
-        @"src\KFL.Rules\Config\GameConfig.cs",
+        @"src\KFL.Rules\Config\GameConfig.System.cs",
     ];
 
     private static readonly string[] TradeLossCommentFiles =
@@ -95,7 +95,7 @@ public sealed class AchievementPendingWiringTests
         @"src\KFL.Presentation\AchievementDescriptions.cs",
         @"src\KFL.Rules\Achievements\AchievementPredicates.cs",
         @"src\KFL.Rules\Config\AchievementPolicy.cs",
-        @"src\KFL.Rules\Config\GameConfig.cs",
+        @"src\KFL.Rules\Config\GameConfig.System.cs",
     ];
 
     /// <summary>上报唤醒的唯一接缝：状态累加器 + 计数器门面；界面层只能经门面（U4 调试控制台）的复数包装取用。</summary>
