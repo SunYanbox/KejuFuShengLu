@@ -95,16 +95,16 @@ public sealed partial class GameSession
         var result = LifecycleEntry.BuyPerson(State, _random, _names);
         if (!result.Accepted)
         {
-            return $"买入人口失败：{Display.LifecycleReason(result.RejectReason)}。";
+            return $"收养失败：{Display.LifecycleReason(result.RejectReason)}。";
         }
 
-        Note($"⚑ 买入人口 {Display.PersonBrief(LastPurchasedPerson(), State.CurrentDate)}，花费 {Display.Money(result.Amount)}（现金 {Display.Money(result.FromCash)} + 储蓄 {Display.Money(result.FromSavings)}）。");
+        Note($"⚑ 收养 {Display.PersonBrief(LastPurchasedPerson(), State.CurrentDate)}，花费 {Display.Money(result.Amount)}（现金 {Display.Money(result.FromCash)} + 储蓄 {Display.Money(result.FromSavings)}）。");
         Changed?.Invoke();
         return string.Empty;
     }
 
-    /// <summary>最近一名买来的成员（取账本里最新一条 <see cref="LedgerCategory.PersonBought"/> 事件条目）。</summary>
-    /// <returns>该成员；账本里没有买人记录或其已不在家族时返回 <c>null</c>。</returns>
+    /// <summary>最近一名收养成员（取账本里最新一条 <see cref="LedgerCategory.PersonBought"/> 事件条目）。</summary>
+    /// <returns>该成员；账本里没有收养记录或其已不在家族时返回 <c>null</c>。</returns>
     private Person? LastPurchasedPerson()
     {
         var entries = State.Economy.Ledger.Entries;

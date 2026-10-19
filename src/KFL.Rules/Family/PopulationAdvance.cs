@@ -30,7 +30,7 @@ public static class PopulationAdvance
     /// <summary>按固定次序推进一个月的人口与健康，返回当月事实段。</summary>
     /// <param name="state">游戏状态（读 <c>CurrentDate</c> 为当月）。</param>
     /// <param name="random">随机服务（子步内消费，次序见契约十八 §3）。</param>
-    /// <param name="names">取名服务（新生儿、候选者与买来者）。</param>
+    /// <param name="names">取名服务（新生儿、候选者与被收养者）。</param>
     /// <returns>当月事实段。</returns>
     public static PopulationAdvanceResult Run(GameState state, IRandomService random, INameGenerator names)
     {

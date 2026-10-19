@@ -48,7 +48,7 @@ public enum LifecycleRejectReason
     /// <summary>本年度已为这对夫妇申请过分娩（每自然年至多一次）。</summary>
     AlreadyAppliedThisYear = 5,
 
-    /// <summary>HeadId 为 null（买人口 MUST 有家主）。</summary>
+    /// <summary>HeadId 为 null（收养 MUST 有家主）。</summary>
     HeadVacant = 6,
 
     /// <summary>当月无未失效的提亲 / 捉婿提议。</summary>
@@ -81,7 +81,7 @@ public enum LifecycleRejectReason
 /// </remarks>
 public sealed record LifecycleOutcome
 {
-    /// <summary>是否已接受（托媒成功、生育申请受理、买人口成交、应答接受）。</summary>
+    /// <summary>是否已接受（托媒成功、生育申请受理、收养成交、应答接受）。</summary>
     public required bool Accepted { get; init; }
 
     /// <summary>拒绝原因；<see cref="LifecycleRejectReason.None"/> 表示无拒绝。</summary>

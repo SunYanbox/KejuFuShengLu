@@ -49,7 +49,7 @@ public sealed record ChildbirthFeasibility(
     Money Cost,
     bool Affordable);
 
-/// <summary>买人口报价（FR-044）。</summary>
+/// <summary>收养报价（FR-044）。</summary>
 /// <param name="Available">当前是否可买。</param>
 /// <param name="RejectReason">不可用时原因。</param>
 /// <param name="Ordinal">本年内第几名（1 起）。</param>
@@ -479,7 +479,7 @@ public static class LifecycleQueries
             Affordable: affordable);
     }
 
-    /// <summary>买人口报价：第 n 名 = <c>10 × n 贯</c>（规格书 §9.5；不乘支出系数，每年 1 月重置）。</summary>
+    /// <summary>收养报价：第 n 名 = <c>10 × n 贯</c>（规格书 §9.5；不乘支出系数，每年 1 月重置）。</summary>
     /// <param name="state">游戏状态。</param>
     /// <returns>报价快照。</returns>
     public static PurchaseQuote PurchaseQuote(GameState state)

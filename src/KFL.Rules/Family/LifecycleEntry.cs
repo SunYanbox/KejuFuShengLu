@@ -149,7 +149,7 @@ public static partial class LifecycleEntry
         // ⑧a 支付能力校验（规格书 §5.4 / §17 裁决 2026-10-17）：聘礼（娶入）或本家嫁妆（嫁出）
         //     必须在**本次交易前**由「现金 + 储蓄」足额覆盖；否则**整单失败**——不成婚、无婚嫁条目、
         //     状态零变更，且**已付的托媒费与买功名费不退**（媒人已行事，规格书 §9.1「失败不退费」同源）。
-        //     MUST NOT 转贷款（与生育费、买人口价、药费、名师学费同一口径）。
+        //     MUST NOT 转贷款（与生育费、收养价、药费、名师学费同一口径）。
         var obligation = direction == MarriageDirection.BrideInto ? gift : dowry;
         if (obligation.IsPositive && !PaymentPrimitive.CanCover(economy, obligation))
         {

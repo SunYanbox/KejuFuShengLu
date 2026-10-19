@@ -282,7 +282,7 @@ MUST NOT 施加任何统一舍入；对应的测试断言 MUST 用 `decimal.GetB
 **Rationale**: ① 原始状态必然满足「父母先于子女加入」（`AddChild` 要求父母已在册），故按序重放在
 **同一条**校验路径上必然成功——若失败，说明文件本身不自洽（R-04 的 `InvalidStructure`）；
 ② `AddOutsider` 对辈分**无约束**（只要求无父母参照），故经它复原任何无父母成员（原开局成员、娶入
-配偶、买来的旁系）都合法，不需要区分「当初走的是 `AddFoundingMember` 还是 `AddOutsider`」——
+配偶、收养的旁系成员）都合法，不需要区分「当初走的是 `AddFoundingMember` 还是 `AddOutsider`」——
 这两个入口在**状态**上没有任何可观察差异（都只做 `Register`）。
 
 **配偶 MUST NOT 经 `Family.Marry` 复原**：`Marry` 会消耗外来者「首次家族内成婚」的对齐机会并把

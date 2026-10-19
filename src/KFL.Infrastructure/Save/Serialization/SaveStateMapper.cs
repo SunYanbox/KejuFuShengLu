@@ -122,7 +122,7 @@ public static partial class SaveStateMapper
             var person = CreatePerson(memberDto);
             if (person.IsOutsider)
             {
-                // 开局成员、娶入配偶、买来的旁系皆无父母参照；辈分已由构造函数携带，
+                // 开局成员、娶入配偶、收养的旁系成员皆无父母参照；辈分已由构造函数携带，
                 // 不调用 SetOutsiderGeneration（那会把「落定」簿记写脏，而簿记在第 ⑦ 步按盘上事实复原）。
                 family.AddOutsider(person);
             }
@@ -272,7 +272,7 @@ public static partial class SaveStateMapper
                 new PersonId(fact.Subject),
                 fact.NewRankLevel))]);
 
-        // ⑦″ 家族生命周期簿记（007-family-lifecycle）：购人计数、待分娩记录、已申请生育的夫妇、
+        // ⑦″ 家族生命周期簿记（007-family-lifecycle）：收养计数、待分娩记录、已申请生育的夫妇、
         //     待应答提议与当月托媒名额。只搬运盘上事实，引用完整性由第 ⑩ 步的一致性校验裁决。
         var lifecycleDto = Required(familyDto.Lifecycle, "lifecycle");
         family.Lifecycle.RestoreBookkeeping(

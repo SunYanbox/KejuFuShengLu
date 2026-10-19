@@ -244,7 +244,7 @@
 ## R-18 家族级新增持久状态的组织方式
 
 - **Decision**：新增 `src/KFL.Core/Entities/FamilyLifecycleState.cs`，经 `Family.Lifecycle` 属性暴露，
-  承载五组状态：① 本年度买人口计数 + 所属年份；② 本年度已申请生育的夫妇键集合（`(PersonId, PersonId)`
+  承载五组状态：① 本年度收养计数 + 所属年份；② 本年度已申请生育的夫妇键集合（`(PersonId, PersonId)`
   归一化排序对）+ 所属年份；③ 待分娩记录列表（夫妇 + 申请年月）；④ 待应答提亲提议（`MarriageProposal?`）；
   ⑤ 本月已托媒成员集合 + 所属年月。
 - **Rationale**：`Family.cs` 已 467 行、且其公开成员表写在 001 `data-model.md:252-263`，

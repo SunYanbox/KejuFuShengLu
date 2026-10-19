@@ -80,7 +80,7 @@ public readonly record struct PunishmentCell(
 /// </para>
 /// <para>
 /// **明确不含**（契约十七 §3）：成长 / 衰老 / 疾病 / 死亡的概率与年龄线、成就与绝嗣阈值、
-/// 婚育与买人口数值、按调用方分支的开关。服刑 / 禁考 / 禁升的**建立与递减**是
+/// 婚育与收养数值、按调用方分支的开关。服刑 / 禁考 / 禁升的**建立与递减**是
 /// <c>PunishmentImposer</c> / <c>PunishmentAdvance</c> 的行为，不属本表。
 /// </para>
 /// </remarks>

@@ -254,7 +254,7 @@ public sealed class AchievementState
 | # | 字段 | 为什么必须持久 |
 | --- | --- | --- |
 | ① | `SuccessfulBribeCount` | `BribeFact` 只在当月快照里存在（`PunishmentSnapshot.Bribes` 不落盘为历史行）；`Person` 上的 `JieShi/ShengShi/DianShiBribeCount` 把成功与被抓混计 |
-| ② | `BirthCount` | 出生事实只在当月快照里；`Family.Members` 含开局成员与买来的人口，无法区分「出生」 |
+| ② | `BirthCount` | 出生事实只在当月快照里；`Family.Members` 含开局成员与收养的人口，无法区分「出生」 |
 | ③ | `Lifespans` | 三均值非线性，无法由 `Members` 的当前状态重算；已故成员的死亡年龄不可从 `Person` 复原（`AgeAt` 是「现在几岁」） |
 | ④ | `PeakTotalAssets` | 「历史峰值」不可由当前资产推出（只减不增的路径上会漏掉中间高点） |
 | ⑤ | `EverHadLoan` | `Loan` 可被完全清偿，清偿后 `Principal == 0` 不再能证明「曾经有过」（`IsSettled` 是派生 `:73`，且新借款会重置） |

@@ -252,16 +252,16 @@ public static partial class GameConfig
         /// <summary>夭折判定的年龄豁免。</summary>
         public static int InfantExemptAge => ChildbirthPolicy.InfantExemptAge;
     }
-    /// <summary>买人口政策（§9.5；007）：递增计价与买来者年龄区间（只转发）。</summary>
+    /// <summary>收养政策（§9.5；007）：递增计价与被收养者年龄区间（只转发）。</summary>
     public static class Purchase
     {
         /// <summary>递增计价基数（贯）。</summary>
         public static int BasePriceGuan => PopulationPurchasePolicy.BasePriceGuan;
 
-        /// <summary>买来者的年龄下界（含）。</summary>
+        /// <summary>被收养者的年龄下界（含）。</summary>
         public static int AgeMin => PopulationPurchasePolicy.AgeMin;
 
-        /// <summary>买来者的年龄上界（含）。</summary>
+        /// <summary>被收养者的年龄上界（含）。</summary>
         public static int AgeMax => PopulationPurchasePolicy.AgeMax;
     }
     /// <summary>

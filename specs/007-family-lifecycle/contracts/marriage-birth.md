@@ -1,4 +1,4 @@
-# 契约十九：婚配、生育与买人口（007 · 逻辑轨 ⑦）
+# 契约十九：婚配、生育与收养（007 · 逻辑轨 ⑦）
 
 **Feature** | **Date**: 2026-10-17 | **Spec**: [../spec.md](../spec.md) | **Plan**: [../plan.md](../plan.md)
 
@@ -29,7 +29,7 @@
 3. 一夫一妻：`SpouseId != null` 者不可再婚；丧偶（`FormerSpouseIds` 非空且 `SpouseId == null`）**可以**再婚。
    丧偶的终止动作由 ⑧-g `DeathSettlement` 对**一切死因**统一施加（`Family.EndMarriage`，FR-021），
    与具体死因（患病/寿终/饥馑/分娩/处死）无关。
-4. 家族内部婚配**只**允许「买来的旁系（`Person.IsOutsider`）× 家族内成员」；
+4. 家族内部婚配**只**允许「收养的旁系成员（`Person.IsOutsider`）× 家族内成员」；
    血亲之间 MUST NOT 成婚（用 `FatherId`/`MotherId` 相同或互为亲子判定，禁止祖先/同胞）。
 5. `Lifecycle.Proposal` 非空且未过期时，`TryMatchmake` MUST 返回 `NotMarriageable`
    （必须先应答或让提议失效，避免一个月内两条婚配线并行）。
@@ -128,7 +128,7 @@
 - `LifecycleOutcome.Accepted = false` + `LifecycleRejectReason.InsufficientFunds`；
 - **不成婚**（不写 `SpouseId`、候选者不入册、嫁出不置 `MarriedOut`）、**无婚嫁条目**、成员状态零变更；
 - **已付的托媒费与买功名费不退还**（`Outcome.Amount` 如实体现在此前的支付额上）；
-- MUST NOT 转贷款（与生育费、买人口价、药费、名师学费同一口径）；
+- MUST NOT 转贷款（与生育费、收养价、药费、名师学费同一口径）；
 - `LifecycleEntry.RespondToProposal` 的接受路径同理：校验不通过则**提议被清空**（名额已消耗）。
 
 ⇒ `SettleAmounts` 内部的 `PaymentPrimitive.Pay` 恒不会把缺口转成本金；查询面
@@ -187,7 +187,7 @@
    规格书 §9.4 与 §17 Q3；详见 [illness-lifespan.md](./illness-lifespan.md) §7.2）。
 3. `PendingBirths` 在 ⑧-b 处理完毕后 MUST 清空（`ConsumeBirths`）。
 
-## 8. 买人口（`LifecycleEntry.BuyPerson`）
+## 8. 收养（`LifecycleEntry.BuyPerson`）
 
 | 项 | 值 |
 | --- | --- |
@@ -212,5 +212,5 @@
 | 买功名降级与灰置 | `MarriageTests.cs` |
 | 生育资格、年度一次、次月分娩、分娩死亡仍出生 | `ChildbirthTests.cs` |
 | 夭折三档与累计 ≈ 27.1% | `ChildbirthTests.cs` |
-| 买人口 10/20/30 与跨年重置、`HeadVacant` | `PurchaseTests.cs`（SC-006） |
+| 收养 10/20/30 与跨年重置、`HeadVacant` | `PurchaseTests.cs`（SC-006） |
 | 外嫁归档口径 | `FamilyLifecycleTests.cs` |

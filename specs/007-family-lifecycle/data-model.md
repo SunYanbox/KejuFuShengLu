@@ -115,7 +115,7 @@ public sealed record MarriageProposal
 ```csharp
 public sealed class FamilyLifecycleState
 {
-    public int PurchaseCount { get; }        // 本年度已买人数（1 月重置 ⇒ 0）
+    public int PurchaseCount { get; }        // 本年度已收养人数（1 月重置 ⇒ 0）
     public int PurchaseYear { get; }         // 该计数所属自然年
     public IReadOnlyList<PendingBirth> PendingBirths { get; }     // 待分娩记录（次月 ⑧-b 消费）
     public IReadOnlyList<CoupleKey> AppliedBirthCouples { get; }  // 本年度已申请生育的夫妇
@@ -198,7 +198,7 @@ internal void RestoreTutoring(bool tutoredByMaster) => _tutoredByMaster = tutore
 public FamilyLifecycleState Lifecycle { get; } = new();
 ```
 
-- **不新增**任何写入方法：买人口/生育/提议全部经 `Lifecycle` 的方法（这是「新增聚合」的收益——
+- **不新增**任何写入方法：收养/生育/提议全部经 `Lifecycle` 的方法（这是「新增聚合」的收益——
   `Family` 的公开面只多一个属性，不留五个散装 setter）。
 - 辈分 MUST NOT 新增写入通道（FR-035）：仍只用 `AddChild`（`:143`）/`AddOutsider`（`:176`）/
   `SetOutsiderGeneration`（`:199`）/`BoughtCollateralGeneration`（`:89-92`）。

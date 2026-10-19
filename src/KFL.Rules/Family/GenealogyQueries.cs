@@ -5,23 +5,23 @@ using KFL.Core.ValueObjects;
 namespace KFL.Rules.FamilyLifecycle;
 
 /// <summary>
-/// 家谱视图的派生查询（2026-10-19 第五轮玩家反馈）：购买成员身份与「家主支脉」范围。
+/// 家谱视图的派生查询（2026-10-19 第五轮玩家反馈）：收养成员身份与「家主支脉」范围。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 两者都是**纯查询**：只读账本与家族关系，不写状态、不消费随机、不改存档形状。
 /// </para>
 /// <para>
-/// 「购买成员」的唯一判据是账本里 <see cref="LedgerCategory.PersonBought"/> 事件条目的
+/// 「收养成员」的唯一判据是账本里 <see cref="LedgerCategory.PersonBought"/> 事件条目的
 /// <see cref="LedgerEntry.PersonId"/>；该事件只在 <c>LifecycleEntry.BuyPerson</c> 成功路径落一条，
-/// 因此买来者组内通婚所生的子女**天然没有**该条目，不会被误标。
+/// 因此被收养者组内通婚所生的子女**天然没有**该条目，不会被误标。
 /// </para>
 /// </remarks>
 public static class GenealogyQueries
 {
-    /// <summary>全部「买来的成员」标识（按账本事件条目派生，顺序不保证）。</summary>
+    /// <summary>全部「收养成员」标识（按账本事件条目派生，顺序不保证）。</summary>
     /// <param name="state">存档状态（只读）。</param>
-    /// <returns>买来者的标识集合；没有买来时为空集。</returns>
+    /// <returns>被收养者的标识集合；没有收养记录时为空集。</returns>
     public static IReadOnlySet<PersonId> PurchasedPersonIds(GameState state)
     {
         ArgumentNullException.ThrowIfNull(state);

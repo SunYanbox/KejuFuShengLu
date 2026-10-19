@@ -31,7 +31,7 @@ public sealed record LifecycleSnapshot
     /// <summary>当月因嫁出而归档的成员。</summary>
     public required IReadOnlyList<MarriedOutFact> MarriedOut { get; init; }
 
-    /// <summary>当月买入的人口。</summary>
+    /// <summary>当月收养的人口。</summary>
     public required IReadOnlyList<PurchaseFact> Purchases { get; init; }
 
     /// <summary>当月患病与痊愈（⑧-c）。</summary>
@@ -106,8 +106,8 @@ public sealed record MarriageFact(
 /// <param name="Class">配偶阶层。</param>
 public sealed record MarriedOutFact(PersonId PersonId, MarriageClass Class);
 
-/// <summary>当月买入人口的事实。</summary>
-/// <param name="PersonId">买来者。</param>
+/// <summary>当月收养的事实。</summary>
+/// <param name="PersonId">被收养者。</param>
 /// <param name="Ordinal">本年第几名（1 起）。</param>
 /// <param name="Amount">实付金额。</param>
 public sealed record PurchaseFact(PersonId PersonId, int Ordinal, Money Amount);

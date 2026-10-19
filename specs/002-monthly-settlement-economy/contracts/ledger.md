@@ -14,7 +14,7 @@ readonly record struct LedgerEntry(GameDate Date, PersonId? PersonId, LedgerCate
 | 字段 | 语义 |
 | --- | --- |
 | `Date` | 归属年月（结算月份，即 `SettlementResult.Month`） |
-| `PersonId` | 归属角色；`null` = **家族级**（铺面租、储蓄利息、工 bonus、买人口、田租） |
+| `PersonId` | 归属角色；`null` = **家族级**（铺面租、储蓄利息、工 bonus、收养、田租） |
 | `Category` | 类别；**类别全集与二分类的唯一真源** = `KFL.Core/Enums/LedgerCategoryMetadata.cs`（可执行形式）与 [data-model.md](../data-model.md) §2.1（文档形式），本契约不复制表格 |
 | `Amount` | **资金类**：本次事件对资金池的变动额（正 = 流入、负 = 流出），`Amount == 0` 的资金类条目不合法；**事件类**：该事件自身的金额语义（阶段迁移为 0，计息为利息额） |
 
@@ -78,7 +78,7 @@ readonly record struct LedgerEntry(GameDate Date, PersonId? PersonId, LedgerCate
 
 ## 7. 本契约明确不包含
 
-CSV 导出、图表、统计页的筛选器（界面轨 U3）、存档序列化格式（阶段④）、买人口的支出类别
+CSV 导出、图表、统计页的筛选器（界面轨 U3）、存档序列化格式（阶段④）、收养的支出类别
 （逻辑轨 ⑦ 新增类别时须同时补 `LedgerCategoryMetadata` 的两种查询口径）。
 **补注（004 之后）**：「存档序列化格式（阶段④）」已由 004 交付——盘上形态固定为
 [004 `contracts/save-format.md`](../004-save-system/contracts/save-format.md) 的版本 2；

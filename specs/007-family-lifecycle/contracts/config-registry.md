@@ -155,14 +155,14 @@ MUST NOT 在 `RegisteredValues` 里出现两次；清单长度以去重后的实
 ### 4.3 金额纪律（判据②）
 
 一切金额 MUST 经 `Money.FromGuan(<配置成员>)`，**MUST NOT** 写 `Money.FromGuan(10)` 这类字面量；
-`10n` 的买人口价 MUST 写成 `Money.FromGuan(PopulationPurchasePolicy.BasePriceGuan * n)`。
+`10n` 的收养价 MUST 写成 `Money.FromGuan(PopulationPurchasePolicy.BasePriceGuan * n)`。
 
 ## 5. 与上游数值契约的回写关系
 
 | 上游 | 回写动作 |
 | --- | --- |
 | `specs/002-monthly-settlement-economy/contracts/monthly-settlement.md:222` | 饥馑「−10 体质 / 每人每月 5% 死亡」的归属改为「⑦ 已交付」 |
-| `specs/003-opening-assets-officialdom/contracts/new-game-setup.md:106-110` | 补「无父母参照者分布被 ⑦ 复用于买人口与婚配对象」 |
+| `specs/003-opening-assets-officialdom/contracts/new-game-setup.md:106-110` | 补「无父母参照者分布被 ⑦ 复用于收养与婚配对象」 |
 | `specs/006-bribery-punishment/contracts/config-registry.md:95-97` | 「属逻辑轨 ⑦」改述为「⑦ 已交付」 |
 | `specs/001-core-skeleton/data-model.md:244-248` | 删除「成长衰老疾病死亡的年龄线与概率不含」的旧口径 |
 | `src/KFL.Rules/Config/GameConfig.cs:24-27` | 「明确不含」注释改为指向本特性的六个视图 |

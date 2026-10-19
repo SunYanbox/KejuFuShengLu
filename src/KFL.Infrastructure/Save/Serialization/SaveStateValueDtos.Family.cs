@@ -219,19 +219,19 @@ public sealed class MatchmakeApplicationDto
 /// </summary>
 /// <remarks>
 /// 键自 0 连续、与 <c>FamilyLifecycleState</c> 的持久面<b>逐一对应</b>：
-/// 0 本年购人数、1 购人年份、2 待分娩记录、3 已申请本年生育的夫妇、4 生育申请年份、
+/// 0 本年收养数、1 收养年份、2 待分娩记录、3 已申请本年生育的夫妇、4 生育申请年份、
 /// 5 待应答提议、6 本月已托媒的成员记录。
 /// </remarks>
 [MessagePackObject]
 public sealed class FamilyLifecycleDto
 {
-    /// <summary>本年（<see cref="PurchaseYear"/>）已购人数。</summary>
+    /// <summary>本年（<see cref="PurchaseYear"/>）已收养人数。</summary>
     [Key(0)]
     [JsonPropertyName("purchaseCount")]
     [JsonRequired]
     public int PurchaseCount { get; set; }
 
-    /// <summary>购人计数所属年份（<c>&gt;= 1</c>）。</summary>
+    /// <summary>收养计数所属年份（<c>&gt;= 1</c>）。</summary>
     [Key(1)]
     [JsonPropertyName("purchaseYear")]
     [JsonRequired]

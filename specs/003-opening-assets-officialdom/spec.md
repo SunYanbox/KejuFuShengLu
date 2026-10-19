@@ -339,7 +339,7 @@
 - 贿赂、12 格惩罚矩阵、连坐、死刑、服刑与禁考/禁升计时的建立与逐月递减、释放时降 1 级官阶
   （规格书 §7；**逻辑轨 ⑥**）。本特性只消费 `PromotionBanned` 状态位与计时值。
 - 调试控制台及其对资产、成员、功名与官阶的编辑入口（规格书 §13；**界面轨 U4**）。
-- 婚育、遗传公式、买人口、买功名婚姻、疾病、寿命与死亡判定、家主继任判定
+- 婚育、遗传公式、收养、买功名婚姻、疾病、寿命与死亡判定、家主继任判定
   （规格书 §4.2、§4.4、§9；**逻辑轨 ⑦**）。
 - 存档落盘（MessagePack/JSON）、备份、自动保存、成就与统计导出（规格书 §14；
   **逻辑轨 ④、⑧**）。
@@ -517,32 +517,52 @@
 `src/KFL.Presentation/ViewModels/{MainViewModel,MemberRow,AchievementRow,RelationLink}.cs`、
 `src/KFL.Presentation/GameSession.cs`；④`src/KFL.Rules/Achievements/AchievementCatalog.cs`（隐藏成就）。
 
-## 增补（2026-10-19，玩家反馈第五轮：买入成员标记、纪事买入信息与家主支脉视图）
+## 增补（2026-10-19，玩家反馈第五轮：收养成员标记、纪事收养信息与家主支脉视图）
 
 > 依据：规格书 §17 裁决块（2026-10-19，玩家反馈第五轮）与 §12.1 / §12.2 / §12.3 的回写。
 > 本节钉死的是**视图派生**形状；**不新增成员字段、不改账本与存档形状**。
 
-1. **买入成员的身份（派生，不落字段）**：新增
+1. **收养成员的身份（派生，不落字段）**：新增
    `KFL.Rules.FamilyLifecycle.GenealogyQueries.PurchasedPersonIds(GameState) → IReadOnlySet<PersonId>`，
    判据是账本里 `LedgerCategory.PersonBought` 事件条目的 `PersonId`（唯一写入点 =
-   `LifecycleEntry.BuyPerson` 成功路径，规格书 §9.5）。因此**买来成员组内通婚所生的子女天然不入集**，
-   娶入配偶与开局成员同样不入集；**MUST NOT** 为 `Person` 新增「是否买入」字段。
-2. **买入徽章与开关**：`MemberRow` 构造新增末位可选参数 `bool purchased = false` 与只读属性 `IsPurchased`；
-   徽章行**首位**在 `IsPurchased` 时追加「买入」（仍以「 ｜ 」分隔）。`MainViewModel.ShowPurchaseMarks`
-   （**默认 `true`**）控制是否把购买集合传给 `MemberRow`；关闭即不写徽章，**不改数据**。
-3. **纪事买入信息**：`Display.PersonBrief(Person?, GameDate)` 产出「姓名（男/女，N 岁）」，缺失时
-   「（新成员）」。两处买入日志改为：月度采购 `⚑ 买入人口 {简介}，第 {n} 名，{金额}。`；
-   立即购买 `⚑ 买入人口 {简介}，花费 {金额}（现金 {现金} + 储蓄 {储蓄}）。`，其简介取账本最新一条
+   `LifecycleEntry.BuyPerson` 成功路径，规格书 §9.5）。因此**收养成员组内通婚所生的子女天然不入集**，
+   娶入配偶与开局成员同样不入集；**MUST NOT** 为 `Person` 新增「是否收养」字段。
+2. **收养徽章与开关**：`MemberRow` 构造新增末位可选参数 `bool purchased = false` 与只读属性 `IsPurchased`；
+   徽章行**首位**在 `IsPurchased` 时追加「收养」（仍以「 ｜ 」分隔）。`MainViewModel.ShowPurchaseMarks`
+   （**默认 `true`**）控制是否把收养集合传给 `MemberRow`；关闭即不写徽章，**不改数据**。
+3. **纪事收养信息**：`Display.PersonBrief(Person?, GameDate)` 产出「姓名（男/女，N 岁）」，缺失时
+   「（新成员）」。两处收养日志改为：月度采购 `⚑ 收养 {简介}，第 {n} 名，{金额}。`；
+   立即收养 `⚑ 收养 {简介}，花费 {金额}（现金 {现金} + 储蓄 {储蓄}）。`，其简介取账本最新一条
    `PersonBought` 的 `PersonId`（`GameSession.LastPurchasedPerson()`）。
 4. **家主支脉视图**：新增 `GenealogyQueries.HeadBranchPersonIds(Family) → IReadOnlySet<PersonId>`——
    家主本人 + 直系血亲祖先 + 全部直系血亲后代 + 上述成员的当前配偶；不含旁系（家主兄弟姐妹及其后裔）
    与旁系的配偶。`MainViewModel.ShowHeadBranchOnly`（**默认 `false`**）开启后，`RefreshMembers()`
    在状态筛选器**之前**用该集合收窄 `all`（列表与家谱同口径）；家主空缺时空集视为**不过滤**。
 5. **界面**：`src/KFL.App/Views/FamilyTabView.xaml` 家谱开关行新增两个 CheckBox——
-   「买入标记」（`#FF8B1A1A`）与「仅家主支脉」（`#FF00695C`），均 `Mode=TwoWay` 且带 `ToolTip` 说明。
+   「收养标记」（`#FF8B1A1A`）与「仅家主支脉」（`#FF00695C`），均 `Mode=TwoWay` 且带 `ToolTip` 说明。
 
 **回写登记（同一提交）**：①规格书 §12.1 / §12.2 / §12.3 的 2026-10-19 **第五轮**回写块与 §17 裁决块
 Q1~Q4；②本节；③`src/KFL.Rules/Family/GenealogyQueries.cs`（新）、
 `src/KFL.Presentation/{Display.cs,GameSession.Actions.Family.cs,GameSession.Turns.cs}`、
 `src/KFL.Presentation/ViewModels/{MainViewModel.cs,MainViewModel.Tree.cs,MemberRow.cs}`、
 `src/KFL.App/Views/FamilyTabView.xaml`；④`tests/KFL.Tests/Rules/GenealogyQueriesTests.cs`（新）。
+
+## 增补（2026-10-19，玩家反馈第六轮：术语由「买人口」改为「收养」）
+
+> 依据：规格书 §17 裁决块（2026-10-19，玩家反馈第六轮）。本次是**纯术语与文案变更**：
+> 视图派生形状、账本判据、开关语义与绑定**一律不变**。
+
+1. **家谱开关行**：`Content="买入标记"` → `Content="收养标记"`；`ToolTip` 改为「在卡片徽章行里标出
+   「收养」引入家族的成员；收养成员组内婚生的子女不算收养成员。」；底部提示行中的「买入标记」→
+   「收养标记」。`IsChecked="{Binding ShowPurchaseMarks, Mode=TwoWay}"` **不变**。
+2. **卡片徽章**：首位徽章 `"买入"` → `"收养"`（`MemberRow`；判据仍是本节 §1 的账本派生集合）。
+3. **动作按钮**：右栏 `Content="买人口"` → `Content="收养"`；`CommandParameter="buyperson"` **不变**。
+4. **标识符顺延**：`ShowPurchaseMarks` / `MemberRow.IsPurchased` /
+   `GenealogyQueries.PurchasedPersonIds` 等**本次不改**，MUST 在**下次存档版本升级**时随迁移更名并为
+   旧档保留名字映射（理由与触发条件见规格书 §17 第六轮 Q3）。
+5. **术语对照**：收养成员 = 被收养者；收养标记 = 徽章「收养」；账本中文名 = 「收养费」（资金类）/
+   「收养入族」（事件类）；统计人口图系列 = 「收养」。
+
+**回写登记（同一提交）**：①规格书 §17 第六轮裁决块与 §4.4 / §5 / §9.5 / §12.1~§12.3 / §16；
+②本节；③`src/KFL.App/Views/FamilyTabView.xaml`、`src/KFL.Presentation/ViewModels/MemberRow.cs`、
+`src/KFL.Rules/Family/GenealogyQueries.cs`（注释）；④`tasks.md` 的回写范围登记。

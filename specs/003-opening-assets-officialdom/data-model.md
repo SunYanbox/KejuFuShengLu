@@ -164,7 +164,7 @@ MUST NOT 同时置 `Family.HasShiStatus`（§10.2、FR-008）。
 （§4.2 的**父母参照**公式属逻辑轨 ⑦）。
 
 **007 后记（2026-10-17）**：本节的「无父母参照者」分布与 `NextNormal` 已被 007（逻辑轨 ⑦）**复用**
-于两处非开局场景——**买人口**（`PopulationPurchasePolicy`：年龄 8~16、性别 50/50、天赋 `N(60,20)`、
+于两处非开局场景——**收养**（`PopulationPurchasePolicy`：年龄 8~16、性别 50/50、天赋 `N(60,20)`、
 学业 `N(30,15)`、体质 `N(85,10)`、寿数照常 roll、无父母参照）与**婚配对象初始化**
 （`MarriageMarket.CreateCandidate`：同款四项属性分布、寿数照常 roll，年龄按本家成员年龄 ±
 `CandidateAgeSpread`）。两处 MUST 复用本表的常量与 `AttributePolicy.NextNormal`，
@@ -468,7 +468,7 @@ public interface INameGenerator                       // Abstractions/
 
 ### 6.5 本特性**不建立**的状态转移
 
-随机事件、属性成长/衰老/疾病/死亡（逻辑轨 ⑦）、科举季与功名推进（逻辑轨 ⑤）、婚育与买人口、
+随机事件、属性成长/衰老/疾病/死亡（逻辑轨 ⑦）、科举季与功名推进（逻辑轨 ⑤）、婚育与收养、
 家主继任（逻辑轨 ⑦）、存档读写与成就（逻辑轨 ④/⑧）、任何界面状态（界面轨 U1~U5）、
 `Family.HasShiStatus` 的任何写入（R-14）。
 

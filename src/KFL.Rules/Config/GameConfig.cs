@@ -21,7 +21,7 @@ namespace KFL.Rules.Config;
 /// 遮蔽 <c>KFL.Core.Enums</c> 里的 <c>AgeBracket</c> / <c>Difficulty</c> 同名类型。
 /// </para>
 /// <para>
-/// **明确不含**：尚未落地的阶段的数值（成就与绝嗣阈值等）。买人口递增计价、成长衰老疾病死亡的
+/// **明确不含**：尚未落地的阶段的数值（成就与绝嗣阈值等）。收养递增计价、成长衰老疾病死亡的
 /// 年龄线与概率**已由 ⑦ 交付**，见 <see cref="Growth"/>、<see cref="Illness"/>、
 /// <see cref="Marriage"/>、<see cref="Childbirth"/>、<see cref="Purchase"/> 与
 /// <see cref="Lifecycle"/>。提亲与捉婿的难度乘数经 <c>DifficultyRates.NegativeEventFactor</c>
