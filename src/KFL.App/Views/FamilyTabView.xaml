@@ -1,13 +1,20 @@
 <UserControl x:Class="KFL.App.Views.FamilyTabView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:presentation="clr-namespace:KFL.Presentation;assembly=KFL.Presentation">
     <!-- 家族页：左家谱（一行一代人）· 中成员详情 · 右动作面板。 -->
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="420" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="370" />
+            <ColumnDefinition Width="420" MinWidth="240" />
+            <ColumnDefinition Width="6" />
+            <ColumnDefinition Width="*" MinWidth="240" />
+            <ColumnDefinition Width="370" MinWidth="240" />
         </Grid.ColumnDefinitions>
+
+        <!-- 家谱 ↔ 成员详情的分隔条（玩家反馈 9）：左右拖动即可扩大家谱可见范围。 -->
+        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Background="#FFD8CFBB" ResizeBehavior="PreviousAndNext"
+                      ToolTip="左右拖动以调整家谱与成员详情栏的宽度。" />
 
         <DockPanel Grid.Column="0" Margin="4">
             <TextBlock DockPanel.Dock="Top" Text="家谱（一行一代人 · 点击方块选中）" Style="{StaticResource SectionHeader}"
@@ -29,11 +36,32 @@
                           ToolTip="只显示家主本人、其直系血亲祖先/后代及其配偶；旁系（家主兄弟姐妹及其后裔）隐去。"
                           IsChecked="{Binding ShowHeadBranchOnly, Mode=TwoWay}" />
             </WrapPanel>
-            <TextBlock DockPanel.Dock="Bottom" Text="归档 = 亡故 / 外嫁 ｜ 筛选依然作用于家谱 ｜ 收养标记与支脉过滤同样作用于家谱与人数" Style="{StaticResource Secondary}"
+            <!-- 缩放 / 平移（玩家反馈 9）：滚轮缩放（以指针为锚点）、左键拖动平移，均不出内容边界。 -->
+            <WrapPanel DockPanel.Dock="Top" Margin="0,2,0,2">
+                <TextBlock Text="视图：" VerticalAlignment="Center" />
+                <Button Content="－" Click="OnZoomOut" Padding="6,0" MinWidth="24" MinHeight="20" FontSize="11"
+                        ToolTip="缩小家谱（也可把指针放到家谱上滚轮缩放）" />
+                <Button Content="＋" Click="OnZoomIn" Padding="6,0" MinWidth="24" MinHeight="20" FontSize="11" Margin="4,0,0,0"
+                        ToolTip="放大（以指针位置为锚点；也可滚轮）" />
+                <Button Content="重置视图" Click="OnResetTreeView" Padding="6,0" MinHeight="20" FontSize="11" Margin="4,0,0,0"
+                        ToolTip="恢复默认缩放（100%）与左上角位置" />
+                <TextBlock x:Name="ZoomText" Text="100%" VerticalAlignment="Center" Margin="6,0,0,0"
+                           Style="{StaticResource Secondary}" />
+            </WrapPanel>
+            <TextBlock DockPanel.Dock="Bottom" Text="归档 = 亡故 / 外嫁 ｜ 筛选依然作用于家谱 ｜ 收养标记与支脉过滤同样作用于家谱与人数 ｜ 滚轮缩放、按住左键拖动平移" Style="{StaticResource Secondary}"
                        TextWrapping="Wrap" />
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                          Padding="0,2,0,0">
-                <Grid Width="{Binding TreeWidth}" Height="{Binding TreeHeight}">
+            <ScrollViewer x:Name="TreeScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                          Padding="0,2,0,0" Background="Transparent"
+                          PreviewMouseWheel="OnTreeWheel"
+                          PreviewMouseLeftButtonDown="OnTreeDragStart"
+                          PreviewMouseMove="OnTreeDragMove"
+                          PreviewMouseLeftButtonUp="OnTreeDragEnd"
+                          LostMouseCapture="OnTreeDragEnd">
+                <Grid x:Name="TreeCanvas" Width="{Binding TreeWidth}" Height="{Binding TreeHeight}"
+                      RenderTransformOrigin="0,0">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform x:Name="TreeScale" ScaleX="1" ScaleY="1" />
+                    </Grid.LayoutTransform>
                     <ItemsControl ItemsSource="{Binding Generations}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -83,8 +111,25 @@
                         </ItemsControl.ItemContainerStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="168" Height="116" BorderBrush="#FFBFAE8E" BorderThickness="1"
-                                        CornerRadius="3" Padding="5" Background="{StaticResource PanelBrush}">
+                                <Border Width="168" Height="116" BorderThickness="1"
+                                        CornerRadius="3" Padding="5">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="#FFBFAE8E" />
+                                            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+                                            <Style.Triggers>
+                                                <!-- 家主一脉嫡系男性：加粗描边 + 淡金底色（第九轮需求 4）。 -->
+                                                <DataTrigger Binding="{Binding Row.IsHeadHeir}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{StaticResource HeadHeirBrush}" />
+                                                    <Setter Property="BorderThickness" Value="2" />
+                                                    <Setter Property="Background" Value="{StaticResource HeadHeirFill}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Row.IsArchived}" Value="True">
+                                                    <Setter Property="Opacity" Value="0.65" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Row.Caption}" FontWeight="Bold" FontSize="13"
                                                    Foreground="{Binding Row.PlacementBrush}" TextTrimming="CharacterEllipsis" />
@@ -105,19 +150,31 @@
             </ScrollViewer>
         </DockPanel>
 
-        <DockPanel Grid.Column="1" Margin="4">
+        <DockPanel Grid.Column="2" Margin="4">
             <TextBlock DockPanel.Dock="Top" Text="成员详情（卡片点开）" Style="{StaticResource SectionHeader}" />
-            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding RelationLinks}" Margin="0,0,0,4">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+            <!-- 关系按钮分三行（玩家反馈 2）：父母与配偶 / 兄弟姐妹 / 子女；按钮颜色随亲属状态变化。 -->
+            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding RelationRows}" Margin="0,0,0,4">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Button Content="{Binding Label}" Command="{Binding DataContext.DoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding Token}" Padding="6,0" Margin="0,0,4,2" FontSize="12"
-                                Foreground="#FF1F5FA8" ToolTip="点击跳到该成员详情（玩家反馈 7）" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                            <TextBlock Text="{Binding Title}" Style="{StaticResource Secondary}"
+                                       Width="76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <ItemsControl ItemsSource="{Binding Links}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Label}" Command="{Binding DataContext.DoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding Token}" Padding="6,0" Margin="0,0,4,2" FontSize="12"
+                                                Foreground="{Binding BrushKey, Converter={StaticResource BrushKey}}"
+                                                ToolTip="{Binding ToolTip}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -126,7 +183,7 @@
             </ScrollViewer>
         </DockPanel>
 
-        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="4">
+        <ScrollViewer Grid.Column="3" VerticalScrollBarVisibility="Auto" Margin="4">
             <StackPanel>
                 <TextBlock Text="时间" Style="{StaticResource SectionHeader}" />
                 <WrapPanel>
@@ -134,18 +191,23 @@
                     <Button Content="快进一年" Command="{Binding DoCommand}" CommandParameter="ff:12" />
                     <Button Content="快进三月" Command="{Binding DoCommand}" CommandParameter="ff:3" />
                     <Button Content="快进到科举" Command="{Binding DoCommand}" CommandParameter="ffexam"
-                            ToolTip="直接推进到下一次科举报名窗口（要求 6）" />
+                            ToolTip="{x:Static presentation:HelpTexts.FastForwardExam}" />
                     <Button Content="停止" Command="{Binding DoCommand}" CommandParameter="stop" />
                 </WrapPanel>
                 <TextBlock Text="{Binding AdvanceLabel}" Style="{StaticResource Secondary}" />
 
                 <TextBlock Text="科举与行贿" Style="{StaticResource SectionHeader}" />
                 <WrapPanel>
-                    <Button Content="报名" Command="{Binding DoCommand}" CommandParameter="exam" />
-                    <Button Content="受特奏名" Command="{Binding DoCommand}" CommandParameter="special" />
-                    <Button Content="贿解试" IsEnabled="{Binding CanBribe}" Command="{Binding DoCommand}" CommandParameter="bribe:JieShi" />
-                    <Button Content="贿省试" IsEnabled="{Binding CanBribe}" Command="{Binding DoCommand}" CommandParameter="bribe:ShengShi" />
-                    <Button Content="贿殿试" IsEnabled="{Binding CanBribe}" Command="{Binding DoCommand}" CommandParameter="bribe:DianShi" />
+                    <Button Content="报名" Command="{Binding DoCommand}" CommandParameter="exam"
+                            ToolTip="{x:Static presentation:HelpTexts.ExamRegister}" />
+                    <Button Content="受特奏名" Command="{Binding DoCommand}" CommandParameter="special"
+                            ToolTip="{x:Static presentation:HelpTexts.SpecialTribute}" />
+                    <Button Content="贿解试" IsEnabled="{Binding CanBribe}" Command="{Binding DoCommand}" CommandParameter="bribe:JieShi"
+                            ToolTip="{x:Static presentation:HelpTexts.Bribe}" />
+                    <Button Content="贿省试" IsEnabled="{Binding CanBribe}" Command="{Binding DoCommand}" CommandParameter="bribe:ShengShi"
+                            ToolTip="{x:Static presentation:HelpTexts.Bribe}" />
+                    <Button Content="贿殿试" IsEnabled="{Binding CanBribe}" Command="{Binding DoCommand}" CommandParameter="bribe:DianShi"
+                            ToolTip="{x:Static presentation:HelpTexts.Bribe}" />
                 </WrapPanel>
 
                 <TextBlock Text="家计" Style="{StaticResource SectionHeader}" />
@@ -184,16 +246,26 @@
 
                 <TextBlock Text="婚育与人事" Style="{StaticResource SectionHeader}" />
                 <WrapPanel>
-                    <Button Content="托媒" Command="{Binding DoCommand}" CommandParameter="matchmake" />
-                    <Button Content="买功名婚姻" Command="{Binding DoCommand}" CommandParameter="matchmake:degree" />
-                    <Button Content="应允提亲" Command="{Binding DoCommand}" CommandParameter="proposal:accept" />
-                    <Button Content="买功名应允" Command="{Binding DoCommand}" CommandParameter="proposal:accept:degree" />
-                    <Button Content="婉拒提亲" Command="{Binding DoCommand}" CommandParameter="proposal:reject" />
-                    <Button Content="申请生育" Command="{Binding DoCommand}" CommandParameter="childbirth" />
-                    <Button Content="收养" Command="{Binding DoCommand}" CommandParameter="buyperson" />
-                    <Button Content="就医" Command="{Binding DoCommand}" CommandParameter="treat" />
-                    <Button Content="名师开关" Command="{Binding DoCommand}" CommandParameter="tutor" />
-                    <Button Content="立为家主" Command="{Binding DoCommand}" CommandParameter="head" />
+                    <Button Content="托媒" Command="{Binding DoCommand}" CommandParameter="matchmake"
+                            ToolTip="{x:Static presentation:HelpTexts.Matchmake}" />
+                    <Button Content="买功名婚姻" Command="{Binding DoCommand}" CommandParameter="matchmake:degree"
+                            ToolTip="{x:Static presentation:HelpTexts.DegreeMarriage}" />
+                    <Button Content="应允提亲" Command="{Binding DoCommand}" CommandParameter="proposal:accept"
+                            ToolTip="{x:Static presentation:HelpTexts.Proposal}" />
+                    <Button Content="买功名应允" Command="{Binding DoCommand}" CommandParameter="proposal:accept:degree"
+                            ToolTip="{x:Static presentation:HelpTexts.Proposal}" />
+                    <Button Content="婉拒提亲" Command="{Binding DoCommand}" CommandParameter="proposal:reject"
+                            ToolTip="{x:Static presentation:HelpTexts.Proposal}" />
+                    <Button Content="申请生育" Command="{Binding DoCommand}" CommandParameter="childbirth"
+                            ToolTip="{x:Static presentation:HelpTexts.Childbirth}" />
+                    <Button Content="收养" Command="{Binding DoCommand}" CommandParameter="buyperson"
+                            ToolTip="{x:Static presentation:HelpTexts.Adopt}" />
+                    <Button Content="就医" Command="{Binding DoCommand}" CommandParameter="treat"
+                            ToolTip="{x:Static presentation:HelpTexts.Treat}" />
+                    <Button Content="名师开关" Command="{Binding DoCommand}" CommandParameter="tutor"
+                            ToolTip="{x:Static presentation:HelpTexts.Tutor}" />
+                    <Button Content="立为家主" Command="{Binding DoCommand}" CommandParameter="head"
+                            ToolTip="{x:Static presentation:HelpTexts.SetHead}" />
                 </WrapPanel>
                 <WrapPanel>
                     <TextBlock Text="族内通婚：" VerticalAlignment="Center" />

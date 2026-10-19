@@ -490,3 +490,23 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1319 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 
+## 回写范围登记（2026-10-19，玩家反馈第九轮：家谱视口、关系称谓、升官概率与存档多选）
+
+> 本节由第九轮玩家反馈（9 条）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §17 裁决块（2026-10-19，玩家反馈第九轮）与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 家谱 ↔ 成员详情分隔条（三列各留 `MinWidth=240`） | 规格书 §12.1 + §17 Q1；`spec.md` 第九轮增补 §1；`src/KFL.App/Views/FamilyTabView.xaml` |
+| 家谱缩放 0.4×~2.5× / 左键拖动平移 / 重置（平移由 `ScrollViewer` 钳制） | 规格书 §12.1 + §17 Q2；`spec.md` 增补 §2；`src/KFL.App/Views/FamilyTabView.xaml`（+ `.xaml.cs`） |
+| 关系按钮三行分组（父母与配偶 / 兄弟姐妹 / 子女）+ 长幼称谓（全序含本人、序号占位保留；子女只标嫡长子） | 规格书 §12.2 + §17 Q3；`spec.md` 增补 §3；`src/KFL.Rules/Family/GenealogyQueries.cs`、`src/KFL.Presentation/ViewModels/{RelationLink.cs,MainViewModel.ViewState.cs,MainViewModel.Detail.cs}`、`src/KFL.App/Views/FamilyTabView.xaml` |
+| 关系按钮状态配色（身故 / 患病与治疗 / 服刑 / 待阙·禁考·禁升·外嫁 / 默认） | 规格书 §12.2 + §17 Q4；`spec.md` 增补 §4；`src/KFL.Presentation/ViewModels/RelationLink.cs`、`src/KFL.App/Resources/Theme.xaml` |
+| 卡片徽章补齐 禁考 / 禁升 / 致仕 / 身故；卡片名称后「【家主】」 | 规格书 §12.2 + §17 Q5；`spec.md` 增补 §5；`src/KFL.Presentation/ViewModels/MemberRow.cs` |
+| 家主一脉嫡系男性的额外样式（只改样式，不改数值） | 规格书 §12.2 + §17 Q6；`spec.md` 增补 §6；`src/KFL.Rules/Family/GenealogyQueries.cs`、`src/KFL.Presentation/ViewModels/{MemberRow.cs,MainViewModel.Tree.cs}`、`src/KFL.App/Views/FamilyTabView.xaml` |
+| 成员详情的升官概率明细（只读预测；与录取率明细同款） | 规格书 §12.2 + §17 Q7；`spec.md` 增补 §7；`src/KFL.Rules/Career/PromotionForecast.cs`（新）、`src/KFL.Presentation/PromotionReport.cs`（新）、`src/KFL.Presentation/ViewModels/MainViewModel.Detail.cs` |
+| 按钮浮窗帮助（`HelpTexts`；受特奏名浮窗写出四条件） | 规格书 §12.2 + §17 Q8①；`spec.md` 增补 §8；`src/KFL.Presentation/HelpTexts.cs`（新）、`src/KFL.App/Views/FamilyTabView.xaml` |
+| 存档 / 备份列表 Extended 多选；选中 > 1 立刻禁用读取按钮 | 规格书 §14 + §17 Q8②；`spec.md` 增补 §9；`src/KFL.App/Controls/SaveSlotPanel.xaml`（+ `.xaml.cs`） |
+| 规则层覆盖（长幼称谓与嫡系查询、升官预测） | `spec.md` 增补 §3/§6/§7；`tests/KFL.Tests/Rules/KinshipTitleTests.cs`（新，10 例：兄弟姐妹全序剔本人 / 子女称谓 / 序号前缀大·十·十一·二十一 / 嫡系男性含嫡出不含女儿与庶出 / 无官职返 null / 白身到顶 / 举人可晋升且概率随政绩增长封顶 / 未满周期给剩余月数 / 禁升与服刑不可晋升 / 预测不改状态） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1329 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+

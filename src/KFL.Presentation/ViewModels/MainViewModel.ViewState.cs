@@ -12,6 +12,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>成员详情里的关系超链接（需求 7：父母 / 配偶 / 子女 / 兄弟姐妹点击跳转）。</summary>
     public ObservableCollection<RelationLink> RelationLinks { get; } = [];
 
+    /// <summary>成员详情里的三行关系按钮（第九轮：父母与配偶一行、兄弟姐妹一行、子女一行）。</summary>
+    public ObservableCollection<RelationRow> RelationRows { get; } = [];
+
     /// <summary>收支与分类两组图取累计口径（需求 11 的切换开关）。</summary>
     public bool IsMoneyChartCumulative
     {
