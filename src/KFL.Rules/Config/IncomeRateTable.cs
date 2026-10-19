@@ -40,6 +40,15 @@ public static class IncomeRateTable
     /// <summary>城市宅加成（贯/月；份数 = `min(做工人数, 城市宅数)`）。</summary>
     public const decimal UrbanHouseCraftingBonusGuanPerMonth = 1m;
 
+    /// <summary>
+    /// 农舍月租（贯/月/间，2026-10-19 玩家反馈 2）：屋舍本身也生租——不限出身，
+    /// 出身只决定**加成高低**（农出身另有田产优势），不该出现「买了农舍完全没有收益」。
+    /// </summary>
+    public const decimal RuralHouseRentGuanPerMonth = 0.4m;
+
+    /// <summary>城市宅月租（贯/月/间，2026-10-19 玩家反馈 2）。</summary>
+    public const decimal UrbanHouseRentGuanPerMonth = 0.8m;
+
     /// <summary>经商月收益率（商本 × 2%）。</summary>
     public const decimal TradeProfitRate = 0.02m;
 

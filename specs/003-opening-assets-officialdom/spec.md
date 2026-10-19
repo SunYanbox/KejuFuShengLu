@@ -481,3 +481,38 @@
 `src/KFL.Rules/Exam/ExamSeasonRunner.cs`、`src/KFL.Core/Enums/AppointmentTrack.cs`；
 ⑤`tests/KFL.Tests/Rules/{CareerAdvanceTests,ExamRegistrationTests,ExamSeasonTests,SpecAnchorTests}.cs`
 与 `tests/KFL.Tests/Rules/RulesTestHarness.cs`（新增 `OfficialWithDegree` 夹具）。
+
+## 增补（2026-10-19，玩家反馈第三轮：界面轨 U1~U5 的补齐）
+
+> 依据：规格书 §17 裁决块（2026-10-19，玩家反馈第三轮）与 §12.1 / §12.2 / §12.3 / §14 的回写。
+> 本节把**界面轨**（原 Out of Scope 的 U1~U5）实际交付的形状钉死，供后续审计核对。
+
+1. **卡片墙（U2）**：卡片第二行新增**徽章行**（患病 / 治疗中 / 入狱 / 已报X / 名师 / 求子 /
+   待阙 / 外嫁，`｜` 分隔）；成员详情改为结构化分区，含**亲属行**（父 / 母 / 配偶 / 子女（嫡长子
+   标注）/ 兄弟姐妹，均为可点击的关系链接）、**本月收支**（实际来源 + 当前设置推算）、
+   **俸禄**、**录取率明细**、**自愈率明细**（仅患病/治疗中）。
+2. **家族树（U3）**：一行一代 + 三类连线（父母 / 子女 / 兄弟姐妹）各带开关与固定颜色；
+   画布尺寸由带数 × 行距、最宽带 × 列距自算；点击关系链接跳转选中。
+3. **统计页（U3）**：三图**纵向**排列；每图**独立横向滚动**且默认滚到最右（不记忆）；
+   逐月**悬停**显示各系列数值；提供「当月 / 累计」切换（收支、分类、人口三图）；
+   新增**人口与功名图**（出生/死亡/购买/入狱/举人/贡士/进士）；新增**局势速览**文字测算；
+   `ChartHover` / `ChartFrame.Hovers` / `StatsCharts.Build(state, moneyCumulative, populationCumulative)`
+   / `StatsCharts.BuildInsights(state)` 为其公共形状。
+4. **纪事（家族流水）**：完全相同的「前缀 + 正文」合并为 `[时间] 正文 × N`（保留首次位置），
+   并提供**清空**按钮（仅清显示缓冲）。
+5. **存档与设置页（U5）**：左栏拆为「本机存档 / 备份存档（已压缩）」两块，各带**读取**与
+   **删除**（删除走界面**二次确认**）；新增「改名（标识不变）」「立即备份」；现金/储蓄互转、
+   还贷、商本注入撤回改为**任意金额输入框**（非法/非正回落 10 贯且零变更）。
+6. **开局菜单（U1）**：菜单内可直接列出本机存档并读取（含概览），**不要求**先进游戏再回菜单；
+   顶部「本月收支（推算）」条常驻，单击弹**本月收支明细**悬浮窗（按人、按来源/科目罗列）。
+7. **调试入口（U4）**：家族界面上**MUST NOT** 常驻显示「调试入口」提示（彩蛋性质）；控制台
+   仍由 `Suntion` 唤醒 + 反引号开关，并提供 `talent` / `attr` / `examrate` / `healrate` /
+   `clear-overrides` / `ach-unlock` / `bank` / `examrates` / `clearlog` / `delete` 等命令。
+8. **自动治疗与快进（U1）**：新增「自动治疗」开关（每月为患病成员开疗程）与
+   「快进到科举」（`ffexam`）按钮；「考试录取率」不再单独占一行/悬浮窗（信息合并进成员详情）。
+
+**回写登记（同一提交）**：①规格书 §12.1 / §12.2 / §12.3 / §14 的 2026-10-19 回写块与
+§17 裁决块 Q3~Q7/Q9；②本节；③`src/KFL.App/MainWindow.xaml`、`MainWindow.xaml.cs`、
+`src/KFL.Presentation/{StatsCharts,FamilyTree,MonthlyBreakdown}.cs`、
+`src/KFL.Presentation/ViewModels/{MainViewModel,MemberRow,AchievementRow,RelationLink}.cs`、
+`src/KFL.Presentation/GameSession.cs`；④`src/KFL.Rules/Achievements/AchievementCatalog.cs`（隐藏成就）。

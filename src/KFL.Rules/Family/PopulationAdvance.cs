@@ -40,6 +40,22 @@ public static class PopulationAdvance
 
         var facts = LifecycleSnapshot.None(state.CurrentDate);
 
+        // ⑧-a0 过期提议清理（**0 次随机**、0 金额、0 状态变更）：上月的提议若已超出应答窗口
+        //      （见 `LifecycleQueries.PendingProposal` 的「当月或次月」口径），MUST 先清空——
+        //      否则它会以「无人应答」的形态长期滞留存档，一旦该成员此后经其他路径成婚，
+        //      存档就会变成「提议指向已有配偶的成员」而被第 13 条校验拒绝。
+        if (state.Family.Lifecycle.Proposal is not null
+            && LifecycleQueries.PendingProposal(state.Family, state.CurrentDate) is null)
+        {
+            state.Family.Lifecycle.SetProposal(null);
+        }
+
+        // ⑧-a0′ 生育簿记一致性（**0 次随机**、0 金额、0 状态变更）：已申请本年生育的夫妇若在上一月
+        //       离异 / 丧偶 / 有一方外嫁，其夫妇键已不再两端互为配偶——不清掉的话，存档一旦写盘
+        //       就再也读不回来（R-04 第 14 条）。写入侧已在 Family.EndMarriage / Marry 收口，
+        //       这里是兜底（例如经其它路径离开在册集合）。
+        DropUnmarriedBirthCouples(state.Family);
+
         // ⑧-a 婚配事件（先捉婿、后提亲）：只写 Lifecycle.Proposal，不改任何 Person 状态
         var market = MarriageMarket.Run(state, random, names);
         facts = facts with { PendingProposal = market.PendingProposal };
@@ -77,6 +93,30 @@ public static class PopulationAdvance
         }
 
         return new PopulationAdvanceResult { Lifecycle = facts };
+    }
+
+    /// <summary>丢弃「已不再互为配偶」的生育簿记（含其待分娩记录）。</summary>
+    private static void DropUnmarriedBirthCouples(Family family)
+    {
+        var lifecycle = family.Lifecycle;
+
+        foreach (var couple in lifecycle.AppliedBirthCouples.ToArray())
+        {
+            var husband = family.TryGet(couple.HusbandId);
+            var wife = family.TryGet(couple.WifeId);
+
+            var married = husband is not null
+                && wife is not null
+                && husband.SpouseId == wife.Id
+                && wife.SpouseId == husband.Id;
+
+            if (!married)
+            {
+                lifecycle.DropBirthCouplesInvolving(couple.HusbandId);
+            }
+        }
+
+        lifecycle.DropPendingBirthsWithoutApplication();
     }
 
     /// <summary>当月跨年龄档的成员（对比上月与本月的 <see cref="AgeBracketPolicy.Of(Person, GameDate)"/>）。</summary>

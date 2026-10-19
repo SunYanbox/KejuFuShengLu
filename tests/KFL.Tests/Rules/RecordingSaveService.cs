@@ -90,6 +90,12 @@ public sealed class RecordingSaveService : ISaveService
     public IReadOnlyList<SaveSlot> ListBackups() => [];
 
     /// <inheritdoc />
+    public bool Delete(SaveSlot slot) => _states.Remove(slot.Name);
+
+    /// <inheritdoc />
+    public bool DeleteBackup(SaveSlot slot) => true;
+
+    /// <inheritdoc />
     public GameState LoadBackup(SaveSlot slot) => Load(slot);
 
     /// <inheritdoc />

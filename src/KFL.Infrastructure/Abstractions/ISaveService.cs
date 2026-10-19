@@ -143,4 +143,20 @@ public interface ISaveService
     /// <param name="slot">新档位。</param>
     /// <returns>新标识的对局状态。</returns>
     GameState SaveAsFork(GameState state, SaveSlot slot);
+
+    /// <summary>
+    /// 删除该槽位的**主文件**（2026-10-19 需求 9）。
+    /// </summary>
+    /// <remarks>
+    /// 只删主文件；同名的压缩备份由 <see cref="DeleteBackup"/> 单独删（删主档不等于放弃回滚点）。
+    /// 删除失败（占用 / 权限）按 <see cref="SaveAccessException"/> 家族浮出，MUST NOT 静默。
+    /// </remarks>
+    /// <param name="slot">档名 + 格式。</param>
+    /// <returns>确实删掉了一个文件 ⇒ <c>true</c>；本就不存在 ⇒ <c>false</c>。</returns>
+    bool Delete(SaveSlot slot);
+
+    /// <summary>删除该槽位的压缩备份（2026-10-19 需求 9）。</summary>
+    /// <param name="slot">备份槽位（档名 + 内部格式）。</param>
+    /// <returns>确实删掉了一个文件 ⇒ <c>true</c>；本就不存在 ⇒ <c>false</c>。</returns>
+    bool DeleteBackup(SaveSlot slot);
 }

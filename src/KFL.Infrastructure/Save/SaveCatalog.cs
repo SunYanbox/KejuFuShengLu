@@ -160,4 +160,18 @@ public static class SaveCatalog
     /// <returns>扩展名。</returns>
     public static string ExtensionOf(string path) =>
         Path.GetExtension(path); // arch-guard:allow 契约九 §4.1：按扩展名判定格式（无 I/O）
+
+    /// <summary>删除一个文件（2026-10-19 需求 9：存档删除）。不存在时是空操作。</summary>
+    /// <param name="path">文件路径。</param>
+    /// <returns>确实删掉了一个文件 ⇒ <c>true</c>。</returns>
+    public static bool DeleteFile(string path)
+    {
+        if (!File.Exists(path)) // arch-guard:allow 契约九 §4.1：删除前先判存在（避免 IOException）
+        {
+            return false;
+        }
+
+        File.Delete(path); // arch-guard:allow 契约九 §4.1：删除存档文件的唯一落点
+        return true;
+    }
 }

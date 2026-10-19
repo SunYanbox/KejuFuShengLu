@@ -515,3 +515,38 @@ T048 IllnessTests.cs   T049 LifespanTests.cs   T050 FamilyLifecycleTests.cs
 - [X] T103 [MEDIUM] 回写 `specs/006-bribery-punishment/spec.md:461-466`：把仍写「属逻辑轨 ⑦」的表述改述为「⑦ 已由 007 交付」，并在 `specs/007-family-lifecycle/tasks.md` 回写登记表 #8 补登该实际落点（现 #8 只写 `contracts/` 与 `data-model.md:386-387`）per FR-050 ⑧ (missing)
 - [X] T104 [LOW] 订正四处描述层残句：`科举浮生录规格书.md:718` 标题「Q1~Q6」补为「Q1~Q7」且 `:720` 提及 Q7；`specs/007-family-lifecycle/tasks.md:430` 登记 #1 描述去掉已不存在的「未决项」；`src/KFL.Infrastructure/Save/Serialization/JsonSaveFormat.cs:16` 注释 `FormatVersion:3` 改 4；`specs/004-save-system/data-model.md:403` 的引用行号更新为 `MessagePackSaveFormat.cs:410-418` per FR-050 ⑩ (partial)
 - [X] T105 [LOW] 补齐 FR-026 的难度全档：`specs/007-family-lifecycle/spec.md:600-603` 与 `contracts/marriage-birth.md` §3 的夭折率写明「简单 5% / 普通 10% / 困难 11% / 地狱 12%」（与 `科举浮生录规格书.md:439`/`:728` 一致），并订正 `src/KFL.Rules/Config/ChildbirthPolicy.cs` 中「待规格书 §17 裁决」的失真注释 per FR-026 (partial)
+
+## 回写范围登记（2026-10-19，玩家反馈第三轮：族内通婚与离婚）
+
+> 本节由第三轮玩家反馈（反馈 1「允许族内通婚（只能同代），也可以离婚」）**追加登记**，
+> 不回改 T001~T105 既有条目，不复用既有编号。
+> 授权落点 = 规格书 §9.1 的 2026-10-19 `§17 裁决回写` 块、§17 裁决块 Q4 与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 族内通婚 `LifecycleEntry.TryMarryWithinFamily(first, second)`（同代、零费用、零随机）；拒绝值 `NotSameGeneration = 11` | `科举浮生录规格书.md` §9.1（裁决块）；[spec.md](./spec.md) 增补 §1；`src/KFL.Rules/Family/{LifecycleEntry,LifecycleOutcome}.cs`；`src/KFL.Presentation/GameSession.cs`（`MarryWithinFamily`）、`ViewModels/MainViewModel.cs`（`endogamy` 动作 + 候选下拉）、`src/KFL.App/MainWindow.xaml` |
+| 离婚 `LifecycleEntry.Divorce(member)` → `Family.EndMarriage`（清 `SpouseId`、追加 `FormerSpouseIds`，子女父母引用不变）；拒绝值 `NotSpouse = 12` | 规格书 §9.1（裁决块）；[spec.md](./spec.md) 增补 §2；`LifecycleEntry.cs`、`LifecycleOutcome.cs`；`GameSession.cs`（`Divorce`）、`MainViewModel.cs`（`divorce` 动作）、`MainWindow.xaml` |
+| 查询面 `EndogamyCandidates` / `CanMarryWithin` / `CanDivorce`（纯函数） | 规格书 §9.1；[spec.md](./spec.md) 增补 §3；`src/KFL.Rules/Family/LifecycleQueries.cs`；`tests/KFL.Tests/Rules/{LifecycleQueriesTests,MarriageTests}.cs` |
+| 界面两入口（族内通婚候选下拉 + 离婚按钮） | 规格书 §12.2；[spec.md](./spec.md) 增补 §4；`src/KFL.App/MainWindow.xaml`、`MainViewModel.cs` |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1309 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+本轮回写**未触碰** `contracts/marriage-birth.md` 与 `contracts/lifecycle.md` 的**随机次序表**
+（族内通婚与离婚都是 0 随机、0 支付，不进入既有结算步骤，故次序表不变）。
+
+## 回写范围登记（2026-10-19，玩家反馈第四轮：生命周期簿记的失效清理）
+
+> 本节由第四轮玩家反馈（某档**读不回来**：R-04 第 13 条 / 第 14 条）**追加登记**，
+> 不回改 T001~T105 既有条目，不复用既有编号。
+> 授权落点 = 规格书 §9.1 的第四轮 `§17 裁决回写` 块、文末裁决块 Q1/Q2 与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| **成婚即清提议**：`Family.Marry` 在写入配偶并 `ApplyAlignment` 后，若 `Lifecycle.Proposal` 指向双方之一则清空 | 规格书 §9.1 第四轮回写块①；[spec.md](./spec.md) 第四轮增补 §1；`src/KFL.Core/Entities/Family.cs`；`tests/KFL.Tests/Rules/MarriageTests.cs` |
+| **婚姻终止即清生育簿记**：`Family.EndMarriage` 调 `FamilyLifecycleState.DropBirthCouplesInvolving`（离异/丧偶/难产而亡统一经此）；成婚同样丢弃当事人别处登记的簿记 | 规格书 §9.1 第四轮回写块①；[spec.md](./spec.md) 增补 §1；`src/KFL.Core/Entities/{Family,FamilyLifecycleState}.cs` |
+| **月度兜底（⑧-a0）**：`PopulationAdvance` 在既有过期提议清理后追加 `DropNonMutualBirthCouples()` 与 `DropPendingBirthsWithoutApplication()`（0 随机 / 0 金额 / 0 状态变更） | 规格书 §9.1 第四轮回写块②；[spec.md](./spec.md) 增补 §2；`src/KFL.Rules/Family/PopulationAdvance.cs` |
+| **读档兜底**：`SaveStateRepair`（004 的 ⑦′ 步）清空历史档的同类不一致 | 规格书 §14 第四轮回写块；004 `spec.md` 第四轮增补；`src/KFL.Infrastructure/Save/Serialization/SaveStateRepair.cs` |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / **1314 通过 0 失败** / 恰六工程 / 无 `*.sln`。
+本轮回写**未触碰** `contracts/marriage-birth.md` / `contracts/lifecycle.md` 的随机次序表
+（⑧-a0 子步 0 随机；写入侧清理发生在既有步骤内部，不新增步骤、不新增随机消费）；
+`FamilyLifecycleDto` 键数不变（只**清空**既有字段，不新增字段），故 `SaveFileFormat.Version` 仍为 5。

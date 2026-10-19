@@ -324,6 +324,68 @@ public static class LifecycleQueries
             : null;
     }
 
+    /// <summary>
+    /// 族内通婚的候选者（玩家反馈 1）：在册、未婚、成年、**异性**、**同代**且非直系血亲的成员。
+    /// </summary>
+    /// <param name="family">家族。</param>
+    /// <param name="member">我方成员。</param>
+    /// <param name="date">判定月份。</param>
+    /// <returns>候选者（按出生日期、再按 Id 排序）；无候选时为空列表。</returns>
+    /// <remarks>
+    /// 2026-10-19 新增（玩家反馈 1）：族内通婚**不考虑遗传病**，故不排除表亲与同辈兄弟姐妹之外的近亲；
+    /// 「同代」以 <see cref="Person.Generation"/> 相等为唯一判据，天然排除父女 / 母子等直系跨代组合。
+    /// </remarks>
+    public static IReadOnlyList<Person> EndogamyCandidates(Family family, Person member, GameDate date)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        ArgumentNullException.ThrowIfNull(member);
+
+        return
+        [
+            .. family.Members
+                .Where(other => other.Id != member.Id
+                    && other.Gender != member.Gender
+                    && CanMarryWithin(family, member, other, date))
+                .OrderBy(other => other.BirthDate.Year)
+                .ThenBy(other => other.BirthDate.Month)
+                .ThenBy(other => other.Id.Value),
+        ];
+    }
+
+    /// <summary>族内通婚判据（玩家反馈 1）：双方都在册未婚成年、异代即拒（同代是硬条件）。</summary>
+    /// <param name="family">家族。</param>
+    /// <param name="first">一方。</param>
+    /// <param name="second">另一方。</param>
+    /// <param name="date">判定月份。</param>
+    /// <returns>可结为夫妻时为 <c>true</c>。</returns>
+    public static bool CanMarryWithin(Family family, Person first, Person second, GameDate date)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+
+        if (first.Id == second.Id
+            || first.Gender == second.Gender
+            || first.SpouseId is not null
+            || second.SpouseId is not null
+            || first.Generation != second.Generation)
+        {
+            return false;
+        }
+
+        return IsMarriageable(family, first, DirectionOf(first.Gender), date)
+               && IsMarriageable(family, second, DirectionOf(second.Gender), date);
+    }
+
+    /// <summary>可否离异（玩家反馈 1）：在册且有配偶即可；无配偶即拒。</summary>
+    /// <param name="person">成员。</param>
+    /// <returns>可离异时为 <c>true</c>。</returns>
+    public static bool CanDivorce(Person person)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+        return CountedMembers.IsRegistered(person) && person.SpouseId is not null;
+    }
+
     /// <summary>成员当前辈分（data-model §3.4；血亲出生即定、外来者由家族指定）。</summary>
     /// <param name="person">成员。</param>
     /// <returns>辈分。</returns>

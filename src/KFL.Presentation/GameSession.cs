@@ -783,8 +783,45 @@ public sealed class GameSession
         return string.Empty;
     }
 
-    public string ApplyChildbirth(CoupleKey couple)
+    /// <summary>
+    /// 族内通婚（玩家反馈 1）：把两名同代在册未婚成员结为夫妻，零费用。
+    /// </summary>
+    /// <param name="first">一方。</param>
+    /// <param name="second">另一方（须同代异性）。</param>
+    /// <returns>成功 ⇒ 空串；否则为给玩家看的原因。</returns>
+    public string MarryWithinFamily(Person first, Person second)
     {
+        var result = LifecycleEntry.TryMarryWithinFamily(State, first, second);
+        if (!result.Accepted)
+        {
+            return $"族内通婚失败：{Display.LifecycleReason(result.RejectReason)}。";
+        }
+
+        Note($"❤ 族内通婚：{first.Name} 与 {second.Name} 结为夫妻（无聘礼 / 嫁妆）。");
+        Changed?.Invoke();
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// 离异（玩家反馈 1）：终止选中成员的婚姻，对方记入前任配偶，零费用。
+    /// </summary>
+    /// <param name="member">有配偶的一方。</param>
+    /// <returns>成功 ⇒ 空串；否则为原因。</returns>
+    public string Divorce(Person member)
+    {
+        var spouse = member.SpouseId is { } spouseId ? State.Family.TryGet(spouseId) : null;
+        var result = LifecycleEntry.Divorce(State, member);
+        if (!result.Accepted)
+        {
+            return $"离异失败：{Display.LifecycleReason(result.RejectReason)}。";
+        }
+
+        Note($"✂ {member.Name} 与 {(spouse is null ? "配偶" : spouse.Name)} 离异（子女的父母引用不变）。");
+        Changed?.Invoke();
+        return string.Empty;
+    }
+
+    public string ApplyChildbirth(CoupleKey couple)    {
         var result = LifecycleEntry.ApplyChildbirth(State, couple);
         if (!result.Accepted)
         {
@@ -1252,6 +1289,40 @@ public sealed class GameSession
         catch (SaveFileException ex)
         {
             return $"改名失败：{ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 删除一个存档主文件（2026-10-19 需求 9）。删除**当前档**时同时结束本会话。
+    /// </summary>
+    /// <param name="slot">档名 + 格式。</param>
+    /// <returns>成功且确实删了 ⇒ 空串；否则为给玩家看的原因。</returns>
+    public static string DeleteSave(SaveSlot slot)
+    {
+        try
+        {
+            var saves = new SaveService();
+            return saves.Delete(slot) ? string.Empty : $"存档不存在：{slot.Name}";
+        }
+        catch (SaveFileException ex)
+        {
+            return $"删除失败：{ex.Message}";
+        }
+    }
+
+    /// <summary>删除一个压缩备份（2026-10-19 需求 9）。</summary>
+    /// <param name="slot">备份槽位。</param>
+    /// <returns>成功且确实删了 ⇒ 空串；否则为原因。</returns>
+    public static string DeleteBackup(SaveSlot slot)
+    {
+        try
+        {
+            var saves = new SaveService();
+            return saves.DeleteBackup(slot) ? string.Empty : $"备份不存在：{slot.Name}";
+        }
+        catch (SaveFileException ex)
+        {
+            return $"删除备份失败：{ex.Message}";
         }
     }
 

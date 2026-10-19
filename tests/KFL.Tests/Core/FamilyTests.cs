@@ -579,4 +579,55 @@ public class FamilyTests
             fatherId: FamilyFixtures.Id(1));
         Assert.Throws<ArgumentException>(() => family.AddOutsider(withParentsAsOutsider));
     }
+
+    [Fact]
+    public void 婚姻终止丢弃该夫妇的生育簿记()
+    {
+        var family = new Family("测试");
+        var husband = family.AddFoundingMember(
+            FamilyFixtures.NewPerson(1, "甲", Gender.Male, 1, 1, generation: 0));
+        var wife = family.AddOutsider(
+            FamilyFixtures.NewPerson(2, "乙", Gender.Female, 2, 3, generation: 0));
+        family.Marry(husband.Id, wife.Id);
+
+        var couple = new CoupleKey(husband.Id, wife.Id);
+        var month = new GameDate(10, 3);
+        family.Lifecycle.RecordBirthApplication(couple, month.Year);
+        family.Lifecycle.ScheduleBirth(new PendingBirth(couple, month));
+
+        family.EndMarriage(husband.Id);
+
+        Assert.Empty(family.Lifecycle.AppliedBirthCouples);
+        Assert.Empty(family.Lifecycle.PendingBirths);
+    }
+
+    [Fact]
+    public void 再婚丢弃该成员从前的生育簿记且不影响他人()
+    {
+        var family = new Family("测试");
+        var first = family.AddFoundingMember(
+            FamilyFixtures.NewPerson(1, "甲", Gender.Male, 1, 1, generation: 0));
+        var second = family.AddFoundingMember(
+            FamilyFixtures.NewPerson(2, "丙", Gender.Male, 1, 1, generation: 0));
+        var wifeOfFirst = family.AddOutsider(
+            FamilyFixtures.NewPerson(3, "乙", Gender.Female, 2, 3, generation: 0));
+        var wifeOfSecond = family.AddOutsider(
+            FamilyFixtures.NewPerson(4, "丁", Gender.Female, 2, 3, generation: 0));
+
+        family.Marry(first.Id, wifeOfFirst.Id);
+        family.Marry(second.Id, wifeOfSecond.Id);
+
+        var stale = new CoupleKey(first.Id, wifeOfFirst.Id);
+        var alive = new CoupleKey(second.Id, wifeOfSecond.Id);
+        var month = new GameDate(10, 3);
+
+        family.Lifecycle.RecordBirthApplication(stale, month.Year);
+        family.Lifecycle.RecordBirthApplication(alive, month.Year);
+
+        family.EndMarriage(first.Id);
+        family.Marry(first.Id, wifeOfFirst.Id);
+
+        // 甲的旧簿记在终止时就已丢弃；乙（第二对）的簿记 MUST 完好无损。
+        Assert.Equal([alive], family.Lifecycle.AppliedBirthCouples);
+    }
 }

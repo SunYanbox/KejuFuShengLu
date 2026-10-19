@@ -224,6 +224,8 @@ public static class Display
         KFL.Core.Enums.LedgerCategory.MarriageFormed => "成婚",
         KFL.Core.Enums.LedgerCategory.MemberMarriedOut => "外嫁",
         KFL.Core.Enums.LedgerCategory.PersonBought => "买人成交",
+        KFL.Core.Enums.LedgerCategory.MemberImprisoned => "入狱服刑",
+        KFL.Core.Enums.LedgerCategory.HouseRentIncome => "宅邸租",
         _ => category.ToString(),
     };
 }

@@ -21,13 +21,40 @@ public partial class MainWindow : Window
     private string _typed = string.Empty;
     private DateTime _typedAt = DateTime.MinValue;
     private bool _consoleArmed;
+    private bool _logScrollPending;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _viewModel;
+
+        // 纪事自动滚到最新（玩家反馈：申请生育等即时反馈「显示不太及时」——新行其实已入列，
+        // 只是停在列表下沿之外，需手动滚动才看得到）。合并多次增量，避免逐行滚动。
+        _viewModel.LogLines.CollectionChanged += (_, _) => ScrollLogToEnd();
+
         Closing += (_, _) => _viewModel.SaveOnExit();
         Loaded += OnLoaded;
+    }
+
+    /// <summary>把纪事列表滚到最后一行（多次增行合并为一次布局后的滚动）。</summary>
+    private void ScrollLogToEnd()
+    {
+        if (_logScrollPending)
+        {
+            return;
+        }
+
+        _logScrollPending = true;
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Background,
+            new Action(() =>
+            {
+                _logScrollPending = false;
+                if (LogList.Items.Count > 0)
+                {
+                    LogList.ScrollIntoView(LogList.Items[^1]);
+                }
+            }));
     }
 
     /// <summary>
@@ -57,6 +84,11 @@ public partial class MainWindow : Window
             {
                 _viewModel.AutoPlay(token[5..]);
             }
+            else if (token.StartsWith("cmd:", StringComparison.OrdinalIgnoreCase))
+            {
+                // 截图/回归脚本用：直接执行一个界面命令（如 cmd:menu 回主菜单验证存档列表）。
+                _viewModel.DoCommand.Execute(token[4..]);
+            }
             else if (token.Equals("console", StringComparison.OrdinalIgnoreCase))
             {
                 _viewModel.ActivateConsole();
@@ -72,16 +104,55 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>双击顶部考试条：开关「录取率来源与算式」悬浮窗（需求 18）。</summary>
-    private void OnExamInfoMouseUp(object sender, MouseButtonEventArgs e)
+    /// <summary>删除存档前的二次确认（玩家反馈 9）。</summary>
+    private void OnDeleteSaveClick(object sender, RoutedEventArgs e)
     {
-        if (e.ClickCount < 2)
+        var name = _viewModel.SelectedSave?.Text ?? "（未选中）";
+        if (MessageBox.Show(
+                $"确定删除存档「{name}」吗？\n\n删除后无法恢复（备份存档不受影响）。",
+                "删除存档",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning,
+                MessageBoxResult.Cancel) != MessageBoxResult.OK)
         {
             return;
         }
 
-        _viewModel.DoCommand.Execute("examdetail");
-        e.Handled = true;
+        _viewModel.DoCommand.Execute("delete");
+    }
+
+    /// <summary>删除备份前的二次确认（玩家反馈 9）。</summary>
+    private void OnDeleteBackupClick(object sender, RoutedEventArgs e)
+    {
+        var name = _viewModel.SelectedBackup?.Text ?? "（未选中）";
+        if (MessageBox.Show(
+                $"确定删除备份「{name}」吗？\n\n删除后无法恢复（主存档不受影响）。",
+                "删除备份",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning,
+                MessageBoxResult.Cancel) != MessageBoxResult.OK)
+        {
+            return;
+        }
+
+        _viewModel.DoCommand.Execute("deletebackup");
+    }
+
+    /// <summary>
+    /// 统计页每张图的横向滚动条（玩家反馈 6）：内容宽度变化或首次加载后一律滚到最右，
+    /// 直接看到最新月份；下一次重绘同样回到最右，不记忆上次位置。
+    /// </summary>
+    private void OnChartScrollLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ScrollViewer viewer)
+        {
+            return;
+        }
+
+        viewer.ScrollToRightEnd();
+        viewer.Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Loaded,
+            new Action(viewer.ScrollToRightEnd));
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)

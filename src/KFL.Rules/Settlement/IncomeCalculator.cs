@@ -91,6 +91,7 @@ public static class IncomeCalculator
         AddCrafting(lines, assignable, holdings, date, revenue);
         AddTrade(lines, assignable, treasury.MerchantCapital, origin, date, revenue);
         AddSalaries(lines, counted, origin, revenue);
+        AddHouseRent(lines, holdings, revenue);
         AddShopRent(lines, holdings, revenue);
 
         return new IncomeComputation(lines);
@@ -259,6 +260,18 @@ public static class IncomeCalculator
             var guan = SalaryTable.MonthlySalaryGuan(rank.Level) * originMultiplier * revenue * coefficient;
             Add(lines, LedgerCategory.OfficialSalary, person.Id, guan);
         }
+    }
+
+    /// <summary>
+    /// 宅邸租（2026-10-19 玩家反馈 2）：农舍 + 城市宅各自生租，**与出身、职业指派无关**。
+    /// 出身只影响「对应产业更赚」（农有田、商有本、工有城市宅加成），不该出现「买了房毫无收益」。
+    /// </summary>
+    private static void AddHouseRent(List<IncomeLine> lines, Holdings holdings, decimal revenue)
+    {
+        var guan = (holdings.RuralHouses * IncomeRateTable.RuralHouseRentGuanPerMonth)
+            + (holdings.UrbanHouses * IncomeRateTable.UrbanHouseRentGuanPerMonth);
+
+        Add(lines, LedgerCategory.HouseRentIncome, null, guan * revenue);
     }
 
     /// <summary>铺面租：间数 × 单价 × 年租率 ÷ 12。</summary>

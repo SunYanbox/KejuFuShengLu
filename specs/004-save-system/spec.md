@@ -502,3 +502,65 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
 `src/KFL.Presentation/GameSession.cs`、`src/KFL.App/MainWindow.xaml`（备份列表 + 读取按钮）；
 ④`tests/KFL.Tests/Rules/RecordingSaveService.cs`（假实现的三个新成员）、
 `tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs`（`BackupPathOf` 加 `.zip`、`CopyBackupOverPrimary` 解包）。
+
+## 增补（2026-10-19，玩家反馈第三轮：删除存档与备份、存档列表复位）
+
+> 依据：规格书 §14 的 2026-10-19 回写块与 §17 裁决块 Q7。本节**取代**上文「存档列表只增不减」
+> 的隐含口径。
+
+1. **删除存档与备份**：`ISaveService` 新增 `bool Delete(SaveSlot)` 与 `bool DeleteBackup(SaveSlot)`
+   （返回 `false` 表示文件不存在，**不抛**）；文件系统删除经 `SaveCatalog.DeleteFile`（带
+   `// arch-guard:allow` 同行注释，SC-008）。删除失败（IO/权限）按契约九 §2 抛 `SaveAccessException`。
+   界面层 MUST 提供**二次确认**（`MainWindow.xaml.cs` 的 `OnDeleteSaveClick` / `OnDeleteBackupClick`
+   弹 `MessageBox`），VM 只执行删除；删除**当前正在玩的存档**时，会话先 `Detach()` 再刷新列表。
+2. **列表选择复位**：`RefreshSaves` / `RefreshBackups` 在刷新后若原选中项不在新列表中，
+   MUST 将选择**复位**（否则出现「选中项已删、按钮仍指向旧档」的悬空引用，即反馈 12 的
+   「回主菜单后偶尔无法读取存档」的成因之一）。
+3. **主菜单重新列出存档**：`menu` 动作返回主菜单时 MUST 重新 `RefreshSaves` / `RefreshBackups` /
+   `RefreshMenuSaveOverview`，保证开局菜单里的「读取已有存档」列表始终反映磁盘现状。
+
+**回写登记（同一提交）**：①规格书 §14 的 2026-10-19 回写块与 §17 裁决块 Q7；②本节；
+③`src/KFL.Infrastructure/Abstractions/ISaveService.cs`、`src/KFL.Infrastructure/Save/{SaveService,SaveCatalog}.cs`、
+`src/KFL.Presentation/GameSession.cs`、`src/KFL.Presentation/ViewModels/MainViewModel.cs`、
+`src/KFL.App/MainWindow.xaml`、`MainWindow.xaml.cs`；④`tests/KFL.Tests/Rules/RecordingSaveService.cs`。
+
+## 增补（2026-10-19，玩家反馈第四轮：读档自愈）
+
+> 依据：规格书 §14 的 `§17 裁决回写（2026-10-19，玩家反馈第四轮 · 读档自愈）` 与文末
+> 「裁决块：2026-10-19（玩家反馈第四轮）」Q3。本节**收窄**上文「读档一律如实拒绝」的口径：
+> 自愈的范围**只有两类**，其余一律仍拒绝。
+
+1. **落点**：`SaveService.ReadState` 在 `ToDomain` 之后、`ValidateIdentity`/`Validate` **之前**，
+   调用 `SaveStateRepair.Repair(state)`（新增 `src/KFL.Infrastructure/Save/Serialization/SaveStateRepair.cs`）。
+2. **可自愈的两类**（逐字）：
+   - `ClearStaleProposal`：`state.Family.Lifecycle.Proposal` 的 `OurMemberId` 已不是本族成员、
+     已亡、已外嫁或**已有配偶** ⇒ 清空该提议（于是 §14 一致性校验的「第 13 条」不再命中）。
+   - `ClearStaleBirthBookkeeping`：`AppliedBirthCouples` 中两端不再互为配偶的键，以及不在
+     `AppliedBirthCouples` 里的孤儿 `PendingBirths` ⇒ 清掉（「第 14 条」不再命中）。
+3. **MUST NOT 扩大**：除上述两类外，`SaveStateRepair` MUST NOT 修改任何成员、官职、账本、
+   成就、日期、标识或版本号；新增第三条自愈属**形状变更**，须先经规格书 §17 裁决。
+4. **写入侧先手**：新档不再产生这两类不一致（见 007 `spec.md` 第四轮增补）；本节的自愈只为
+   **历史档**兜底。
+
+**回写登记（同一提交）**：①规格书 §14 的 2026-10-19 第四轮回写块与文末第四轮裁决块 Q3；
+②007 `spec.md` 第四轮增补（写入侧与月度兜底）；③本节；④`src/KFL.Infrastructure/Save/SaveService.cs`
+与新增的 `SaveStateRepair.cs`；⑤`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs`
+（`损坏的旧档的陈旧提议与生育簿记在读档时被自愈`）。
+
+## 增补（2026-10-19，玩家反馈第四轮：开局菜单读档入口）
+
+> 依据：文末「裁决块：2026-10-19（玩家反馈第四轮）」Q5。玩家反馈：在**开局菜单**里点
+> 「读取选中存档」没有任何效果。
+
+1. **根因**：动作派发入口原先的第一行守卫是「`_session is null` 或 token 为空 ⇒ 直接返回」。
+   开局菜单阶段**本来就没有会话**，于是菜单级的 `menuload` 动作永远走不到派发分支
+   （开局按钮 `StartGameCommand` 走的是**另一个**命令，所以只有读档入口失效）。
+2. **口径**：派发入口 MUST 先处理**菜单级动作**（当前仅 `menuload`），再判空会话返回；
+   即守卫的语义是「无会话 ⇒ 只允许菜单级动作」，MUST NOT 是「无会话 ⇒ 一律返回」。
+3. **失败可见**：菜单里没有选中项时，MUST 在概览区给出「没有可读取的存档。」，
+   MUST NOT 静默无反应。
+
+**回写登记（同一提交）**：①规格书文末第四轮裁决块 Q5；②本节；
+③`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`Execute` 的守卫重排 + 删除已不可达的
+`case "menuload"`）；④端到端验收：`KFL_AUTOSTART=cmd:menuload` 能进档（截图见
+`artifacts/ui-ui-fix-menuload.png`）。

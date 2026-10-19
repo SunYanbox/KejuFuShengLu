@@ -664,3 +664,17 @@ Task: "T034 CountedMembers in src/KFL.Rules/Settlement/CountedMembers.cs"
 > 的 E-10 裁决行也把两个成员乘区写成家族级因子，按同一口径一并修正（三处公式现互为一致）。
 > 既有条目 T001~T082 的文字**未被回改**，只追加本节的勾选与登记。
 
+## 回写范围登记（2026-10-19，玩家反馈第三轮：宅邸租与入狱事件类别）
+
+> 本节由第三轮玩家反馈（反馈 2「选农后农舍/城市宅无收益」与反馈 10「人口统计图需入狱数据」）
+> **追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §5.2 的 2026-10-19 `§17 裁决回写` 块、§17 裁决块 Q1/Q8 与
+> `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 宅邸租（农村宅 0.4 + 城市宅 0.8 贯/月，家族级，`HouseRentIncome`） | `科举浮生录规格书.md` §5.2（新行 + 裁决块）；[spec.md](./spec.md) 增补 §1；[data-model.md](./data-model.md) §2.1（新行）；`src/KFL.Rules/Config/IncomeRateTable.cs`、`src/KFL.Rules/Settlement/IncomeCalculator.cs`（`AddHouseRent`，插在 `AddSalaries` 与 `AddShopRent` 之间）、`src/KFL.Presentation/Display.cs`；账本取值数 39 → 40 |
+| 入狱事件类条目 `MemberImprisoned`（金额 `Money.Zero`，不涉资金，仅供人口统计） | 规格书 §17 裁决块 Q8 与 §12.3；[spec.md](./spec.md) 增补 §2；[data-model.md](./data-model.md) §2.1（新行 + 「13 个类别 / 6 个事件类」）；`src/KFL.Core/Enums/{LedgerCategory,LedgerCategoryMetadata}.cs`、`src/KFL.Rules/Punishment/PunishmentImposer.cs`、`src/KFL.Presentation/Display.cs`；`tests/KFL.Tests/Core/LedgerInvariantTests.cs`（40 个取值）、`tests/KFL.Tests/Rules/PunishmentMatrixTests.cs`（`Fine` 定向断言） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1309 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+

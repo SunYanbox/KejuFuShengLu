@@ -424,6 +424,37 @@ public class IncomeTests
             lines.Single(l => l.PersonId == retired.Id).Amount);
     }
 
+    /// <summary>
+    /// 玩家反馈 2（2026-10-19）：屋舍本身生租——出身只决定加成高低，不再出现「选了农，
+    /// 农舍与城市宅完全没有收益」。农村宅与城市宅按座计租，城市宅更高。
+    /// </summary>
+    [Fact]
+    public void 屋舍本身生租且城市宅高于农村宅()
+    {
+        var family = RulesHarness.FamilyOf(RulesHarness.Member(1, Gender.Male, 40));
+        var holdings = RulesHarness.HoldingsOf(ruralHouses: 2, urbanHouses: 3);
+        var computation = Compute(family, holdings, Money.Zero);
+
+        var revenue = DifficultyRates.RevenueFactor(Normal);
+        var expected = RulesHarness.Guan(
+            ((2m * IncomeRateTable.RuralHouseRentGuanPerMonth)
+             + (3m * IncomeRateTable.UrbanHouseRentGuanPerMonth)) * revenue);
+
+        Assert.Equal(expected, Amount(computation, LedgerCategory.HouseRentIncome, null));
+        Assert.True(IncomeRateTable.UrbanHouseRentGuanPerMonth > IncomeRateTable.RuralHouseRentGuanPerMonth);
+    }
+
+    /// <summary>同一条数：无屋舍时不落宅邸租条目（避免 0 额条目污染流水账）。</summary>
+    [Fact]
+    public void 无屋舍时不落宅邸租条目()
+    {
+        var family = RulesHarness.FamilyOf(RulesHarness.Member(2, Gender.Male, 40));
+
+        var computation = Compute(family, new Holdings(), Money.Zero);
+
+        Assert.Equal(Money.Zero, Amount(computation, LedgerCategory.HouseRentIncome, null));
+    }
+
     private static IncomeComputation Compute(
         Family family, Holdings holdings, Money merchantCapital, Origin origin = Origin.Artisan) =>
         RulesHarness.Income(

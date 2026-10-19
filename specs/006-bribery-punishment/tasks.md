@@ -461,3 +461,18 @@ T053 SaveFixtures.cs   T054 SaveStateComparer.cs   T055 SaveFormatContractTests.
 - [X] T091 补断言物（J-1）：`tests/KFL.Tests/Rules/BribeEntryTests.cs` 新增三例——差 1 文 ⇒ 拒绝（逐字段不变、随机 0、无账本条目、**贷款本金不变**）、恰好等于 ⇒ 可行且不转贷款、储蓄补足 ⇒ 可行且不转贷款；既有「窗口外」一例的 `ToLoan` 断言改述为 `Amount` 断言（`BribeOutcome` 已无该字段）。依据：`data-model.md` I-20；SC-008。
 - [X] T092 回写工件（J-1）：`specs/006-bribery-punishment/spec.md`（Clarifications 新增 `Session 2026-10-17` Q4；US1 摘要与 FR-005 / FR-007 改述；FR-035 ① 扩为「四项裁决」；Assumptions 的 R-3 开放项改为「已由 §17 裁决消解」）；`contracts/bribery.md`（§1 条款 7 增「可付性」与判定次序、新增 §17 裁决注；§2 ① 增判据、③ 改「现金 → 储蓄全额付清」；§2 条款 1/5；§6 可行性行增 `IsAffordable`；§7 注「恒恰好 1 条」）；`data-model.md`（§3.2 字段面、§4.3、§5.1 转移表、新增不变量 I-20）；`plan.md`（US1 支付口径）。依据：AGENTS.md 铁律第 1/2/3 条。
 - [X] T093 门禁复跑与收口（与 T089~T092 同一提交）：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false`（0 警告 0 错误）、`dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProcessQuery=false`（全绿、0 skipped）、`dotnet sln KejuFuShengLu.slnx list`（恰六工程）、递归无 `*.sln`；并把本批复写并入「回写范围登记」表第 **22** 行。依据：AGENTS.md 门禁四条；SC-010、SC-011。
+
+---
+
+## 回写范围登记（2026-10-19，玩家反馈第三轮：服刑事件条目）
+
+> 本节由第三轮玩家反馈（反馈 10「人口统计图需入狱数据」）**追加登记**，不回改 T001~T093 既有条目，
+> 不复用既有编号。授权落点 = 规格书 §17 裁决块（2026-10-19）Q8 与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 服刑落 1 条事件类条目 `MemberImprisoned`（金额 `Money.Zero`，不涉资金，仅供人口统计的「入狱」系列） | `科举浮生录规格书.md` §17 裁决块 Q8 与 §12.3；`specs/006-bribery-punishment/spec.md` 增补 §1~§3；`specs/002-monthly-settlement-economy/data-model.md` §2.1（新行 + 计数 39 → 40）；`src/KFL.Core/Enums/{LedgerCategory,LedgerCategoryMetadata}.cs`、`src/KFL.Rules/Punishment/PunishmentImposer.cs`（`cell.SentenceMonths > 0` 分支内 `state.Economy.Apply(...)`）、`src/KFL.Presentation/Display.cs`（`"入狱服刑"`）；`tests/KFL.Tests/Core/LedgerInvariantTests.cs`（40 个取值、事件类 11 个）、`tests/KFL.Tests/Rules/PunishmentMatrixTests.cs`（改 `Fine` 定向断言，不再用全量计数） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1309 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+本条**不改**惩罚矩阵的任何数值与结算次序（③ 步随机消费仍恒为 0 次），仅在已判服刑时多追加一条
+不涉资金的账本事件条目；`contracts/punishment.md` 的 12 格矩阵与 I-1~I-20 不变量**未改**。

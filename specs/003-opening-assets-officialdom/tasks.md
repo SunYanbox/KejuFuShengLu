@@ -442,3 +442,20 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1286 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 
+## 回写范围登记（2026-10-19，玩家反馈第三轮：界面轨 U1~U5 补齐）
+
+> 本节由第三轮玩家反馈（16 条）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §17 裁决块（2026-10-19，玩家反馈第三轮）与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 卡片徽章行 + 成员详情结构化分区（亲属/本月收支/俸禄/录取率/自愈率明细） | `科举浮生录规格书.md` §12.2；`specs/003-.../spec.md` 增补 §1；`src/KFL.Presentation/ViewModels/{MemberRow,RelationLink}.cs`、`MainViewModel.cs`；`src/KFL.App/MainWindow.xaml` |
+| 家族树视图（一行一代 + 父母/子女/兄弟姐妹三色连线 + 关系跳转） | 规格书 §12.1；`spec.md` 增补 §2；`src/KFL.Presentation/FamilyTree.cs`（新）、`ViewModels/{RelationLink,MainViewModel}.cs`、`MainWindow.xaml` |
+| 统计页（三图纵向 + 每图独立滚动默认最右 + 悬停 + 当月/累计切换 + 人口与功名图 + 局势速览） | 规格书 §12.3；`spec.md` 增补 §3；`src/KFL.Presentation/StatsCharts.cs`、`src/KFL.App/{App.xaml,MainWindow.xaml}` |
+| 纪事合并 `× N` 与清空 | 规格书 §12.3；`spec.md` 增补 §4；`MainViewModel.cs`（`MergeLogLines` / `SplitLogLine`）、`GameSession.cs`（`ClearLog`）、`MainWindow.xaml` |
+| 存档页（备份分栏 + 删除二次确认 + 改名 + 自由金额输入框） | 规格书 §14；`spec.md` 增补 §5；`src/KFL.App/{MainWindow.xaml,MainWindow.xaml.cs}`、`MainViewModel.cs` |
+| 开局菜单直接读档 + 本月收支悬浮窗 + 自动治疗 + 快进到科举 + 移除录取率悬浮窗 | 规格书 §12.3/§14；`spec.md` 增补 §6/§8；`MainWindow.xaml`、`MainViewModel.cs`、`GameSession.cs`（`AutoTreatAll` / `ListBackups` / `LoadBackup`） |
+| 调试入口不再常驻显示；控制台新增 `talent`/`attr`/`examrate`/`healrate`/`clear-overrides`/`ach-unlock`/`bank`/`examrates`/`clearlog`/`delete` | 规格书 §13.2、§17 Q9；`spec.md` 增补 §7；`MainWindow.xaml`（删除调试入口段）、`MainViewModel.cs`、`GameSession.cs`（`DebugSetTalent` 等）、`src/KFL.Rules/Config/DebugOverrides.cs`（新，内存、不落盘） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1309 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+

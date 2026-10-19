@@ -1063,3 +1063,60 @@
   备选①「缺口计入贷款本金」与③「允许部分支付」**均不采用**。断言在
   `tests/KFL.Tests/Rules/MarriageTests.cs`（`聘礼付不起时整单失败且托媒费不退` 等三例）。
   这是本特性此前唯一的未决口径，**现已落地**；其余开放项仍属「实机观察」。
+
+## 增补（2026-10-19，玩家反馈第三轮：族内通婚与离婚）
+
+> 依据：规格书 §9.1 于 2026-10-19 新增的 `§17 裁决回写` 块。本节**追加**两条家族内入口，
+> **不改写**上文托媒 / 提亲 / 榜下捉婿的既有口径与其随机次序。
+
+1. **族内通婚**（`LifecycleEntry.TryMarryWithinFamily(GameState, Person first, Person second)`）：
+   前置 = 双方**在册、未婚、成年异性、辈分相同**（`Generation` 相等；血缘亲疏不计、无遗传病机制）。
+   通过后直接 `Family.Marry(first.Id, second.Id)`，**零费用、零随机、零资金条目**。
+   拒绝原因：不同代 ⇒ `LifecycleRejectReason.NotSameGeneration`（新增枚举值 **11**）；
+   其余不合格 ⇒ `NotMarriageable`。
+2. **离婚**（`LifecycleEntry.Divorce(GameState, Person member)`）：前置 = 在册且有配偶
+   （`LifecycleQueries.CanDivorce`）。通过后 `Family.EndMarriage(member.Id)`——清空双方 `SpouseId`、
+   把前任追加进 `FormerSpouseIds`；**子女的 `FatherId` / `MotherId` MUST NOT 变更**。
+   无配偶 ⇒ `NotSpouse`（新增枚举值 **12**）；不合格 ⇒ `NotMarriageable`。
+3. **查询面**：`LifecycleQueries.EndogamyCandidates(family, member, date)` 返回在册未婚成年异性且
+   同代的候选者（按出生年/月/`Id` 升序）；`CanMarryWithin(family, first, second, date)` 与
+   `CanDivorce(person)` 为**纯函数**（不写状态、不消费随机，§9 既有口径不变）。
+4. **交互**：界面提供「族内通婚（选候选者）」与「离婚」两个入口；两者与托媒共用「一夫一妻」约束。
+
+**回写登记（同一提交）**：①规格书 §9.1 的 2026-10-19 `§17 裁决回写` 块；②本节；
+③`src/KFL.Rules/Family/{LifecycleEntry,LifecycleQueries,LifecycleOutcome}.cs`、
+`src/KFL.Presentation/GameSession.cs`、`src/KFL.Presentation/ViewModels/MainViewModel.cs`、
+`src/KFL.App/MainWindow.xaml`（两个入口按钮 + 候选下拉）；
+④`tests/KFL.Tests/Rules/{LifecycleQueriesTests,MarriageTests}.cs`。
+
+## 增补（2026-10-19，玩家反馈第四轮：生命周期簿记的失效清理）
+
+> 依据：规格书 §9.1 的 `§17 裁决回写（2026-10-19，玩家反馈第四轮 · 生命周期簿记的失效清理）`
+> 与文末「裁决块：2026-10-19（玩家反馈第四轮）」Q1/Q2。玩家反馈某档**读不回来**，两条拒绝原因
+> 分别是 R-04 第 13 条（提议的 `OurMemberId` 已有配偶）与第 14 条（已申请生育的夫妇不再互为配偶）。
+
+本节把两类簿记的失效条件**语义化**并规定三层清理（**不改写**上文的簿记新增规则）：
+
+1. **写入侧（收口，MUST）**：
+   - **成婚** ⇒ 清掉指向当事人双方的待应答提议。落点 = `Family.Marry(PersonId, PersonId)`
+     （托媒、应答提亲、族内通婚三条路径的**唯一**汇合点）。
+   - **婚姻终止**（离异 / 丧偶 / 难产而亡，一律经 `Family.EndMarriage(PersonId)`）⇒
+     `FamilyLifecycleState.DropBirthCouplesInvolving(personId)`：移除该成员牵涉的已申请夫妇键与
+     由该夫妇牵涉的待分娩记录。
+   - **成婚** ⇒ 同样丢弃当事人此前从别处登记过的生育簿记（同一成员同一时刻至多属于一个夫妇键，
+     故按成员丢弃不误伤他人）。
+2. **月度兜底（第 ⑧-a0 子步，MUST）**：在既有「过期提议清理」之后追加
+   「`DropNonMutualBirthCouples()`」与「`DropPendingBirthsWithoutApplication()`」。
+   该子步 **0 次随机、0 金额、0 状态变更**；它只兜住绕过写入侧的情形（例如经其它路径离开在册集合），
+   MUST NOT 改变簿记的新增规则、MUST NOT 改动本特性既有的随机次序约定
+   （`contracts/marriage-birth.md` 的掷骰见 §9，本次不触碰）。
+3. **失效判据（唯一口径）**：提议「`OurMemberId` 不是可婚配者」= 非本族成员 / 已亡 / 已外嫁 /
+   **已有配偶**；生育簿记「已失效」= 夫妇键两端**不再互为配偶**（或有一端已不是本族成员）。
+4. **读档兜底**：历史档的同类不一致由 004 的 `SaveStateRepair`（读档第 ⑦′ 步）清空兜底，
+   见 004 `spec.md` 第四轮增补。
+
+**回写登记（同一提交）**：①规格书 §9.1 的 2026-10-19 第四轮 `§17 裁决回写` 块；②004 `spec.md`
+第四轮增补；③本节；④`src/KFL.Core/Entities/Family.cs`（`Marry` / `EndMarriage`）、
+`src/KFL.Core/Entities/FamilyLifecycleState.cs`（`DropBirthCouplesInvolving` 等）、
+`src/KFL.Rules/Family/PopulationAdvance.cs`（⑧-a0 子步）；
+⑤`tests/KFL.Tests/Rules/MarriageTests.cs`、`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs`。
