@@ -8,9 +8,10 @@ namespace KFL.Presentation.ViewModels;
 /// <summary>
 /// 成员详情里的一条关系超链接（玩家反馈 7）：点一下跳到对应成员的详情卡片。
 /// </summary>
-/// <param name="label">显示文字（形如「父 狄立言」「大哥 狄立本」）。</param>
+/// <param name="label">显示文字（形如「父 狄立言」「大哥 狄立本」「二女儿 狄清照 · 身故」）。</param>
 /// <param name="token">命令令牌（形如 <c>select:&lt;guid&gt;</c>）。</param>
-/// <param name="state">该亲属当前状态（形如「在册」「患病」「服刑(3月)」「身故」），随悬浮提示显示。</param>
+/// <param name="state">该亲属当前状态（形如「在册」「患病」「服刑(3月)」「身故」）：异常状态会拼进
+/// <paramref name="label"/>（形如「… · 身故」），并随悬浮提示显示。</param>
 /// <param name="brushKey">按钮前景色键：按状态区分（患病 / 服刑 / 身故 / 处罚期 / 默认）。</param>
 public sealed record RelationLink(string Label, string Token, string State = "", string BrushKey = "RelationBrush")
 {
@@ -208,10 +209,11 @@ public static class FamilyRelations
             return;
         }
 
-        links.Add(new RelationLink(
-            $"{label} {relative.Name}",
-            $"select:{relative.Id.Value}",
-            Display.StatusOf(relative, relative.BirthDate),
-            BrushKeyOf(relative)));
+        var state = Display.StatusOf(relative, relative.BirthDate);
+
+        // 按钮文字直接带出异常状态（身故 / 患病 / 服刑…），不只靠颜色区分（第十轮玩家反馈）。
+        var text = state == "在册" ? $"{label} {relative.Name}" : $"{label} {relative.Name} · {state}";
+
+        links.Add(new RelationLink(text, $"select:{relative.Id.Value}", state, BrushKeyOf(relative)));
     }
 }

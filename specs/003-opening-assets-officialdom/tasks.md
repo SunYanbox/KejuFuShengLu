@@ -518,9 +518,10 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 | 变更 | 同步了哪些文件 |
 | --- | --- |
 | 「－ / ＋」改为图形绘制、两按钮同宽高且符号居中 | 规格书 §12.1 修订段 + §17 Q1；`spec.md` 第九轮修订增补 §1；`src/KFL.App/Views/FamilyTabView.xaml` |
-| 家谱列 `MaxWidth` 钉为窗口宽 80%（`ClampTreeColumn`），分隔条不再能被拖出窗口 | 规格书 §12.1 修订段 + §17 Q2；`spec.md` 增补 §2；`src/KFL.App/Views/FamilyTabView.xaml`（+ `.xaml.cs`） |
+| 家谱列限位：分隔条改 `Thumb` 自行计算列宽，拖动永不离开窗口（上限 = min(窗口宽 80%, 窗口宽 − 370 − 6 − 240)） | 规格书 §12.1 修订段 + §17 Q2；`spec.md` 增补 §2；`src/KFL.App/Views/FamilyTabView.xaml`（+ `.xaml.cs`） |
 | 关系行改两列 `Grid`，子女 / 兄弟姐妹超长时 `WrapPanel` 换行 | 规格书 §12.2 修订段 + §17 Q3；`spec.md` 增补 §3；`src/KFL.App/Views/FamilyTabView.xaml` |
-| 成员详情状态抬头 `DetailHeadline` / `DetailBrushKey`（与卡片同配色口径） | 规格书 §12.2 修订段 + §17 Q4；`spec.md` 增补 §4；`src/KFL.Presentation/ViewModels/{RelationLink.cs,MainViewModel.cs,MainViewModel.Detail.cs,MainViewModel.Tree.cs}`、`src/KFL.App/Views/FamilyTabView.xaml` |
+| 关系按钮在状态非「在册」时带出「 · {状态}」 | 规格书 §12.2 修订段 + §17 Q4；`spec.md` 增补 §4；`src/KFL.Presentation/ViewModels/RelationLink.cs` |
+| 成员详情状态抬头 `DetailHeadline` / `DetailBrushKey`（与卡片同配色口径） | 规格书 §12.2 修订段 + §17 Q4；`spec.md` 增补 §5；`src/KFL.Presentation/ViewModels/{MainViewModel.cs,MainViewModel.Detail.cs,MainViewModel.Tree.cs}`、`src/KFL.App/Views/FamilyTabView.xaml` |
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1329 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 
