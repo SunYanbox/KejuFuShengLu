@@ -11,7 +11,7 @@ namespace KFL.Rules.FamilyLifecycle;
 /// <remarks>
 /// <para>
 /// 001~006 只在开局建成员（<c>NewGameSetup.MemberId</c>），运行期从不新建；007 的托媒配偶、新生儿、
-/// 买来的旁系都要在月结算里建成员，故须自带一套**确定性**标识方案。
+/// 收养的旁系成员都要在月结算里建成员，故须自带一套**确定性**标识方案。
 /// </para>
 /// <para>
 /// **MUST NOT 用 <c>Guid.NewGuid</c>**（G-07 / <c>EnvironmentDependencyTests</c> 禁止环境依赖）：

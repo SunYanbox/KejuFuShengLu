@@ -183,7 +183,7 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 
 | 成员 | 签名 | 作用 | 来源 |
 | --- | --- | --- | --- |
-| `IsOutsider` | `bool`（只读） | `FatherId` 与 `MotherId` 皆 `null`，即 §4.4 定义的外来者（开局成员、娶入配偶、买来的旁系） | §4.4；§9.5 |
+| `IsOutsider` | `bool`（只读） | `FatherId` 与 `MotherId` 皆 `null`，即 §4.4 定义的外来者（开局成员、娶入配偶、收养的旁系成员） | §4.4；§9.5 |
 | `AgeAt(GameDate)` | `int` | = `BirthDate.AgeInYearsAt(at)`；年龄不落裸字段（不变量 5、R-07） | §4.3；R-07 |
 | `AppendDegree(DegreeRecord)` | `void` | `DegreeHistory` 的**唯一**追加入口，强制 `ChangedAt` 非降序（不变量 7）；`Person` 不暴露可写的历史列表 | FR-008；§6 |
 
@@ -247,11 +247,11 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    被生产（005 契约十三 §6）。
 8. `Generation` 的分层规则（§4.4）：血亲成员（`FatherId` 或 `MotherId` 至少一方为本家族
    成员）的辈分 = 父母辈分 + 1，出生即定、**终身不可变更**；外来者（`FatherId` 与
-   `MotherId` 皆 `null`——开局成员、娶入配偶、§9.5 买来的旁系）的辈分由 `Family` 指定，
+   `MotherId` 皆 `null`——开局成员、娶入配偶、§9.5 收养的旁系成员）的辈分由 `Family` 指定，
    且 MUST 在其**尚无子女**时落定。外来者的辈分**总共只变动两次**：`Family` 指定（落定）一次，
    其**首次家族内成婚**时对齐配偶辈分一次；此后 MUST NOT 再变更（2026-10-05 裁决）。
    `Person` 不提供辈分的公开写入通道。
-   **开局成员的辈分初值 = 0**（§4.4「辈分自创始者为 0」），因此「买来的旁系 = 家主辈分
+   **开局成员的辈分初值 = 0**（§4.4「辈分自创始者为 0」），因此「收养的旁系成员 = 家主辈分
    + 1」在开局家主治下取 **1**，娶入配偶取其家族内配偶的辈分。夹具与断言据此推导绝对值；
    001 MUST NOT 另行规定其他初值。
 
@@ -278,7 +278,7 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 | `RegisteredMembers` | 属性 | **在册** = 非「已亡」且非「外嫁」 | §12.1、§15 |
 | `ArchivedMembers` | 属性 | 已归档 = 已亡 或 外嫁 | §12.1 |
 | `AutoExamApplication` | `bool` | **005 新增**：持续报考开关，默认 `false`，**可写**（形状与 `HasShiStatus` 同款）；为真时科举季步按资格自动报名，MUST NOT 覆盖已有报名标记 | 规格书 §3；005 FR-017 |
-| `Lifecycle` | `FamilyLifecycleState` | **007 新增**：家族生命周期簿记（本年度买人口计数与年份 / 待分娩记录 / 本年度已申请生育夫妇 / 待应答提亲提议 / 当月托媒申请），只读聚合属性（`=> _lifecycle`），写入一律经其自身方法与 `internal` 落盘通道 | 规格书 §9.1~§9.5；007 FR-047、007 `data-model.md` §2.3 |
+| `Lifecycle` | `FamilyLifecycleState` | **007 新增**：家族生命周期簿记（本年度收养计数与年份 / 待分娩记录 / 本年度已申请生育夫妇 / 待应答提亲提议 / 当月托媒申请），只读聚合属性（`=> _lifecycle`），写入一律经其自身方法与 `internal` 落盘通道 | 规格书 §9.1~§9.5；007 FR-047、007 `data-model.md` §2.3 |
 
 **变更入口（`Family` 是跨实体唯一写入方，§4.4 辈分与 §9.1 一夫一妻的强制点）**
 
@@ -325,7 +325,7 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
    ⑦ **仍未**引入归档回调或事件机制，靠月度驱动的幂等式修正兑现（007 FR-041、FR-046；
    [007 data-model §3.5](../007-family-lifecycle/data-model.md)）。
 7. 辈分的指定与变更入口唯一在 `Family`（同第 4 条）：血亲成员的辈分一经确定 MUST NOT
-   变更；外来者（娶入配偶、§9.5 买来的旁系）的辈分 MUST 在其尚无子女时落定（§4.4），
+   变更；外来者（娶入配偶、§9.5 收养的旁系成员）的辈分 MUST 在其尚无子女时落定（§4.4），
    且**总共只变动两次**——落定一次 + 首次家族内成婚时对齐配偶辈分一次，此后 MUST NOT 再变更。
 
 **§17 裁决**: `HasShiStatus` 建在家族级而非成员级——§10.2 的效果（录取率 ×1.1、婚嫁规格、
@@ -342,7 +342,7 @@ MUST NOT 被当作属性名引用。既有**四参调用保持合法**；上表�
 存档复原路径。
 
 **家主的分期**: `Family.HeadId` 进 001——它在 001 内**有真实消费者**：§4.4 的辈分规则
-要求「买来的旁系辈分 = 家主辈分 + 1」。**继任判定不进 001**：它由死亡推进触发，属
+要求「收养的旁系成员辈分 = 家主辈分 + 1」。**继任判定不进 001**：它由死亡推进触发，属
 逻辑轨 ⑦——**已由 007 交付**（`HeadSuccession` + 月度结算 ⑧-h；四档候选与排序见
 [007 contracts/illness-lifespan.md §7.4](../007-family-lifecycle/contracts/illness-lifespan.md)）。
 001 只保证该字段存在、且「为 `null` 或指向在册成员」这一不变量可被校验。
@@ -426,7 +426,7 @@ FR-013）。逐字 token 清单的**唯一真源**是契约一 §2.1（14 个 to
 | FR-008 | `DegreeRecord` + `DegreeChangeCause` + `Person.DegreeHistory` | 历史按 `ChangedAt` 升序追加；§7.4 降级也入史；`CurrentDegree`/`CurrentPlacement` 由末条派生；`Placement` 仅进士 |
 | FR-009 | `OfficialRank?` | `null` 与 L1~L18 两端、L0/L19 拒绝 |
 | FR-010 | `StatusFlag` + `StatusTimers` | 九位可任意并存 + 计时一致性 |
-| FR-011 / SC-006 | `Family` 的索引与派生查询 + `HeadId` + 辈分规则 | 五类夹具：多代同堂、有配偶、有子女、娶入配偶、买来的旁系；双向一致与无环；**一夫一妻拒绝用例 + 丧偶再婚（`FormerSpouseIds` 承接前任、子女父母引用不断裂）**；家主为 `null` 或指向在册成员；血亲辈分不可变、外来者辈分落定规则；**开局成员辈分 = 0** |
+| FR-011 / SC-006 | `Family` 的索引与派生查询 + `HeadId` + 辈分规则 | 五类夹具：多代同堂、有配偶、有子女、娶入配偶、收养的旁系成员；双向一致与无环；**一夫一妻拒绝用例 + 丧偶再婚（`FormerSpouseIds` 承接前任、子女父母引用不断裂）**；家主为 `null` 或指向在册成员；血亲辈分不可变、外来者辈分落定规则；**开局成员辈分 = 0** |
 | FR-012 | `GameState` | 标识非空（`Guid.Empty` 被拒）、标识无公开 setter、起始年月；**改档名不变性属阶段④**（001 无落盘，无可验证对象）——**已交付并验证（004）**，见 [004 `contracts/save-service.md` §6](../004-save-system/contracts/save-service.md) 与 004 SC-004 |
 | FR-013 / SC-004 | 三组接缝（`INameGenerator` 由 003 追加）+ 静态扫描 | 源码级守卫 |
 | FR-015 / SC-002 | `tests/KFL.Tests` 的领域与接缝目录 | `dotnet test`（领域/规则测试无环境依赖）；G-07 的扫描范围**逐字对齐契约一 G-07**：非 UI 三产品工程（`KFL.Core`/`KFL.Infrastructure`/`KFL.Rules`）**加** `tests/KFL.Tests/Core`、`Infrastructure`、`Fixtures`、`Rules`（`Rules` 于 002 追加，见 002 `research.md` **R-14**），`Architecture/` 显式豁免；扫描按目录前缀匹配（含子目录），实现出处 `ArchitectureRules.ScannedTestRoots` |

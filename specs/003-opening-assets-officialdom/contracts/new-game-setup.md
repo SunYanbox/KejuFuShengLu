@@ -114,6 +114,6 @@ public static NewGameSetupResult Create(
 > 「**孩子的天赋遗传与新生儿口径**」由第 ⑧-b 子步 `Childbirth.Run` + `Inheritance` 交付
 > （父母参照的均值/σ 公式、`InheritanceSigmaBase = 5`、体质下限 20、学业均值 × `0.5`）。
 > 本契约的**开局**成员初始化次序与分布**不变**（年龄 → 天赋 ×4 → 学业 → 体质 → 寿数 → 姓名），
-> 且其「无父母参照者」分布已被 007 复用于**买人口**与**婚配对象**（§3 的 007 后记）。
-> 007 的入册次序、生子与买人口的随机消费次序见
+> 且其「无父母参照者」分布已被 007 复用于**收养**与**婚配对象**（§3 的 007 后记）。
+> 007 的入册次序、生子与收养的随机消费次序见
 > [007 contracts/marriage-birth.md §3/§7](../../007-family-lifecycle/contracts/marriage-birth.md)。

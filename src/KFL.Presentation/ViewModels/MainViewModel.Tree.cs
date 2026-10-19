@@ -69,7 +69,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>家谱显示「买入」标记（第五轮玩家反馈：买入成员须一眼可辨）。</summary>
+    /// <summary>家谱显示「收养」标记（第五轮玩家反馈：收养成员须一眼可辨）。</summary>
     public bool ShowPurchaseMarks
     {
         get => _showPurchaseMarks;
@@ -118,7 +118,7 @@ public sealed partial class MainViewModel : ObservableObject
         var family = state.Family;
         var date = state.CurrentDate;
 
-        // 「买入」标记由账本派生（第五轮玩家反馈）；关掉开关即不写徽章。
+        // 「收养」标记由账本派生（第五轮玩家反馈）；关掉开关即不写徽章。
         var purchasedIds = _showPurchaseMarks ? GenealogyQueries.PurchasedPersonIds(state) : null;
 
         Members.Clear();

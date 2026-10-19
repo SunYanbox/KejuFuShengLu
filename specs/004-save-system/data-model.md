@@ -123,7 +123,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | 5 | `MarriageAlignedOutsiders` | `marriageAlignedOutsiders` | 数组 / 数组 | 同上 | 同上 |
 | 6 | `AutoExamApplication` | `autoExamApplication` | `bool` / 布尔 | `Family.AutoExamApplication`（**005 新增**，持续报考开关） | 公开 setter（默认 `false`，与 `HasShiStatus` 同款） |
 | 7 | `PunishmentJournal` | `punishmentJournal` | 数组 / 对象 | `Family.PunishmentJournal`（**006 新增**，只追加的每月惩罚事实缓冲） | `PunishmentJournal.Restore(...)`（**006 新增 `internal`**，独立一步；见 §3.11 第 ⑦′ 步） |
-| 8 | `Lifecycle` | `lifecycle` | 数组 / 对象 | `Family.Lifecycle`（**007 新增**，买人口计数、待产记录、待应答提议与当月托媒名额） | `FamilyLifecycleState.RestoreBookkeeping(...)`（**007 新增 `internal`**，独立一步，T093 起为**七参**；见 §3.11 第 ⑦″ 步） |
+| 8 | `Lifecycle` | `lifecycle` | 数组 / 对象 | `Family.Lifecycle`（**007 新增**，收养计数、待产记录、待应答提议与当月托媒名额） | `FamilyLifecycleState.RestoreBookkeeping(...)`（**007 新增 `internal`**，独立一步，T093 起为**七参**；见 §3.11 第 ⑦″ 步） |
 
 > 归档**不是删除**（§12.1）：`Members` MUST 涵盖「在册」与「已归档（已亡 / 外嫁）」两类，
 > 故 `Members.Count == 在册数 + 归档数`；`Person` 的 `status` 里保留 `Deceased` / `MarriedOut` 位。
@@ -226,7 +226,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | --- | --- | --- | --- | --- |
 | `TalentDto` | 0~3 | `Agriculture` / `Commerce` / `Officialdom` / `Craft` | `agriculture` / `commerce` / `officialdom` / `craft` | `TalentSet` 四成员；`new TalentSet(...)`（0~100 被校验） |
 | `StatusTimersDto` | 0~5 | `SentenceRemainingMonths` / `ExamBanRemainingMonths` / `PromotionBanRemainingMonths` / `AwaitingPostRemainingMonths` / `IllnessSeverityBasisPoints` / `TreatmentRemainingMonths` | `sentenceRemainingMonths` / … / `illnessSeverityBasisPoints` / `treatmentRemainingMonths` | `StatusTimers` 六成员（**007 新增后两路**）；`new StatusTimers(...)`（剩余月数非负、疾病程度 0~10000 被校验） |
-| `FamilyLifecycleDto` | 0~6 | `PurchaseCount` / `PurchaseYear` / `PendingBirths` / `AppliedBirthCouples` / `BirthApplicationYear` / `Proposal` / `MatchmakeApplications` | `purchaseCount` / `purchaseYear` / `pendingBirths` / `appliedBirthCouples` / `birthApplicationYear` / `proposal` / `matchmakeApplications` | **007 新增**（末项 T093 追加）；`FamilyLifecycleState.RestoreBookkeeping(...)`（买人口名次与年份、待产记录、本年已申请夫妇、至多一条待应答提议、当月托媒名额） |
+| `FamilyLifecycleDto` | 0~6 | `PurchaseCount` / `PurchaseYear` / `PendingBirths` / `AppliedBirthCouples` / `BirthApplicationYear` / `Proposal` / `MatchmakeApplications` | `purchaseCount` / `purchaseYear` / `pendingBirths` / `appliedBirthCouples` / `birthApplicationYear` / `proposal` / `matchmakeApplications` | **007 新增**（末项 T093 追加）；`FamilyLifecycleState.RestoreBookkeeping(...)`（收养名次与年份、待产记录、本年已申请夫妇、至多一条待应答提议、当月托媒名额） |
 | `MatchmakeApplicationDto` | 0~2 | `MemberId` / `AppliedYear` / `AppliedMonth` | `memberId` / `appliedYear` / `appliedMonth` | **007 新增（T093）**；`new MatchmakeApplication(new PersonId(...), new GameDate(y, m))`（FR-013 的当月名额载体） |
 | `PendingBirthDto` | 0~3 | `HusbandId` / `WifeId` / `AppliedYear` / `AppliedMonth` | `husbandId` / `wifeId` / `appliedYear` / `appliedMonth` | **007 新增**；`new PendingBirth(new CoupleKey(...), new GameDate(y, m))`（键数 = Core 记录成员数，逐一对应） |
 | `CoupleKeyDto` | 0~1 | `HusbandId` / `WifeId` | `husbandId` / `wifeId` | **007 新增**；`new CoupleKey(...)`（有序、夫在前） |
@@ -521,7 +521,7 @@ MUST NOT 污染调用方已有的内存状态（FR-014；SC-007）。
 | §3.8 | `PersonDto` 28 → **29** 成员（末尾追加 `IsTutoredByMaster` / `isTutoredByMaster`）；既有成员的序号与键名不变 |
 | §3.8 子 DTO 表 | `StatusTimersDto` 4 → **6** 成员（末尾追加 `IllnessSeverityBasisPoints` / `TreatmentRemainingMonths`）；新增 `FamilyLifecycleDto`（**7 键**，`matchmakeApplications` 由 T093 追加）、`MatchmakeApplicationDto`（3 键，T093）、`PendingBirthDto`（4 键展开式）、`CoupleKeyDto`（2 键）、`MarriageProposalDto`（**19 键**，`ProposedAt` 拆 `proposedYear` + `proposedMonth`）；`MarriageProposalDto` 是**可空成员**，JSON 侧 MUST NOT 标 `[JsonRequired]` |
 | §3.11 | 复原次序第 ② 步并入 `Person.RestoreTutoring(bool)`（`internal`）、第 ④ 步的 `Timers` 补两路计时；新增**独立**第 ⑦″ 步——`FamilyLifecycleState.RestoreBookkeeping(...)`（`internal`，位于 ⑦′ 之后、⑧ 之前；T093 起为**七参**） |
-| §4、§6.2、§3.11 | `SaveStateValidator` 由「十二条」变「**十五条**」；第 13 条 = 提议的 `OurMemberId` ∈ `Family.Members` 且在册未婚，第 14 条 = `PendingBirths ⊆ AppliedBirthCouples` 且双方 ∈ `Family.Members` 并互指 `SpouseId`，第 15 条 = 生命周期计数与年份合法（当年购人价严格递增，T093/T100） |
+| §4、§6.2、§3.11 | `SaveStateValidator` 由「十二条」变「**十五条**」；第 13 条 = 提议的 `OurMemberId` ∈ `Family.Members` 且在册未婚，第 14 条 = `PendingBirths ⊆ AppliedBirthCouples` 且双方 ∈ `Family.Members` 并互指 `SpouseId`，第 15 条 = 生命周期计数与年份合法（当年收养价严格递增，T093/T100） |
 | §7、§8 | 线上成员计数 84 → **91**（`FamilyDto` +1、`PersonDto` +1、`StatusTimersDto` +2、007 四个新 DTO +31；逐 DTO 明细见 §3.8 表）；T093 追加 `FamilyLifecycleDto` 1 键（6 → 7）与 `MatchmakeApplicationDto` 3 键 ⇒ 相对 007 基线再 **+4**；新增不变量 20/21 |
 
 **边界**：007 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`≠ 4` 的旧档一律 `UnsupportedVersion`）；

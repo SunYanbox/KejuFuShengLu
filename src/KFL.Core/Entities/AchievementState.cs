@@ -40,7 +40,7 @@ public sealed class AchievementState
     /// <summary>① 家族累计成功行贿次数（增量累加，含被反复判定的当月）。</summary>
     public int SuccessfulBribeCount { get; private set; }
 
-    /// <summary>② 家族累计出生人数（**含夭折**；不含买来的人口与开局成员）。</summary>
+    /// <summary>② 家族累计出生人数（**含夭折**；不含收养的人口与开局成员）。</summary>
     public int BirthCount { get; private set; }
 
     /// <summary>③ 已故成员的**完整**寿命序列（不是「和 + 个数」：三均值需要原始序列）。</summary>

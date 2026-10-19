@@ -59,8 +59,8 @@ public static partial class LifecycleEntry
     }
 
     /// <summary>
-    /// 买人口（FR-031~FR-034，玩家入口）：以「本年内第 n 名」递增计价（<b>MUST NOT 乘支出系数</b>），
-    /// 从现银与储蓄全额支付，买来的成员作为家族旁系入册。
+    /// 收养（FR-031~FR-034，玩家入口）：以「本年内第 n 名」递增计价（<b>MUST NOT 乘支出系数</b>），
+    /// 从现银与储蓄全额支付，收养成员作为家族旁系入册。
     /// </summary>
     /// <param name="state">游戏状态。</param>
     /// <param name="random">随机源（年龄 1 次 <c>Next</c>、性别 1 次 <c>Next</c>，之后属性与寿数抽样）。</param>
@@ -77,7 +77,7 @@ public static partial class LifecycleEntry
     /// </para>
     /// <para>
     /// 失败路径 MUST NOT 改动 <see cref="FamilyLifecycleState.PurchaseCount"/> 与
-    /// <see cref="FamilyLifecycleState.PurchaseYear"/>；支付不足即无法购买，<b>MUST NOT 转贷款</b>。
+    /// <see cref="FamilyLifecycleState.PurchaseYear"/>；支付不足即无法收养，<b>MUST NOT 转贷款</b>。
     /// </para>
     /// </remarks>
     public static LifecycleOutcome BuyPerson(GameState state, IRandomService random, INameGenerator names)
@@ -98,7 +98,7 @@ public static partial class LifecycleEntry
         var price = Money.FromGuan(
             PopulationPurchasePolicy.BasePriceGuan * family.Lifecycle.PeekPurchaseOrdinal(month.Year));
 
-        // ② 可付性：现银 + 储蓄全额，不足即无法购买（恒不转贷款）。
+        // ② 可付性：现银 + 储蓄全额，不足即无法收养（恒不转贷款）。
         if (!PaymentPrimitive.CanCover(state.Economy, price))
         {
             return LifecycleOutcome.Rejected(LifecycleRejectReason.InsufficientFunds);
@@ -146,7 +146,7 @@ public static partial class LifecycleEntry
         // ⑥ 事件条目（金额 0）。
         state.Economy.Apply(LedgerCategory.PersonBought, newcomer.Id, Money.Zero, month);
 
-        // 008 接线（T053，trigger ⑨）：买人口成功之后判定（被拒路径在上面已返回）。
+        // 008 接线（T053，trigger ⑨）：收养成功之后判定（被拒路径在上面已返回）。
         AchievementAdjudicator.Report(state, AchievementTrigger.PersonPurchased);
 
         return new LifecycleOutcome

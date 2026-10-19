@@ -22,14 +22,14 @@
                           IsChecked="{Binding ShowChildLinks, Mode=TwoWay}" />
                 <CheckBox Content="兄弟姐妹" Foreground="#FFB8860B" FontWeight="Bold" Margin="10,0,0,0"
                           IsChecked="{Binding ShowSiblingLinks, Mode=TwoWay}" />
-                <CheckBox Content="买入标记" Foreground="#FF8B1A1A" FontWeight="Bold" Margin="10,0,0,0"
-                          ToolTip="在卡片徽章行里标出由「买人口」买来的成员；买来成员组内婚生的子女不算买入成员。"
+                <CheckBox Content="收养标记" Foreground="#FF8B1A1A" FontWeight="Bold" Margin="10,0,0,0"
+                          ToolTip="在卡片徽章行里标出「收养」引入家族的成员；收养成员组内婚生的子女不算收养成员。"
                           IsChecked="{Binding ShowPurchaseMarks, Mode=TwoWay}" />
                 <CheckBox Content="仅家主支脉" Foreground="#FF00695C" FontWeight="Bold" Margin="10,0,0,0"
                           ToolTip="只显示家主本人、其直系血亲祖先/后代及其配偶；旁系（家主兄弟姐妹及其后裔）隐去。"
                           IsChecked="{Binding ShowHeadBranchOnly, Mode=TwoWay}" />
             </WrapPanel>
-            <TextBlock DockPanel.Dock="Bottom" Text="归档 = 亡故 / 外嫁 ｜ 筛选依然作用于家谱 ｜ 买入标记与支脉过滤同样作用于家谱与人数" Style="{StaticResource Secondary}"
+            <TextBlock DockPanel.Dock="Bottom" Text="归档 = 亡故 / 外嫁 ｜ 筛选依然作用于家谱 ｜ 收养标记与支脉过滤同样作用于家谱与人数" Style="{StaticResource Secondary}"
                        TextWrapping="Wrap" />
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                           Padding="0,2,0,0">
@@ -190,7 +190,7 @@
                     <Button Content="买功名应允" Command="{Binding DoCommand}" CommandParameter="proposal:accept:degree" />
                     <Button Content="婉拒提亲" Command="{Binding DoCommand}" CommandParameter="proposal:reject" />
                     <Button Content="申请生育" Command="{Binding DoCommand}" CommandParameter="childbirth" />
-                    <Button Content="买人口" Command="{Binding DoCommand}" CommandParameter="buyperson" />
+                    <Button Content="收养" Command="{Binding DoCommand}" CommandParameter="buyperson" />
                     <Button Content="就医" Command="{Binding DoCommand}" CommandParameter="treat" />
                     <Button Content="名师开关" Command="{Binding DoCommand}" CommandParameter="tutor" />
                     <Button Content="立为家主" Command="{Binding DoCommand}" CommandParameter="head" />

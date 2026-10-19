@@ -47,13 +47,13 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | 成员 | 类型 | 说明 | 来源 |
 | --- | --- | --- | --- |
 | `Date` | `GameDate` | 归属年月 | §12.3 |
-| `PersonId` | `PersonId?` | 归属角色；`null` = **家族级**（铺面租、储蓄利息、工 bonus、买人口等） | §12.3；001 R-16 |
+| `PersonId` | `PersonId?` | 归属角色；`null` = **家族级**（铺面租、储蓄利息、工 bonus、收养等） | §12.3；001 R-16 |
 | `Category` | `LedgerCategory` | 类别 | §12.3 |
 | `Amount` | `Money` | 金额：**资金类** = 本次对资金池的变动额（正=流入、负=流出）；**事件类** = 该事件自身的金额语义 | E-08 |
 
 **不变量**：`Category` 的种类（资金类/事件类）由 `LedgerCategoryMetadata` 唯一决定，条目
 自身不存第二个副本。
-**为什么带 `PersonId` 可空**：§12.3 要求「按角色」与「家族级」两个维度聚合，且买人口、
+**为什么带 `PersonId` 可空**：§12.3 要求「按角色」与「家族级」两个维度聚合，且收养、
 铺面租这类支出**无法归属到个人**（001 R-16 的三条理由）。
 
 ---
@@ -361,7 +361,7 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | FR-024、FR-025、SC-006、SC-007 | `MonthlySettlementEngine` 的注入与随机消费次序 | 同种子复跑逐位相同；G-07 静态断言（扫描范围含新 `Rules/` 目录） | T002、T037、T060 |
 | FR-026 | `LoanTests` / `FamineTimelineTests` / `SalaryTableTests` | §16 必测三项逐条 | T040、T046、T053 |
 | FR-027 | `AssetMarket` | 买入/售出后 `Holdings` 与资金池同价变动 | T056、T057 |
-| FR-028 | ——（本阶段 MUST NOT 实现） | 「买人口」相关类型在阶段② 不存在，以「无该类型/无该类别」断言 | T010、T025 |
+| FR-028 | ——（本阶段 MUST NOT 实现） | 「收养」相关类型在阶段② 不存在，以「无该类型/无该类别」断言 | T010、T025 |
 | FR-029、FR-030、SC-009 | `LivingCostCalculator` / `IncomeCalculator` 的**计口筛选** | 服刑 + 外嫁同夹具：贡献为 0、档案与历史条目仍可读；待阙**照常**计入 | T034、T035、T036、T038、T039、T055 |
 | FR-031 | `IncomeRateTable` 的务农系数 + `IncomeCalculator` + `CountedMembers` | `tests/KFL.Tests/Rules/IncomeTests.cs`；**「无田可耕」= `FarmlandMu == 0`** 与「有田即不得发务农」各一断言（E-17） | T031、T034、T036、T039 |
 | SC-001 | `MonthlySettlementEngine` + `SettlementResult` | `tests/KFL.Tests/Rules/SettlementEngineTests.cs`（quickstart S1~S3/S6） | T037、T041 |

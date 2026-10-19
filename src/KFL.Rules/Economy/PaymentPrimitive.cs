@@ -37,7 +37,7 @@ public readonly record struct PaymentResult(Money FromCash, Money FromSavings, M
 /// 它同时是 <c>Loan.Principal</c> 的唯一产生路径（data-model §3.2 的注）。
 /// </para>
 /// <para>
-/// **玩家主动发起的可选支出 MUST NOT 走第三步**：行贿（§7.1）、买人口（§9.5）与资产买卖（§5.3）
+/// **玩家主动发起的可选支出 MUST NOT 走第三步**：行贿（§7.1）、收养（§9.5）与资产买卖（§5.3）
 /// 都要先用 <see cref="CanCover"/> 校验**全额可付**，付不起即拒绝该行动。故行贿调用本类时
 /// <see cref="PaymentResult.ToLoan"/> **恒为 0**（规格书 §7.1 的 `§17 裁决回写（2026-10-17）`）。
 /// </para>
@@ -118,7 +118,7 @@ public static class PaymentPrimitive
     /// 现金 + 储蓄是否足以**全额**覆盖 <paramref name="amount"/>（即 <see cref="Pay"/> 不会走第三步转贷款）。
     /// </summary>
     /// <remarks>
-    /// 玩家**主动**发起的可选支出（行贿 §7.1、买人口 §9.5、资产买卖 §5.3）MUST 先用本方法校验，
+    /// 玩家**主动**发起的可选支出（行贿 §7.1、收养 §9.5、资产买卖 §5.3）MUST 先用本方法校验，
     /// 付不起即**拒绝该行动**——它们 MUST NOT 转贷款（§5.4「不存在主动借贷」，贷款来源被封闭枚举为
     /// 罚金 / 固定罚金）。本方法是「可付性」的**唯一**判据，与 <see cref="Pay"/> 的池口径同源。
     /// </remarks>

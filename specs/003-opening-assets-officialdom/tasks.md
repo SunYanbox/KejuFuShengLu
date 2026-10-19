@@ -475,3 +475,18 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1319 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 
+## 回写范围登记（2026-10-19，玩家反馈第六轮：术语由「买人口」改为「收养」）
+
+> 本节由第六轮玩家反馈（1 条）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §17 裁决块（2026-10-19，玩家反馈第六轮）与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 玩家可见文案（按钮「收养」、开关「收养标记」、徽章首位「收养」、账本中文名「收养费 / 收养入族」、统计系列「收养」、纪事行前缀「⚑ 收养」） | 规格书 §9.5 / §12.1~§12.3、§17 Q2；`spec.md` 第六轮增补 §1~§3；`src/KFL.App/Views/FamilyTabView.xaml`、`src/KFL.Presentation/{Display.cs,StatsCharts.cs,StatsCharts.Frames.cs,GameSession.Actions.Family.cs,GameSession.Turns.cs,ViewModels/MemberRow.cs}` |
+| 规格书真源（措辞） | `科举浮生录规格书.md` §4.4 / §5 / §9.5 / §12.1~§12.3 / §16 + §17 第六轮裁决块（Q1~Q4） |
+| 活工件全量术语对齐 | `specs/001~008` 的 `spec.md` / `plan.md` / `research.md` / `data-model.md` / `contracts/` / `quickstart.md`（`tasks.md` 既有条目、`implementation-notes.md`、既有 `checklists/` **不回改**） |
+| 代码注释与校验文案 | `KFL.Core`（`Family.cs` / `FamilyLifecycleState.cs` / `LedgerCategory.cs`）、`KFL.Rules`（`Config/*`、`Family/*`、`Economy/PaymentPrimitive.cs`、`Achievements/AchievementTrigger.cs`）、`KFL.Infrastructure`（`Save/Serialization/*`） |
+| 代码标识符（**顺延**） | 本次**不改** `BuyPerson` / `LedgerCategory.PersonPurchase` / `PersonBought` / `PurchaseQuote` / `PurchaseCount` / `BoughtCollateralGeneration` / `ShowPurchaseMarks` / `IsPurchased` 等；MUST 在**下次存档版本升级**时随迁移更名为 `Adopt*` 并为旧档保留名字映射（规格书 §17 第六轮 Q3；`LedgerCategory` 两处 `<remarks>` 已标注该义务） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1319 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+

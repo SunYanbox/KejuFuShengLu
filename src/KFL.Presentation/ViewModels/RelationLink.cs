@@ -16,7 +16,7 @@ public sealed record RelationLink(string Label, string Token);
 /// </summary>
 /// <remarks>
 /// 「嫡长子」的口径：<b>嫡出</b> = 生母是本成员的配偶或前任配偶（<see cref="Person.SpouseId"/> /
-/// <see cref="Person.FormerSpouseIds"/>，非婚生的买人口子女不计入）；<b>长子</b> = 这些儿子里出生最早
+/// <see cref="Person.FormerSpouseIds"/>，非婚生的收养子女不计入）；<b>长子</b> = 这些儿子里出生最早
 /// 的一位。没有嫡出儿子时，标注落在最年长的儿子上，避免整行无标记（推断见 <c>推断.md</c> §9）。
 /// </remarks>
 public static class FamilyRelations

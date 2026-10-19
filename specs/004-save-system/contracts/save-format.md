@@ -251,7 +251,7 @@
 | §2、§4.2、§7 | 头记录 `FormatVersion` 与 `SaveFileFormat.Version` 由 `3` 升为 **`4`**；版本闸门的接受谓词改为 `FormatVersion == 4`（**任何 ≠ 4 的值**一律 `UnsupportedVersion`，**无迁移路径**） |
 | §4.2 | `FamilyDto` 8 → **9** 键（末尾追加 `8 lifecycle`(`FamilyLifecycleDto`)）；`PersonDto` 28 → **29** 键（末尾追加 `28 isTutoredByMaster`(bool)）；`StatusTimersDto` 4 → **6** 键（末尾追加 `4 illnessSeverityBasisPoints`(int?)、`5 treatmentRemainingMonths`(int?)）；既有键的 `Key` 序号与键名**不变**，新键**只追加** |
 | §4.2 | 新增 DTO 行：`FamilyLifecycleDto`（**7 键**，`matchmakeApplications` 由 T093 追加）、`MatchmakeApplicationDto`（**3 键**：`memberId` / `appliedYear` / `appliedMonth`）、`PendingBirthDto`（**4 键展开式**：`husbandId` / `wifeId` / `appliedYear` / `appliedMonth`）、`CoupleKeyDto`（2 键）、`MarriageProposalDto`（**19 键**，`ProposedAt` 拆为 `proposedYear` + `proposedMonth`） |
-| §6 | 一致性校验由「十二条」变「**十五条**」，新增第 ⑬ 条（提议引用在册未婚成员）、第 ⑭ 条（待产记录 ⊆ 已申请夫妇 + 夫妇 `spouseId` 互指）与第 ⑮ 条（生命周期计数与年份合法、当年购人价严格递增）及其 `InvalidStructure` 落点（条款 9）；第 ④ / ⑤ 条加严 |
+| §6 | 一致性校验由「十二条」变「**十五条**」，新增第 ⑬ 条（提议引用在册未婚成员）、第 ⑭ 条（待产记录 ⊆ 已申请夫妇 + 夫妇 `spouseId` 互指）与第 ⑮ 条（生命周期计数与年份合法、当年收养价严格递增）及其 `InvalidStructure` 落点（条款 9）；第 ④ / ⑤ 条加严 |
 | §7 | `SaveFileFormat.Version` **3 → 4**；登记二进制 walker 的成员数常量：`FamilyMemberCount` **9**、`PersonMemberCount` **29**、`StatusTimersMemberCount` **6**、`FamilyLifecycleMemberCount` **7**、`PendingBirthMemberCount` **4**、`MatchmakeApplicationMemberCount` **3**、`CoupleKeyMemberCount` **2**、`MarriageProposalMemberCount` **19** |
 
 **边界**：007 只**加宽** DTO 并**升版本号**，不引入任何迁移/兼容路径（`≠ 4` 的旧档一律

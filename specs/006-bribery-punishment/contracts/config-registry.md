@@ -94,7 +94,7 @@
 | --- | --- |
 | 1 | MUST NOT 引入成长 / 衰老 / 疾病 / 死亡的任何概率或年龄线（逻辑轨 ⑦） |
 | 2 | MUST NOT 引入成就 / 绝嗣判定的阈值（逻辑轨 ⑧） |
-| 3 | MUST NOT 引入婚育 / 买人口 / 买功名婚姻的数值（逻辑轨 ⑦） |
+| 3 | MUST NOT 引入婚育 / 收养 / 买功名婚姻的数值（逻辑轨 ⑦） |
 | 4 | MUST NOT 为「无限制模式」在规则层引入任何按调用方分支的数值或开关（章程原则 VI；越限接缝属 U4） |
 | 5 | MUST NOT 引入跨 .NET 版本的随机数稳定性相关常量 |
 | 6 | MUST NOT 为矩阵引入**累加刑期**的表达式（规格书从未出现「累加」表述；同档取替换） |
@@ -103,7 +103,7 @@
 
 > **007 后记（2026-10-17）**：上表第 1 条与第 3 条是 **006 的越界约束**（006 MUST NOT 引入这些数值），
 > 该约束**继续成立且未被放宽**；但两条所指向的**数值归属**已由 007 交付——第 1 条的概率与年龄线
-> 落在 `KFL.Rules/Config/{GrowthPolicy, IllnessPolicy, ChildbirthPolicy}.cs`，第 3 条的婚育与买人口
+> 落在 `KFL.Rules/Config/{GrowthPolicy, IllnessPolicy, ChildbirthPolicy}.cs`，第 3 条的婚育与收养
 > 数值落在 `KFL.Rules/Config/{MarriagePolicy, ChildbirthPolicy, PopulationPurchasePolicy}.cs`
 > （「买功名婚姻」的数值复用 `MarriagePolicy.DegreeMarriageFeeRatio` 与 `SalaryTable`），
 > 登记见 [007 contracts/config-registry.md](../../007-family-lifecycle/contracts/config-registry.md)。

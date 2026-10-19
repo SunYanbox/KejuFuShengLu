@@ -116,7 +116,7 @@ dotnet test KejuFuShengLu.slnx -m:1 -nodeReuse:false -p:_MSTestEnableParentProce
 无在册男性 ⇒ `HeadId == null` 且 `HeadBecameVacant == true`、**不判绝嗣**；
 任意月份结算结束（含 001 `SaveStateValidator` 的第 4 条）`HeadId` 永不指向已亡/外嫁。
 
-## 场景 8：买人口与存档往返
+## 场景 8：收养与存档往返
 
 `US5 / FR-039~FR-041 / FR-047 / SC-006 / SC-010`
 

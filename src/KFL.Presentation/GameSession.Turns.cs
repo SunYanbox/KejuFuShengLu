@@ -89,7 +89,7 @@ public sealed partial class GameSession
         foreach (var purchase in life.Purchases)
         {
             var person = State.Family.TryGet(purchase.PersonId);
-            Note($"⚑ 买入人口 {Display.PersonBrief(person, State.CurrentDate)}，第 {purchase.Ordinal} 名，{Display.Money(purchase.Amount)}。");
+            Note($"⚑ 收养 {Display.PersonBrief(person, State.CurrentDate)}，第 {purchase.Ordinal} 名，{Display.Money(purchase.Amount)}。");
         }
 
         if (life.PendingProposal is { } proposal)

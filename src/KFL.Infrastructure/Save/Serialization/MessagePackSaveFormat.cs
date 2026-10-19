@@ -295,7 +295,7 @@ public sealed class MessagePackSaveFormat : ISaveFormat
     private static void EnsureLifecycleShape(ref MessagePackReader reader, string path)
     {
         EnsureArrayHeader(ref reader, FamilyLifecycleMemberCount, path);
-        Skip(ref reader, 2);                        // 0 本年购人数 / 1 购人年份
+        Skip(ref reader, 2);                        // 0 本年收养数 / 1 收养年份
 
         var births = reader.ReadArrayHeader();      // 2 待分娩记录
         for (var index = 0; index < births; index++)

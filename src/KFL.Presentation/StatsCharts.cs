@@ -11,7 +11,7 @@ namespace KFL.Presentation;
 /// </summary>
 /// <remarks>
 /// 2026-10-19 玩家反馈批次：①图例改中文；②每图带逐月悬停条；③收支/分类与人口各自
-/// 支持「当前值 / 累计值」切换；④新增人口图（出生 / 死亡 / 购买 / 入狱 / 举人 / 贡士 / 进士）。
+/// 支持「当前值 / 累计值」切换；④新增人口图（出生 / 死亡 / 收养 / 入狱 / 举人 / 贡士 / 进士）。
 /// </remarks>
 public static partial class StatsCharts
 {
@@ -48,7 +48,7 @@ public static partial class StatsCharts
     [
         ("出生", Brush3, LedgerCategory.ChildBorn),
         ("死亡", Brush1, LedgerCategory.MemberDeceased),
-        ("购买", Brush2, LedgerCategory.PersonBought),
+        ("收养", Brush2, LedgerCategory.PersonBought),
         ("入狱", Brush6, LedgerCategory.MemberImprisoned),
         ("举人", Brush4, null),
         ("贡士", Brush5, null),

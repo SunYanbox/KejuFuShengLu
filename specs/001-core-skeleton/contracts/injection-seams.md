@@ -101,7 +101,7 @@ public interface INameGenerator
 [008 `contracts/achievement-store.md` §1](../008-achievements-extinction/contracts/achievement-store.md)；
 `IEventBus` 仍未定义（逻辑轨 ⑧ 等后续阶段）。
 
-**007 未新增接缝**（2026-10-17）：007（家族生命周期，`IllnessPolicy` / 婚姻市场 / 买人口 /
+**007 未新增接缝**（2026-10-17）：007（家族生命周期，`IllnessPolicy` / 婚姻市场 / 收养 /
 疾病治疗抉择）**MUST NOT 自建 `IEventBus` 或 `IAchievementStore`**（007 FR-045）。决策类事件
 （提亲应答、生育决策、疾病治疗抉择）对 U1 快进栈的「暂停信号」与玩家可见性，一律经
 **结算快照** `SettlementResult.Lifecycle`（`LifecycleSnapshot` 的十段事实）与

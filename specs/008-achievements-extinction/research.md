@@ -504,7 +504,7 @@ Infrastructure 侧只实现 JSON 读写与解析，**不实现** MessagePack 侧
 | `MatchmakingCommenced` | 007 的托媒入口（`LifecycleEntry`） |
 | `ProposalAnswered` | 007 的提亲应答入口 |
 | `DegreeMarriagePurchased` | 007 的买功名婚姻入口 |
-| `PersonPurchased` | 007 的买人口入口 |
+| `PersonPurchased` | 007 的收养入口 |
 | `BribeSubmitted` | 006 的行贿提交入口（`BribeEntry`） |
 | `ExamInquiryAnswered` | 005 的科举询问应答入口 |
 | `DebugWakeReported` | FR-041 ⑥ 的上报接缝（U4 将来调；本次只提供入口） |

@@ -81,12 +81,12 @@ public static partial class SaveStateValidator
     }
 
     /// <summary>
-    /// 第 15 条：生命周期计数字段合法，且当年购人计数与账本自洽（007-family-lifecycle；data-model §6 不变量 7）。
+    /// 第 15 条：生命周期计数字段合法，且当年收养计数与账本自洽（007-family-lifecycle；data-model §6 不变量 7）。
     /// </summary>
     /// <remarks>
     /// <para>
     /// 判据（全部可由盘上事实复核）：<c>PurchaseCount &gt;= 0</c>；<c>PurchaseYear</c> 与
-    /// <c>BirthApplicationYear</c> 落在 <c>1~当年</c>；**当年**购人计数按「读时口径」与
+    /// <c>BirthApplicationYear</c> 落在 <c>1~当年</c>；**当年**收养计数按「读时口径」与
     /// <see cref="FamilyLifecycleState.PeekPurchaseOrdinal"/> 一致——即
     /// <c>PurchaseYear == 当年 ? PurchaseCount : 0</c> MUST 等于当年 <see cref="LedgerCategory.PersonPurchase"/>
     /// 条目的条数；同年内这些条目的金额 MUST 严格递增（报价 = 基准价 × 第 n 名）。
@@ -103,13 +103,13 @@ public static partial class SaveStateValidator
 
         if (lifecycle.PurchaseCount < 0)
         {
-            throw Invalid($"购人计数为负（{lifecycle.PurchaseCount}，R-04 第 15 条）。");
+            throw Invalid($"收养计数为负（{lifecycle.PurchaseCount}，R-04 第 15 条）。");
         }
 
         if (lifecycle.PurchaseYear < 1 || lifecycle.PurchaseYear > today.Year)
         {
             throw Invalid(
-                $"购人年份 {lifecycle.PurchaseYear} 不在 1~{today.Year} 区间内（R-04 第 15 条）。");
+                $"收养年份 {lifecycle.PurchaseYear} 不在 1~{today.Year} 区间内（R-04 第 15 条）。");
         }
 
         if (lifecycle.BirthApplicationYear < 1 || lifecycle.BirthApplicationYear > today.Year)
@@ -141,7 +141,7 @@ public static partial class SaveStateValidator
             if (previousMagnitude is { } previous && magnitude <= previous)
             {
                 throw Invalid(
-                    $"第 {entry.Date.Year} 年的人丁购价未随名次递增（{previous} → {magnitude}，R-04 第 15 条）。");
+                    $"第 {entry.Date.Year} 年的收养价未随名次递增（{previous} → {magnitude}，R-04 第 15 条）。");
             }
 
             previousMagnitude = magnitude;
@@ -157,7 +157,7 @@ public static partial class SaveStateValidator
         if (boughtThisYear != expected)
         {
             throw Invalid(
-                $"当年购人计数与账本不符：记为 {expected}（购人年份 {lifecycle.PurchaseYear}），账本有 {boughtThisYear} 条 PersonPurchase（R-04 第 15 条）。");
+                $"当年收养计数与账本不符：记为 {expected}（收养年份 {lifecycle.PurchaseYear}），账本有 {boughtThisYear} 条 PersonPurchase（R-04 第 15 条）。");
         }
     }
 }

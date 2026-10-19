@@ -46,7 +46,7 @@ public enum AchievementTrigger
     /// <summary>买功名婚姻发生（行 8）；直接受益：<c>ACH-035</c>。</summary>
     DegreeMarriagePurchased = 8,
 
-    /// <summary>买人成功（行 9）；直接受益：<c>ACH-032</c>。</summary>
+    /// <summary>收养成功（行 9）；直接受益：<c>ACH-032</c>。</summary>
     PersonPurchased = 9,
 
     /// <summary>行贿提交成功（行 10）；直接受益：<c>ACH-049</c>~<c>ACH-054</c>。</summary>

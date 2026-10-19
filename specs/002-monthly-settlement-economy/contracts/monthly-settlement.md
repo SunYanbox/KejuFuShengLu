@@ -284,12 +284,12 @@
 > 本清单其余各项仍成立。
 
 > **007 后记（§9 清单，2026-10-17）**：「**属性成长/衰老/疾病/死亡**」「**婚育与外嫁**」
-> 「**买人口**」三项自本清单**移除**——它们已由 007（逻辑轨 ⑦）在第 ⑧ 步「人口与健康推进」交付：
+> 「**收养**」三项自本清单**移除**——它们已由 007（逻辑轨 ⑦）在第 ⑧ 步「人口与健康推进」交付：
 > ⑧-b `Childbirth.Run`（分娩与遗传）、⑧-c `IllnessAdvance.Run`（患病与病程）、
 > ⑧-d `GrowthAdvance.Run`（成长与遗忘）、⑧-e `FamineHealth.Run`（饥馑体质损失与死亡判定）、
 > ⑧-f `LifespanAdvance.Run`（寿终与夭折）、⑧-g `DeathSettlement.Run`（死亡落账）、
 > ⑧-h `HeadSuccession`（家主继任）、⑧-a `MarriageMarket.Run`（提亲与榜下捉婿），
-> 婚嫁金额与买人口入口见
+> 婚嫁金额与收养入口见
 > [007 contracts/marriage-birth.md](../../007-family-lifecycle/contracts/marriage-birth.md)；
 > 体质成长与疾病死亡口径见
 > [007 contracts/illness-lifespan.md](../../007-family-lifecycle/contracts/illness-lifespan.md)。

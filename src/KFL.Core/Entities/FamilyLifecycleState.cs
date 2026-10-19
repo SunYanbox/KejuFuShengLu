@@ -3,7 +3,7 @@ using KFL.Core.ValueObjects;
 namespace KFL.Core.Entities;
 
 /// <summary>
-/// 家族生命周期状态的唯一载体：买人口计数 / 待分娩 / 生育申请 / 待应答提议 / 托媒申请（007 的 data-model §2.3）。
+/// 家族生命周期状态的唯一载体：收养计数 / 待分娩 / 生育申请 / 待应答提议 / 托媒申请（007 的 data-model §2.3）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -35,10 +35,10 @@ public sealed class FamilyLifecycleState
         _matchmakeApplicationsView = _matchmakeApplications.AsReadOnly();
     }
 
-    /// <summary>该计数所属自然年内已买人口数（跨年由 <see cref="NextPurchaseOrdinal"/> 重置）。</summary>
+    /// <summary>该计数所属自然年内已收养数（跨年由 <see cref="NextPurchaseOrdinal"/> 重置）。</summary>
     public int PurchaseCount { get; private set; }
 
-    /// <summary>买人口计数所属的自然年（单调不减，开局 <c>1</c>）。</summary>
+    /// <summary>收养计数所属的自然年（单调不减，开局 <c>1</c>）。</summary>
     public int PurchaseYear { get; private set; } = 1;
 
     /// <summary>待分娩队列（次月 ⑧-b 消费）。</summary>
@@ -190,7 +190,7 @@ public sealed class FamilyLifecycleState
             [.. _matchmakeApplications]);
 
     /// <summary>存档复原通道（一致性由存档层的 <c>SaveStateValidator</c> 负责）。</summary>
-    /// <param name="purchaseCount">已买人口数。</param>
+    /// <param name="purchaseCount">已收养数。</param>
     /// <param name="purchaseYear">计数所属自然年。</param>
     /// <param name="pendingBirths">待分娩队列。</param>
     /// <param name="appliedBirthCouples">本年度已申请生育的夫妇。</param>

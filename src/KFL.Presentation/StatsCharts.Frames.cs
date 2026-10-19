@@ -116,7 +116,7 @@ public static partial class StatsCharts
         var total = series.Sum(line => line.Values.Length > 0 ? line.Values[^1] : 0d);
         var summary = cumulative
             ? FormattableString.Invariant($"累计口径：七类事件逐月累计，末月合计 {total:0} 人/次。")
-            : "当前口径：每类事件的当月发生数（出生 / 死亡 / 购买 / 入狱为账本事件，举人 / 贡士 / 进士取自功名变迁史）。";
+            : "当前口径：每类事件的当月发生数（出生 / 死亡 / 收养 / 入狱为账本事件，举人 / 贡士 / 进士取自功名变迁史）。";
 
         return Frame(
             cumulative ? "人口与功名（累计）" : "人口与功名（当月）",

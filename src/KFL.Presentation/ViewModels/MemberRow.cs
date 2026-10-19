@@ -46,7 +46,7 @@ public sealed class MemberRow
         var badges = new List<string>();
         if (IsPurchased)
         {
-            badges.Add("买入");
+            badges.Add("收养");
         }
 
         if (HasIllness)
@@ -130,7 +130,7 @@ public sealed class MemberRow
 
     public bool IsHead { get; }
 
-    /// <summary>是否由「买人口」买入（或其是否显示买入标记，由视图模型开关决定）。</summary>
+    /// <summary>是否由「收养」引入家族（或其是否显示收养标记，由视图模型开关决定）。</summary>
     public bool IsPurchased { get; }
 
     /// <summary>是否已「申请生育」（本会话内标记，见 MainViewModel）。</summary>

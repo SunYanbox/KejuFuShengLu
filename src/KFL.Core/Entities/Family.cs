@@ -70,10 +70,10 @@ public sealed class Family
     public PunishmentJournal PunishmentJournal { get; } = new();
 
     /// <summary>
-    /// 家族生命周期状态（007）：买人口计数 / 待分娩 / 生育申请 / 待应答提议。
+    /// 家族生命周期状态（007）：收养计数 / 待分娩 / 生育申请 / 待应答提议。
     /// </summary>
     /// <remarks>
-    /// 家族级唯一实例、随家族同生共死。买人口、生育与提议的**全部**写入都经它，
+    /// 家族级唯一实例、随家族同生共死。收养、生育与提议的**全部**写入都经它，
     /// <see cref="Family"/> 为此 MUST NOT 新增任何写入方法。
     /// </remarks>
     public FamilyLifecycleState Lifecycle { get; } = new();
@@ -91,14 +91,14 @@ public sealed class Family
     public Person? TryGet(PersonId id) => _byId.TryGetValue(id, out var person) ? person : null;
 
     /// <summary>
-    /// §9.5 买来的旁系的辈分 = **家主辈分 + 1**（规格书 §4.4）。
+    /// §9.5 收养的旁系成员的辈分 = **家主辈分 + 1**（规格书 §4.4）。
     /// 这是 <see cref="HeadId"/> 在 001 内的真实消费者；家主为 <c>null</c>（无在册男性成员）时无从推导。
     /// </summary>
     /// <exception cref="InvalidOperationException"><see cref="HeadId"/> 为 <c>null</c>。</exception>
     public int BoughtCollateralGeneration => HeadId is { } headId
         ? EnsureMember(headId, nameof(HeadId)).Generation + 1
         : throw new InvalidOperationException(
-            "家族内无在册男性成员（HeadId 为 null），无法推导买来者的辈分（规格书 §4.4）。");
+            "家族内无在册男性成员（HeadId 为 null），无法推导被收养者的辈分（规格书 §4.4）。");
 
     /// <summary>派生子女引用（父母任一指向该成员即算子女）。</summary>
     /// <param name="id">父或母的标识。</param>
@@ -176,8 +176,8 @@ public sealed class Family
 
     /// <summary>
     /// 加入一名**外来者**：<see cref="Person.FatherId"/> 与 <see cref="Person.MotherId"/> 皆 <c>null</c>
-    /// （开局成员、娶入配偶、§9.5 买来的旁系）。辈分由家族指定——娶入配偶等于其配偶的辈分，
-    /// 买来的旁系等于家主辈分 + 1（规格书 §4.4）。
+    /// （开局成员、娶入配偶、§9.5 收养的旁系成员）。辈分由家族指定——娶入配偶等于其配偶的辈分，
+    /// 收养的旁系成员等于家主辈分 + 1（规格书 §4.4）。
     /// </summary>
     /// <param name="outsider">待加入的成员。</param>
     /// <returns>已加入的成员。</returns>

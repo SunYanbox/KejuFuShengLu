@@ -14,8 +14,8 @@ namespace KFL.Core.Enums;
 /// ① **不**为 <see cref="Occupation"/> 新增「自耕」「务农」等取值——收入来源是**账本类别**，
 /// 不是职业（E-02）；
 /// ② 005 新增 <see cref="ExamTravelCost"/>，006 新增 <see cref="BribeExpense"/> 与
-/// <see cref="Fine"/>，007 新增聘礼 / 嫁妆与买人口的 16 项（FR-043）——001 时期
-/// 「无贿赂类别」「无买人口 / 聘礼 / 嫁妆类别」的**负向**断言自此由 006 / 007 的类别名单
+/// <see cref="Fine"/>，007 新增聘礼 / 嫁妆与收养的 16 项（FR-043）——001 时期
+/// 「无贿赂类别」「无收养 / 聘礼 / 嫁妆类别」的**负向**断言自此由 006 / 007 的类别名单
 /// 等价替代（不变量由正向断言守卫，MUST NOT 再保留「该类类别不存在」的断言）。
 /// </para>
 /// </remarks>
@@ -108,7 +108,13 @@ public enum LedgerCategory
     /// <summary>疗程药费（资金类，恒为负；规格书 §4.3，<c>(0.05 + 0.45s) 贯</c> × 支出系数）。</summary>
     MedicineExpense,
 
-    /// <summary>买人口支出（资金类，恒为负；规格书 §9.5，本年第 n 名 = 10n 贯）。</summary>
+    /// <summary>收养支出（资金类，恒为负；规格书 §9.5，本年第 n 名 = 10n 贯）。</summary>
+    /// <remarks>
+    /// 标识符**顺延**：术语自 2026-10-19 第六轮起为「收养」（规格书 §17 第六轮 Q1），但本枚举名与
+    /// <see cref="PersonBought"/> 的改名 MUST 等到**下次存档版本升级**——JSON 存档经
+    /// <c>JsonStringEnumConverter</c> 写入枚举**名字**，提前改名会使既有存档读不出；届时须一并提供
+    /// <c>PersonPurchase</c> / <c>PersonBought</c> 的旧名字映射（规格书 §17 第六轮 Q3）。
+    /// </remarks>
     PersonPurchase,
 
     /// <summary>嫁出时收受对方的聘礼（资金类，正额入现金；规格书 §9.1）。</summary>
@@ -132,7 +138,8 @@ public enum LedgerCategory
     /// <summary>成员外嫁归档（**事件类**；规格书 §9.1 的嫁出方向）。</summary>
     MemberMarriedOut,
 
-    /// <summary>买人口成交（**事件类**；规格书 §9.5）。</summary>
+    /// <summary>收养成交（**事件类**；规格书 §9.5）。</summary>
+    /// <remarks>标识符顺延：改名时机与旧档名字映射义务同 <see cref="PersonPurchase"/>（规格书 §17 第六轮 Q3）。</remarks>
     PersonBought,
 
     /// <summary>成员入狱服刑（**事件类**；规格书 §7.5，2026-10-19 玩家反馈：人口统计图需要「入狱」一条）。</summary>
