@@ -20,7 +20,7 @@ public static class LedgerCategoryMetadata
     /// <summary>取类别的条目种类（资金类 / 事件类）。</summary>
     /// <param name="category">账本类别。</param>
     /// <returns>该类别所属的条目种类。</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 38 个已登记取值内。</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 40 个已登记取值内。</exception>
     public static LedgerEntryKind KindOf(LedgerCategory category) => category switch
     {
         // 事件类：不引起资金池变动（饥馑四类阶段迁移 + 贷款计息入欠息 + 007 的五项家族事件）。
@@ -34,8 +34,9 @@ public static class LedgerCategoryMetadata
         LedgerCategory.MarriageFormed => LedgerEntryKind.Event,
         LedgerCategory.MemberMarriedOut => LedgerEntryKind.Event,
         LedgerCategory.PersonBought => LedgerEntryKind.Event,
+        LedgerCategory.MemberImprisoned => LedgerEntryKind.Event,
 
-        // 资金类：其余 28 个类别全部引起资金池变动。
+        // 资金类：其余 29 个类别全部引起资金池变动。
         LedgerCategory.LivingCost => LedgerEntryKind.Treasury,
         LedgerCategory.SelfFarmingIncome => LedgerEntryKind.Treasury,
         LedgerCategory.LandRentIncome => LedgerEntryKind.Treasury,
@@ -65,8 +66,11 @@ public static class LedgerCategoryMetadata
         LedgerCategory.DowryReceived => LedgerEntryKind.Treasury,
         LedgerCategory.DegreeMarriageDowryReceived => LedgerEntryKind.Treasury,
 
+        // 2026-10-19 玩家反馈 2：宅邸租（农舍 + 城市宅）也是资金类收入。
+        LedgerCategory.HouseRentIncome => LedgerEntryKind.Treasury,
+
         _ => throw new ArgumentOutOfRangeException(
-            nameof(category), category, "未登记的账本类别（data-model §2.1 共 38 个取值）。"),
+            nameof(category), category, "未登记的账本类别（data-model §2.1 共 40 个取值）。"),
     };
 
     /// <summary>取类别在**正额**入账时的目标池。</summary>
@@ -74,10 +78,10 @@ public static class LedgerCategoryMetadata
     /// <returns>
     /// 目标池；<c>null</c> = 该类别没有正额入账目标（恒为负的支出类，或事件类）。
     /// </returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 38 个已登记取值内。</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="category"/> 不在 40 个已登记取值内。</exception>
     public static LedgerCreditTarget? CreditTargetOf(LedgerCategory category) => category switch
     {
-        // 正额入现金（12 类）。
+        // 正额入现金（13 类）。
         LedgerCategory.SelfFarmingIncome => LedgerCreditTarget.Cash,
         LedgerCategory.LandRentIncome => LedgerCreditTarget.Cash,
         LedgerCategory.FarmingWageIncome => LedgerCreditTarget.Cash,
@@ -90,6 +94,9 @@ public static class LedgerCategoryMetadata
         LedgerCategory.BetrothalGiftReceived => LedgerCreditTarget.Cash,
         LedgerCategory.DowryReceived => LedgerCreditTarget.Cash,
         LedgerCategory.DegreeMarriageDowryReceived => LedgerCreditTarget.Cash,
+
+        // 2026-10-19 玩家反馈 2：宅邸租入现金。
+        LedgerCategory.HouseRentIncome => LedgerCreditTarget.Cash,
 
         // 正额入储蓄（1 类，§5.4：储蓄利息并入储蓄本金）。
         LedgerCategory.SavingsInterest => LedgerCreditTarget.Savings,
@@ -111,7 +118,7 @@ public static class LedgerCategoryMetadata
         LedgerCategory.MedicineExpense => null,
         LedgerCategory.PersonPurchase => null,
 
-        // 事件类（10 类）：金额是该事件自身的语义，不指示任何入账目标。
+        // 事件类（11 类）：金额是该事件自身的语义，不指示任何入账目标。
         LedgerCategory.LoanInterestAccrued => null,
         LedgerCategory.FamineEntered => null,
         LedgerCategory.FamineReliefEntered => null,
@@ -122,8 +129,9 @@ public static class LedgerCategoryMetadata
         LedgerCategory.MarriageFormed => null,
         LedgerCategory.MemberMarriedOut => null,
         LedgerCategory.PersonBought => null,
+        LedgerCategory.MemberImprisoned => null,
 
         _ => throw new ArgumentOutOfRangeException(
-            nameof(category), category, "未登记的账本类别（data-model §2.1 共 38 个取值）。"),
+            nameof(category), category, "未登记的账本类别（data-model §2.1 共 40 个取值）。"),
     };
 }

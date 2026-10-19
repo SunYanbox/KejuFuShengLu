@@ -69,6 +69,10 @@ public static class PunishmentImposer
             var fact = new SentenceFact(month, subject.Id, cell.SentenceMonths);
             journal.Append(fact);
             sentences.Add(fact);
+
+            // 2026-10-19 玩家反馈（人口统计图）：入狱也落一条**事件类**条目，
+            // 供统计页按月聚合「入狱」；事件类不动资金池（SC-005 只对资金类求和）。
+            state.Economy.Apply(LedgerCategory.MemberImprisoned, subject.Id, Money.Zero, month);
         }
 
         // ③ 罚金：金额为 0 时不落条目（资金类条目不变量）。

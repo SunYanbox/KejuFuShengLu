@@ -94,6 +94,7 @@ public class LedgerInvariantTests
     [InlineData(LedgerCategory.MarriageFormed, LedgerEntryKind.Event, null)]
     [InlineData(LedgerCategory.MemberMarriedOut, LedgerEntryKind.Event, null)]
     [InlineData(LedgerCategory.PersonBought, LedgerEntryKind.Event, null)]
+    [InlineData(LedgerCategory.MemberImprisoned, LedgerEntryKind.Event, null)]
     public void 类别元数据逐行一致(
         LedgerCategory category, LedgerEntryKind kind, LedgerCreditTarget? creditTarget)
     {
@@ -102,7 +103,7 @@ public class LedgerInvariantTests
     }
 
     [Fact]
-    public void 类别全集恰为三十八个取值且新增婚配生育买卖类别()
+    public void 类别全集恰为四十个取值且新增婚配生育买卖类别()
     {
         string[] expected =
         [
@@ -112,10 +113,10 @@ public class LedgerInvariantTests
             "DegreeMarriageDowryReceived", "DegreeMarriageFeePaid",
             "DowryPaid", "DowryReceived", "ExamTravelCost",
             "FamineEntered", "FamineReliefEntered", "FamineResolved", "FamineSevereEntered",
-            "FarmingWageIncome", "Fine", "LandRentIncome", "LivingCost",
+            "FarmingWageIncome", "Fine", "HouseRentIncome", "LandRentIncome", "LivingCost",
             "LoanInterestAccrued", "LoanInterestRepaid", "LoanPrincipalRepaid",
             "MarriageFormed", "MatchmakerFee", "MedicineExpense",
-            "MemberDeceased", "MemberMarriedOut", "OfficialSalary",
+            "MemberDeceased", "MemberImprisoned", "MemberMarriedOut", "OfficialSalary",
             "PersonBought", "PersonPurchase", "SavingsInterest",
             "SelfFarmingIncome", "ShopRentIncome", "TradeIncome", "TutorFee",
         ];
@@ -142,7 +143,7 @@ public class LedgerInvariantTests
             Assert.Contains(category, actual);
         }
 
-        Assert.Equal(38, actual.Length);
+        Assert.Equal(40, actual.Length);
 
         // 006 起「贿赂」相关类别**只允许**这两个：行贿支出与被抓罚金（FR-027）。
         string[] bribeRelated = [.. actual.Where(
@@ -152,7 +153,7 @@ public class LedgerInvariantTests
     }
 
     [Fact]
-    public void 事件类恰为十个且KindOf与CreditTargetOf对每个取值都可求值()
+    public void 事件类恰为十一个且KindOf与CreditTargetOf对每个取值都可求值()
     {
         LedgerCategory[] expectedEvents =
         [
@@ -166,6 +167,7 @@ public class LedgerInvariantTests
             LedgerCategory.MarriageFormed,
             LedgerCategory.MemberMarriedOut,
             LedgerCategory.PersonBought,
+            LedgerCategory.MemberImprisoned,
         ];
 
         var categories = Enum.GetValues<LedgerCategory>();
@@ -177,7 +179,7 @@ public class LedgerInvariantTests
 
         Assert.Equal(expectedEvents.OrderBy(category => category), events);
 
-        // 全覆盖无遗漏：38 个取值逐个可求值（未登记的取值会抛，见下一条）。
+        // 全覆盖无遗漏：40 个取值逐个可求值（未登记的取值会抛，见下一条）。
         foreach (var category in categories)
         {
             var kind = LedgerCategoryMetadata.KindOf(category);
@@ -186,7 +188,7 @@ public class LedgerInvariantTests
             _ = LedgerCategoryMetadata.CreditTargetOf(category);
         }
 
-        // 无正额入账目标 = 15 个恒负支出/买入类 + 10 个事件类。
+        // 无正额入账目标 = 15 个恒负支出/买入类 + 11 个事件类。
         LedgerCategory[] expectedWithoutCreditTarget =
         [
             LedgerCategory.LivingCost,
@@ -214,6 +216,7 @@ public class LedgerInvariantTests
             LedgerCategory.MarriageFormed,
             LedgerCategory.MemberMarriedOut,
             LedgerCategory.PersonBought,
+            LedgerCategory.MemberImprisoned,
         ];
 
         var withoutCreditTarget = categories

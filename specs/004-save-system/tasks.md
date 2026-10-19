@@ -548,3 +548,49 @@ MEDIUM = 契约细则或次要验收锚点的行为/断言缺口；LOW = 边界�
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1286 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 `save-format.md`、`save-service.md` 的**键表与版本常量未变**（`SaveFileFormat.Version` 仍为 5）。
+
+## 回写范围登记（2026-10-19，玩家反馈第三轮：删除存档/备份、列表复位）
+
+> 本节由第三轮玩家反馈（反馈 9 删除存档、反馈 12 回主菜单后偶尔读不到档）**追加登记**，
+> 不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §14 的 2026-10-19 回写块、§17 裁决块 Q7 与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| `ISaveService.Delete` / `DeleteBackup`（返回 `false` = 不存在，不抛） | `specs/004-save-system/spec.md` 增补 §1；`src/KFL.Infrastructure/Abstractions/ISaveService.cs`、`src/KFL.Infrastructure/Save/SaveService.cs`（`TryDeleteFile` → `SaveAccessException`）、`src/KFL.Infrastructure/Save/SaveCatalog.cs`（`DeleteFile`，带 `// arch-guard:allow`）、`src/KFL.Presentation/GameSession.cs`（`DeleteSave`/`DeleteBackup` 包装）、`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`DeleteSelectedSave`/`DeleteSelectedBackup`）、`src/KFL.App/MainWindow.xaml` + `MainWindow.xaml.cs`（**二次确认** `MessageBox`）；`tests/KFL.Tests/Rules/RecordingSaveService.cs`（假实现两成员） |
+| 删除当前档先 `Detach()` 再刷新；`RefreshSaves`/`RefreshBackups` 选择失效复位 | `spec.md` 增补 §2；`MainViewModel.cs`（`_selectedSave`/`_selectedMenuSave`/`_selectedBackup` 复位）、`GameSession.cs` |
+| `menu` 返回主菜单时重新列出存档与备份概览 | `spec.md` 增补 §3；`MainViewModel.cs`（`Execute` 的 `menu` 分支） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1309 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+`save-format.md`、`save-service.md` 的**键表与版本常量未变**（`SaveFileFormat.Version` 仍为 5）；
+删除是**文件系统操作**，不触碰存档载荷形状，故无版本提升。
+
+## 回写范围登记（2026-10-19，玩家反馈第四轮：读档自愈）
+
+> 本节由第四轮玩家反馈（「某档读不回来」，`SaveIdentityConflictException` 之外的校验拒绝：
+> R-04 第 13 条 / 第 14 条）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §14 的第四轮回写块、文末裁决块 Q3 与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 读档第 ⑦′ 步自愈（仅两类生命周期簿记） | 规格书 §14 第四轮回写块；`specs/004-save-system/spec.md` 第四轮增补；新增 `src/KFL.Infrastructure/Save/Serialization/SaveStateRepair.cs`；`src/KFL.Infrastructure/Save/SaveService.cs`（`ReadState` 在 `Validate` 前调用）；`tests/KFL.Tests/Infrastructure/SaveServiceTests.cs`（自愈用例） |
+| 自愈**范围收窄**（除两类外一律如实拒绝） | `spec.md` 增补 §3；`SaveStateRepair` 只暴露两个清空方法 |
+| 写入侧与月度兜底（避免新档再产生同类不一致） | 007 `spec.md` 第四轮增补；`src/KFL.Core/Entities/{Family,FamilyLifecycleState}.cs`；`src/KFL.Rules/Family/PopulationAdvance.cs` |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / **1314 通过 0 失败** / 恰六工程 / 无 `*.sln`。
+`SaveFileFormat.Version` 仍为 5：自愈只清**语义已失效的簿记字段**，键表与结构不变。
+
+## 回写范围登记（2026-10-19，玩家反馈第四轮：开局菜单读档入口）
+
+> 本节由第四轮玩家反馈（「开局菜单点『读取选中存档』没有任何效果」）**追加登记**，
+> 不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书文末裁决块 Q5 与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 动作派发守卫重排：菜单级 `menuload` 先处理，再判空会话 | 规格书第四轮裁决块 Q5；`specs/004-save-system/spec.md` 第四轮增补；`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`Execute` 开头 + 删除不可达的 `case "menuload"`） |
+| 菜单无选中项时在概览区提示（不再静默） | `MainViewModel.cs`（`MenuSaveOverviewText`） |
+| 端到端验收 | `KFL_AUTOSTART=cmd:menuload` → 进档成功（`artifacts/ui-ui-fix-menuload.png`） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / **1314 通过 0 失败** / 恰六工程 / 无 `*.sln`。
+本次只改界面层派发顺序，**未触碰**存档载荷与 `SaveFileFormat.Version`。

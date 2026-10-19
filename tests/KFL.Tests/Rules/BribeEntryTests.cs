@@ -306,10 +306,13 @@ public class BribeEntryTests
         Assert.Equal(2, bribeEntries.Length);
         Assert.True(bribeEntries.All(entry => entry.Amount.IsNegative));
 
-        // 行贿款 MUST NOT 被退回：全部条目都是支出（恒为负），且类别只允许行贿支出与被抓当次命中的罚金。
-        Assert.True(state.Economy.Ledger.Entries.All(entry => entry.Amount.IsNegative));
+        // 行贿款 MUST NOT 被退回：全部**资金类**条目都是支出（恒为负），且类别只允许行贿支出与被抓当次命中的罚金。
+        // （入狱事件条目 MemberImprisoned 金额为 0，仅供人口统计图计数，不涉及资金——玩家反馈 10。）
+        Assert.True(state.Economy.Ledger.Entries
+            .Where(entry => entry.Category != LedgerCategory.MemberImprisoned)
+            .All(entry => entry.Amount.IsNegative));
         Assert.True(state.Economy.Ledger.Entries.All(
-            entry => entry.Category is LedgerCategory.BribeExpense or LedgerCategory.Fine));
+            entry => entry.Category is LedgerCategory.BribeExpense or LedgerCategory.Fine or LedgerCategory.MemberImprisoned));
 
         // 被抓当次同样落 1 行事实，Caught 为真。
         Assert.Equal(2, state.Family.PunishmentJournal.Bribes.Count);

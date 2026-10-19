@@ -219,6 +219,26 @@ public sealed class SaveService : ISaveService
     }
 
     /// <inheritdoc />
+    public bool Delete(SaveSlot slot)
+    {
+        var name = SaveName.Validate(slot.Name);
+        var extension = SaveFileFormat.ExtensionOf(slot.Format);
+
+        return TryDeleteFile(SaveCatalog.Combine(RootDirectory, name + extension), name);
+    }
+
+    /// <inheritdoc />
+    public bool DeleteBackup(SaveSlot slot)
+    {
+        var name = SaveName.Validate(slot.Name);
+        var extension = SaveFileFormat.ExtensionOf(slot.Format);
+        var path = SaveCatalog.Combine(
+            SaveCatalog.BackupsDirectoryOf(RootDirectory), name + extension + BackupSuffix);
+
+        return TryDeleteFile(path, name + extension + BackupSuffix);
+    }
+
+    /// <inheritdoc />
     public GameState SaveAsFork(GameState state, SaveSlot slot)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -243,6 +263,19 @@ public sealed class SaveService : ISaveService
 
         // 从盘上读回：调用方拿到的是**独立**的新标识状态，与入参不发生共享。
         return Load(new SaveSlot(name, slot.Format));
+    }
+
+    /// <summary>删除一个文件；失败按契约九 §2 的分类浮出（绝不静默）。</summary>
+    private static bool TryDeleteFile(string path, string displayName)
+    {
+        try
+        {
+            return SaveCatalog.DeleteFile(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            throw new SaveAccessException($"删除存档失败：{displayName}（{ex.Message}）", ex);
+        }
     }
 
     /// <summary>读整个文件；缺文件 / 不可读两类失败按契约九 §2 分类抛出。</summary>
@@ -270,6 +303,13 @@ public sealed class SaveService : ISaveService
 
         // ⑦ 逐字段复原（Core 自身的交叉校验在这里把不一致顶成 InvalidStructure）。
         var state = SaveStateMapper.ToDomain(payload);
+
+        // ⑦′ 读档自愈（规格书 §17 裁决 2026-10-19）：历史缺陷可能留下两处生命周期簿记——
+        //     ①「过期提议」指向的成员此后经其他路径成了婚（第 13 条）；
+        //     ②「已申请本年生育的夫妇」此后离异 / 丧偶（第 14 条，整档读不进来）。
+        //     两者都是可安全丢弃的当月簿记，故在此清空后再校验；其余不一致一律照旧拒绝。
+        SaveStateRepair.ClearStaleProposal(state);
+        SaveStateRepair.ClearStaleBirthBookkeeping(state);
 
         // ⑧ 头标识一致 + 十二条一致性校验。
         SaveStateValidator.ValidateIdentity(header, state);

@@ -523,3 +523,25 @@
   乘数、并列时的排序）按规格书 §17①/② 推导并
   登记在 research.md R-19，可逐条否决而不牵连其余条目；其中「务农参与范围」「城市宅加成份数」
   两条已在 **E-15/E-17** 由用户裁决后**脱离** R-19 的推导清单（R-19 表中保留指针）。
+
+## 增补（2026-10-19，玩家反馈第三轮：宅邸租与入狱事件类别）
+
+> 依据：规格书 §5.2 新增的 `§17 裁决回写（2026-10-19，玩家反馈第三轮 · 宅邸租）` 与 §17 裁决块
+> Q1/Q8。本节的效力**取代**下文涉及下列两项的旧口径。
+
+1. **宅邸租**：新增家族级收入来源——`guan = 农村宅 × 0.4 + 城市宅 × 0.8`（贯/月），
+   乘难度收益系数，落 1 条资金类条目 `HouseRentIncome`（归属 `PersonId = null`），
+   结算位置在 `AddSalaries` 之后、`AddShopRent` 之前；与 §5.2 第 10 条「城市宅做工加成」**并存**。
+   数值单点：`KFL.Rules/Config/IncomeRateTable.RuralHouseRentGuanPerMonth / UrbanHouseRentGuanPerMonth`。
+2. **入狱事件类别**：`LedgerCategory` 新增事件类 `MemberImprisoned`（`KindOf → Event`、
+   `CreditTargetOf → null`），由 `KFL.Rules/Punishment/PunishmentImposer` 在判决服刑时落一条
+   **金额为 0** 的条目——它**不涉资金**、不参与 SC-005 的资金池核对，仅供统计页人口图取数。
+   账本取值数 39 → **40**（资金类与事件类的分布见 [data-model.md](./data-model.md) §2.1）。
+
+**回写登记（同一提交）**：①规格书 §5.2（新行 + 裁决块）与 §17 裁决块（2026-10-19）Q1/Q8；
+②本节；③[data-model.md](./data-model.md) §2.1（两行 + 「13 个类别 / 6 个事件类」计数）；
+④`src/KFL.Core/Enums/LedgerCategory.cs`、`LedgerCategoryMetadata.cs`、
+`src/KFL.Rules/Config/IncomeRateTable.cs`、`src/KFL.Rules/Settlement/IncomeCalculator.cs`、
+`src/KFL.Rules/Punishment/PunishmentImposer.cs`、`src/KFL.Presentation/Display.cs`；
+⑤`tests/KFL.Tests/Core/LedgerInvariantTests.cs`（40 个取值、事件类 11 个）、
+`tests/KFL.Tests/Rules/PunishmentMatrixTests.cs`（账本白名单 + `Fine` 过滤）。

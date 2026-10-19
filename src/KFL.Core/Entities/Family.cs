@@ -277,6 +277,20 @@ public sealed class Family
 
         ApplyAlignment(a, planA);
         ApplyAlignment(b, planB);
+
+        // 成婚即失效：指向任一方的未应答提议 MUST 被清空。
+        // 否则会留下「提议的 OurMemberId 已有配偶」的非法状态——读档时被第 13 条校验拒绝
+        // （玩家反馈：曹家存档无法读取）。此处是全部成婚路径（托媒 / 应答提亲 / 族内通婚）的
+        // 唯一汇合点，故在此收口，MUST NOT 让调用方各自记得清。
+        if (Lifecycle.Proposal is { } pending
+            && (pending.OurMemberId == a.Id || pending.OurMemberId == b.Id))
+        {
+            Lifecycle.SetProposal(null);
+        }
+
+        // 同理：当事人此前若在别处登记过「本年度已申请生育」，那条夫妇键已随本次成婚而失效。
+        Lifecycle.DropBirthCouplesInvolving(a.Id);
+        Lifecycle.DropBirthCouplesInvolving(b.Id);
     }
 
     /// <summary>
@@ -302,6 +316,11 @@ public sealed class Family
 
         widowed.AddFormerSpouse(spouse.Id);
         spouse.AddFormerSpouse(widowed.Id);
+
+        // 婚姻终止即失效：双方在本年度的生育申请簿记（已申请夫妇键 + 其待分娩记录）MUST 一并丢弃，
+        // 否则读档时第 14 条会因「已申请生育的夫妇不再互为配偶」拒绝整个存档（玩家反馈：某档无法读取）。
+        Lifecycle.DropBirthCouplesInvolving(widowed.Id);
+        Lifecycle.DropBirthCouplesInvolving(spouse.Id);
     }
 
     /// <summary>

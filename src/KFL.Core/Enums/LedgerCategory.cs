@@ -1,7 +1,7 @@
 namespace KFL.Core.Enums;
 
 /// <summary>
-/// 家族流水账的类别全集（38 个取值；data-model §2.1、§2.4，逐行取自规格书 §12.3 与 §5.1~§5.4、
+/// 家族流水账的类别全集（40 个取值；data-model §2.1、§2.4，逐行取自规格书 §12.3 与 §5.1~§5.4、
 /// 006 的 §7.1 / §7.5、007 的 §4.3 / §9.1~§9.5）。
 /// </summary>
 /// <remarks>
@@ -134,4 +134,10 @@ public enum LedgerCategory
 
     /// <summary>买人口成交（**事件类**；规格书 §9.5）。</summary>
     PersonBought,
+
+    /// <summary>成员入狱服刑（**事件类**；规格书 §7.5，2026-10-19 玩家反馈：人口统计图需要「入狱」一条）。</summary>
+    MemberImprisoned,
+
+    /// <summary>宅邸租（农舍 + 城市宅，**资金类**；2026-10-19 玩家反馈 2：屋舍本身亦生租）。</summary>
+    HouseRentIncome,
 }

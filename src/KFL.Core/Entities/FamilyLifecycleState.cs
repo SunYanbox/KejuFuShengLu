@@ -142,6 +142,34 @@ public sealed class FamilyLifecycleState
     public void ConsumeMatchmakeApplications(GameDate month) =>
         _matchmakeApplications.RemoveAll(application => application.AppliedAt < month);
 
+    /// <summary>
+    /// 丢弃牵涉该成员的全部生育簿记（已申请本年生育的夫妇键 + 由它派生的待分娩记录）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 婚姻关系变动（离异 / 丧偶 / 成婚换偶）后调用：<see cref="AppliedBirthCouples"/> 里的夫妇键
+    /// MUST 两端互为配偶，否则读档会被 R-04 第 14 条拒绝。同一成员在同一时刻至多属于一个夫妇键，
+    /// 故按成员丢弃不会误伤他人。
+    /// </para>
+    /// <para>**零随机、零金额、零状态位**：只动生命周期簿记两个列表。</para>
+    /// </remarks>
+    /// <param name="member">婚姻关系发生变动的成员。</param>
+    public void DropBirthCouplesInvolving(PersonId member)
+    {
+        _appliedBirthCouples.RemoveAll(
+            couple => couple.HusbandId == member || couple.WifeId == member);
+        _pendingBirths.RemoveAll(
+            birth => birth.Couple.HusbandId == member || birth.Couple.WifeId == member);
+    }
+
+    /// <summary>丢弃「夫妇键不在已申请集合内」的孤儿待分娩记录（半截状态的另一半）。</summary>
+    /// <returns>确实丢弃了记录时为 <c>true</c>。</returns>
+    public bool DropPendingBirthsWithoutApplication()
+    {
+        var removed = _pendingBirths.RemoveAll(birth => !_appliedBirthCouples.Contains(birth.Couple));
+        return removed > 0;
+    }
+
     /// <summary>存档复原用的瞬时快照（只承载数据，不承载校验）。</summary>
     /// <returns>七项状态。</returns>
     internal (

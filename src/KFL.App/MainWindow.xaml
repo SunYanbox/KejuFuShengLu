@@ -31,56 +31,126 @@
                     <TextBlock DockPanel.Dock="Top" Text="{Binding MonthlyBalanceText}" FontWeight="Bold" Foreground="#FF1F5C2E" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding ExamInfo}" TextWrapping="Wrap"
-                                   MouseLeftButtonUp="OnExamInfoMouseUp"
-                                   ToolTip="双击显示本场考试的录取率来源与算式（需求 18）" />
+                                   ToolTip="考试报名窗口与预估录取率；详细来源见「成员详情」" />
                         <TextBlock Text="{Binding AchievementSummary}" Margin="24,0,0,0" Foreground="#FF5A5A5A" />
                     </StackPanel>
                 </DockPanel>
             </Border>
-
             <TabControl Grid.Row="3" Margin="6,4,6,0">
                 <TabItem Header="家族">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="360" />
+                            <ColumnDefinition Width="420" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="380" />
+                            <ColumnDefinition Width="370" />
                         </Grid.ColumnDefinitions>
 
                         <DockPanel Grid.Column="0" Margin="4">
-                            <TextBlock DockPanel.Dock="Top" Text="成员（可筛选）" Style="{StaticResource SectionHeader}" />
+                            <TextBlock DockPanel.Dock="Top" Text="家谱（一行一代人 · 点击方块选中）" Style="{StaticResource SectionHeader}"
+                                       TextWrapping="Wrap" />
                             <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding MemberFilters}" DisplayMemberPath="Text"
                                       SelectedItem="{Binding SelectedMemberFilter, Mode=TwoWay}" />
                             <TextBlock DockPanel.Dock="Top" Text="{Binding MemberCountText}" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
-                            <TextBlock DockPanel.Dock="Bottom" Text="归档 = 亡故 / 外嫁" Style="{StaticResource Secondary}" />
-                            <ListBox ItemsSource="{Binding Members}"
-                                     SelectedItem="{Binding Selected, Mode=TwoWay}"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border BorderBrush="#FFBFAE8E" BorderThickness="1" CornerRadius="3"
-                                                Margin="2" Padding="6" Background="{StaticResource PanelBrush}">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Caption}" FontWeight="Bold" FontSize="14"
-                                                               Foreground="{Binding PlacementBrush}" />
-                                                    <TextBlock Text="{Binding HeadMark}" Margin="6,0,0,0" Foreground="#FF8B1A1A" />
-                                                </StackPanel>
-                                                <TextBlock Text="{Binding PlacementText}" Foreground="{Binding PlacementBrush}" />
-                                                <TextBlock Text="{Binding DegreeText}" />
-                                                <TextBlock Text="{Binding RankText}" />
-                                                <TextBlock Text="{Binding StatusText}" Style="{StaticResource Secondary}" />
-                                                <TextBlock Text="{Binding BadgeText}" Foreground="#FF8B1A1A" TextWrapping="Wrap"
-                                                           FontSize="12" />
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                            <WrapPanel DockPanel.Dock="Top" Margin="0,2,0,2">
+                                <CheckBox Content="父母" Foreground="#FF1F5FA8" FontWeight="Bold"
+                                          IsChecked="{Binding ShowParentLinks, Mode=TwoWay}" />
+                                <CheckBox Content="子女" Foreground="#FF1E8449" FontWeight="Bold" Margin="10,0,0,0"
+                                          IsChecked="{Binding ShowChildLinks, Mode=TwoWay}" />
+                                <CheckBox Content="兄弟姐妹" Foreground="#FFB8860B" FontWeight="Bold" Margin="10,0,0,0"
+                                          IsChecked="{Binding ShowSiblingLinks, Mode=TwoWay}" />
+                            </WrapPanel>
+                            <TextBlock DockPanel.Dock="Bottom" Text="归档 = 亡故 / 外嫁 ｜ 筛选依然作用于家谱" Style="{StaticResource Secondary}"
+                                       TextWrapping="Wrap" />
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                          Padding="0,2,0,0">
+                                <Grid Width="{Binding TreeWidth}" Height="{Binding TreeHeight}">
+                                    <ItemsControl ItemsSource="{Binding Generations}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Canvas.Left" Value="0" />
+                                                <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Caption}" Style="{StaticResource Secondary}"
+                                                           FontWeight="Bold" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <ItemsControl ItemsSource="{Binding TreeLines}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Line X1="{Binding X1}" Y1="{Binding Y1}" X2="{Binding X2}" Y2="{Binding Y2}"
+                                                      Stroke="{Binding BrushKey, Converter={StaticResource BrushKey}}"
+                                                      StrokeThickness="2" ToolTip="{Binding Label}" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <ItemsControl ItemsSource="{Binding TreeNodes}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                                <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Width="168" Height="116" BorderBrush="#FFBFAE8E" BorderThickness="1"
+                                                        CornerRadius="3" Padding="5" Background="{StaticResource PanelBrush}">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Row.Caption}" FontWeight="Bold" FontSize="13"
+                                                                   Foreground="{Binding Row.PlacementBrush}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Row.DegreeText}" FontSize="12" />
+                                                        <TextBlock Text="{Binding Row.RankText}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Row.BadgeText}" FontSize="11" Foreground="#FF8B1A1A"
+                                                                   TextWrapping="Wrap" />
+                                                        <Button Content="选中" HorizontalAlignment="Right" Padding="6,0"
+                                                                FontSize="11" MinHeight="18" Margin="0,2,0,0"
+                                                                Command="{Binding DataContext.DoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding Token}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </ScrollViewer>
                         </DockPanel>
 
                         <DockPanel Grid.Column="1" Margin="4">
                             <TextBlock DockPanel.Dock="Top" Text="成员详情（卡片点开）" Style="{StaticResource SectionHeader}" />
+                            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding RelationLinks}" Margin="0,0,0,4">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Label}" Command="{Binding DataContext.DoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding Token}" Padding="6,0" Margin="0,0,4,2" FontSize="12"
+                                                Foreground="#FF1F5FA8" ToolTip="点击跳到该成员详情（玩家反馈 7）" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <TextBlock Text="{Binding DetailText}" FontFamily="Consolas, Microsoft YaHei" />
                             </ScrollViewer>
@@ -126,14 +196,19 @@
                                     <Button Content="卖 ×10" Command="{Binding DoCommand}" CommandParameter="assetsell:10" />
                                 </WrapPanel>
                                 <WrapPanel>
-                                    <Button Content="存 10 贯" Command="{Binding DoCommand}" CommandParameter="money:savings:10" />
-                                    <Button Content="取 10 贯" Command="{Binding DoCommand}" CommandParameter="money:cash:10" />
-                                    <Button Content="还贷 10 贯" Command="{Binding DoCommand}" CommandParameter="repay:10" />
+                                    <TextBlock Text="金额（贯）：" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding MoneyAmountText, UpdateSourceTrigger=PropertyChanged}" Width="70"
+                                             VerticalAlignment="Center" />
                                 </WrapPanel>
                                 <WrapPanel>
-                                    <Button Content="商本投入 10 贯" Command="{Binding DoCommand}" CommandParameter="merchant:in:10"
+                                    <Button Content="存入储蓄" Command="{Binding DoCommand}" CommandParameter="bank:savings" />
+                                    <Button Content="取回现银" Command="{Binding DoCommand}" CommandParameter="bank:cash" />
+                                    <Button Content="还贷" Command="{Binding DoCommand}" CommandParameter="bank:repay" />
+                                </WrapPanel>
+                                <WrapPanel>
+                                    <Button Content="商本投入" Command="{Binding DoCommand}" CommandParameter="bank:merchantin"
                                             ToolTip="从现银划入商本（经商收益按商本计，可随时抽回）" />
-                                    <Button Content="商本抽回 10 贯" Command="{Binding DoCommand}" CommandParameter="merchant:out:10"
+                                    <Button Content="商本抽回" Command="{Binding DoCommand}" CommandParameter="bank:merchantout"
                                             ToolTip="从商本划回现银" />
                                 </WrapPanel>
 
@@ -149,6 +224,15 @@
                                     <Button Content="就医" Command="{Binding DoCommand}" CommandParameter="treat" />
                                     <Button Content="名师开关" Command="{Binding DoCommand}" CommandParameter="tutor" />
                                     <Button Content="立为家主" Command="{Binding DoCommand}" CommandParameter="head" />
+                                </WrapPanel>
+                                <WrapPanel>
+                                    <TextBlock Text="族内通婚：" VerticalAlignment="Center" />
+                                    <ComboBox ItemsSource="{Binding EndogamyCandidates}" DisplayMemberPath="Text" MinWidth="180"
+                                              SelectedItem="{Binding SelectedEndogamy, Mode=TwoWay}"
+                                              ToolTip="只列同代、异性、在册未婚成年成员（玩家反馈 1）" />
+                                    <Button Content="成婚" Command="{Binding DoCommand}" CommandParameter="endogamy" />
+                                    <Button Content="离异" Command="{Binding DoCommand}" CommandParameter="divorce"
+                                            ToolTip="解除选中成员的婚姻（对方记入前任配偶；子女的父母引用不变）" />
                                 </WrapPanel>
                                 <CheckBox Content="自动治疗（每月为患病成员开疗程）" IsChecked="{Binding AutoTreat, Mode=TwoWay}"
                                           Margin="0,4,0,0" ToolTip="要求 10" />
@@ -167,80 +251,117 @@
 
                 <TabItem Header="统计">
                     <DockPanel Margin="6">
-                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
                             <Button Content="导出流水账 CSV" Command="{Binding DoCommand}" CommandParameter="export" />
-                            <TextBlock Text="三张折线图按月聚合自族流水账，纵向排列、左右对齐（同一画布宽度）；下方仍保留文字汇总。" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
+                            <TextBlock Text="折线图按月聚合自族流水账；每张图可左右滚动（默认滚到最新），鼠标悬停看当月数值。"
+                                       Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
                         </StackPanel>
 
+                        <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                            <TextBlock Text="收支图口径：" VerticalAlignment="Center" FontWeight="Bold" />
+                            <RadioButton Content="当月" GroupName="MoneyScale" IsChecked="{Binding IsMoneyChartMonthly, Mode=TwoWay}" Margin="4,0" />
+                            <RadioButton Content="累计" GroupName="MoneyScale" IsChecked="{Binding IsMoneyChartCumulative, Mode=TwoWay}" Margin="4,0" />
+                            <TextBlock Text="  人口图口径：" VerticalAlignment="Center" FontWeight="Bold" />
+                            <RadioButton Content="当月" GroupName="PopScale" IsChecked="{Binding IsPopulationChartMonthly, Mode=TwoWay}" Margin="4,0" />
+                            <RadioButton Content="累计" GroupName="PopScale" IsChecked="{Binding IsPopulationChartCumulative, Mode=TwoWay}" Margin="4,0" />
+                        </WrapPanel>
+
                         <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,6">
+                                      HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,6" MinHeight="300" MaxHeight="620">
                             <ItemsControl ItemsSource="{Binding Charts}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderBrush="#FFBFAE8E" BorderThickness="1" CornerRadius="3"
-                                                Margin="0,0,0,8" Padding="8" Background="{StaticResource PanelBrush}"
-                                                HorizontalAlignment="Left">
+                                                Margin="0,0,0,8" Padding="8" Background="{StaticResource PanelBrush}">
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Title}" FontWeight="Bold" />
-                                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Secondary}" Width="820" TextWrapping="Wrap" />
-                                                <Canvas Width="{Binding Width}" Height="{Binding Height}" ClipToBounds="False">
-                                                    <!-- 网格底：坐标轴 -->
-                                                    <Line X1="0" Y1="0" X2="0" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
-                                                    <Line X1="0" Y1="{Binding Height}" X2="{Binding Width}" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
-                                                    <!-- 折线：每条系列一条 Polyline -->
-                                                    <ItemsControl ItemsSource="{Binding Series}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <Canvas />
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Polyline Points="{Binding Points}" Stroke="{Binding BrushKey, Converter={StaticResource BrushKey}}"
-                                                                          StrokeThickness="2" Fill="Transparent" />
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                    <!-- Y 轴刻度 -->
-                                                    <ItemsControl ItemsSource="{Binding YTicks}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <Canvas />
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemContainerStyle>
-                                                            <Style TargetType="ContentPresenter">
-                                                                <Setter Property="Canvas.Left" Value="2" />
-                                                                <Setter Property="Canvas.Top" Value="{Binding Position}" />
-                                                            </Style>
-                                                        </ItemsControl.ItemContainerStyle>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <TextBlock Text="{Binding Text}" Margin="0,-9,0,0" FontSize="12" Foreground="#FF5A5A5A" />
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                    <!-- X 轴刻度 -->
-                                                    <ItemsControl ItemsSource="{Binding XTicks}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <Canvas />
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemContainerStyle>
-                                                            <Style TargetType="ContentPresenter">
-                                                                <Setter Property="Canvas.Left" Value="{Binding Position}" />
-                                                                <Setter Property="Canvas.Top" Value="{Binding DataContext.XTickTop, RelativeSource={RelativeSource AncestorType=Canvas}}" />
-                                                            </Style>
-                                                        </ItemsControl.ItemContainerStyle>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <TextBlock Text="{Binding Text}" FontSize="12" Foreground="#FF5A5A5A" />
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </Canvas>
-                                                <!-- 图例 -->
+                                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
+                                                <!-- Y 轴固定（不随横向滚动走掉），绘图区单独横向滚动（反馈 6） -->
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="64" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Canvas Grid.Column="0" Width="64" Height="{Binding Height}" ClipToBounds="False">
+                                                        <Line X1="63" Y1="0" X2="63" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                                                        <ItemsControl ItemsSource="{Binding YTicks}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <Canvas />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemContainerStyle>
+                                                                <Style TargetType="ContentPresenter">
+                                                                    <Setter Property="Canvas.Left" Value="2" />
+                                                                    <Setter Property="Canvas.Top" Value="{Binding Position}" />
+                                                                </Style>
+                                                            </ItemsControl.ItemContainerStyle>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding Text}" Margin="0,-9,0,0" FontSize="12" Foreground="#FF5A5A5A" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Canvas>
+                                                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                                                  Loaded="OnChartScrollLoaded" SizeChanged="OnChartScrollLoaded">
+                                                        <Canvas Width="{Binding Width}" Height="{Binding Height}" Margin="-64,0,0,0" ClipToBounds="False">
+                                                            <Line X1="64" Y1="0" X2="64" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                                                            <Line X1="64" Y1="{Binding Height}" X2="{Binding Width}" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                                                            <ItemsControl ItemsSource="{Binding Series}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <Canvas />
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Polyline Points="{Binding Points}" Stroke="{Binding BrushKey, Converter={StaticResource BrushKey}}"
+                                                                                  StrokeThickness="2" Fill="Transparent" />
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <ItemsControl ItemsSource="{Binding XTicks}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <Canvas />
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemContainerStyle>
+                                                                    <Style TargetType="ContentPresenter">
+                                                                        <Setter Property="Canvas.Left" Value="{Binding Position}" />
+                                                                        <Setter Property="Canvas.Top" Value="{Binding DataContext.XTickTop, RelativeSource={RelativeSource AncestorType=Canvas}}" />
+                                                                    </Style>
+                                                                </ItemsControl.ItemContainerStyle>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <TextBlock Text="{Binding Text}" FontSize="12" Foreground="#FF5A5A5A" />
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <!-- 悬停热区：透明矩形 + ToolTip，显示该月各系列数值（反馈 5） -->
+                                                            <ItemsControl ItemsSource="{Binding Hovers}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <Canvas />
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemContainerStyle>
+                                                                    <Style TargetType="ContentPresenter">
+                                                                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                                                        <Setter Property="Canvas.Top" Value="0" />
+                                                                    </Style>
+                                                                </ItemsControl.ItemContainerStyle>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Rectangle Width="{Binding Width}" Height="{Binding DataContext.Height, RelativeSource={RelativeSource AncestorType=Canvas}}"
+                                                                                   Fill="Transparent" ToolTip="{Binding Text}" />
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </Canvas>
+                                                    </ScrollViewer>
+                                                </Grid>
                                                 <ItemsControl ItemsSource="{Binding Series}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
@@ -264,9 +385,15 @@
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <TextBlock Text="{Binding StatisticsText}" FontFamily="Consolas, Microsoft YaHei" />
-                        </ScrollViewer>
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="局势速览（算好的数字）" Style="{StaticResource SectionHeader}" />
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding StatsInsights}" FontFamily="Consolas, Microsoft YaHei" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding StatisticsText}" FontFamily="Consolas, Microsoft YaHei" Margin="0,8,0,0" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </DockPanel>
                     </DockPanel>
                 </TabItem>
 
@@ -333,7 +460,9 @@
 
                             <DockPanel Grid.Row="0">
                                 <TextBlock DockPanel.Dock="Top" Text="本机存档" Style="{StaticResource SectionHeader}" />
-                                <Button DockPanel.Dock="Bottom" Content="读取选中存档"
+                                <Button DockPanel.Dock="Bottom" Content="删除选中存档" Margin="0,2,0,0"
+                                        Click="OnDeleteSaveClick" Foreground="#FF8B1A1A" />
+                                <Button DockPanel.Dock="Bottom" Content="读取选中存档" Margin="0,2,0,0"
                                         Command="{Binding DoCommand}" CommandParameter="load:selected" />
                                 <ListBox ItemsSource="{Binding Saves}" DisplayMemberPath="Text"
                                          SelectedItem="{Binding SelectedSave, Mode=TwoWay}" />
@@ -341,7 +470,9 @@
 
                             <DockPanel Grid.Row="1" Margin="0,6,0,0">
                                 <TextBlock DockPanel.Dock="Top" Text="备份存档（saves\backups，已压缩）" Style="{StaticResource SectionHeader}" />
-                                <Button DockPanel.Dock="Bottom" Content="读取选中备份"
+                                <Button DockPanel.Dock="Bottom" Content="删除选中备份" Margin="0,2,0,0"
+                                        Click="OnDeleteBackupClick" Foreground="#FF8B1A1A" />
+                                <Button DockPanel.Dock="Bottom" Content="读取选中备份" Margin="0,2,0,0"
                                         Command="{Binding DoCommand}" CommandParameter="loadbackup" />
                                 <ListBox ItemsSource="{Binding Backups}" DisplayMemberPath="Text"
                                          SelectedItem="{Binding SelectedBackup, Mode=TwoWay}" />
@@ -385,8 +516,14 @@
             </TabControl>
 
             <DockPanel Grid.Row="4" Margin="6,4,6,6">
-                <TextBlock DockPanel.Dock="Top" Text="纪事（家族流水）" Style="{StaticResource SectionHeader}" />
-                <ListBox ItemsSource="{Binding LogLines}" FontFamily="Consolas, Microsoft YaHei" FontSize="12" />
+                <DockPanel DockPanel.Dock="Top">
+                    <Button DockPanel.Dock="Right" Content="清空纪事" Padding="8,1"
+                            Command="{Binding DoCommand}" CommandParameter="clearlog"
+                            ToolTip="清空界面上的纪事列表（玩家反馈 15）；完全相同的行会合并为「× N」" />
+                    <TextBlock Text="纪事（家族流水）" Style="{StaticResource SectionHeader}" />
+                </DockPanel>
+                <ListBox x:Name="LogList" ItemsSource="{Binding LogLines}" FontFamily="Consolas, Microsoft YaHei" FontSize="12"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
             </DockPanel>
 
             <!-- 本月收支悬浮窗（需求 7）：按人、按来源罗列 -->
@@ -406,22 +543,7 @@
                 </DockPanel>
             </Border>
 
-            <!-- 考试录取率明细悬浮窗（需求 18）：双击顶部考试条打开 -->
-            <Border Grid.Row="0" Grid.RowSpan="5" HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Margin="40,96,0,0" MaxWidth="760" MaxHeight="620"
-                    Background="#FFFDF6E9" BorderBrush="#FF1F5C2E" BorderThickness="2" CornerRadius="4" Padding="10"
-                    Visibility="{Binding IsExamBreakdownVisible, Converter={StaticResource BoolToVis}}">
-                <DockPanel>
-                    <DockPanel DockPanel.Dock="Top">
-                        <Button DockPanel.Dock="Right" Content="关闭" Padding="8,1"
-                                Command="{Binding DoCommand}" CommandParameter="examdetail" />
-                        <TextBlock Text="录取率来源与算式（双击考试条开关）" Style="{StaticResource SectionHeader}" />
-                    </DockPanel>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                        <TextBlock Text="{Binding ExamBreakdownText}" FontFamily="Consolas, Microsoft YaHei" FontSize="13" />
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+            <!-- 考试录取率已合并进「成员详情」与控制台 examrates，不再单独开悬浮窗（玩家反馈 14） -->
         </Grid>
 
         <Border Background="#FFFDF6E9" Visibility="{Binding IsMenuVisible, Converter={StaticResource BoolToVis}}">

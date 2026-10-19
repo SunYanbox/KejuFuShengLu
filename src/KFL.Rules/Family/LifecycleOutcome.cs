@@ -62,6 +62,12 @@ public enum LifecycleRejectReason
 
     /// <summary>该成员本月已托过一次媒（FR-013：同一成员同一月至多一次，下月可再试）。</summary>
     AlreadyAppliedThisMonth = 10,
+
+    /// <summary>族内通婚要求双方**同代**（玩家反馈 1：不考虑遗传病，但只允许同代通婚）。</summary>
+    NotSameGeneration = 11,
+
+    /// <summary>该成员当前没有配偶，无需离异（玩家反馈 1）。</summary>
+    NotSpouse = 12,
 }
 
 /// <summary>生命周期入口的统一返回（data-model §3.4）。</summary>

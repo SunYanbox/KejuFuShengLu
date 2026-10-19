@@ -608,3 +608,23 @@ n = 1/2/3 次并断言：应付金额 = 100 × (1 + 0.2×(n−1)) × 支出系�
   §1、§2 与章程的强制约束，是项目的需求与验收判据，不属于本特性的实现选择。
 - **回写义务（同一提交内）**：见 FR-035 的十项；回写范围 MUST 在 `tasks.md` 中登记（章程
   「需求真源」的铁律：变更授权在变更源、回写义务在同一提交）。
+
+## 增补（2026-10-19，玩家反馈第三轮：服刑事件条目）
+
+> 依据：规格书 §17 裁决块（2026-10-19）Q8 与 §12.3 的统计回写。本节**追加**（不改写）上文关于
+> 惩罚落账的口径。
+
+1. **入狱落一条事件类条目**：`PunishmentImposer.Apply` 在**确已判服刑**（`cell.SentenceMonths > 0`）
+   时，除既有的成员状态位与计时外，MUST 再落 1 条
+   `state.Economy.Apply(LedgerCategory.MemberImprisoned, subject.Id, Money.Zero, month)`。
+2. **条目语义**：`Money.Zero`、事件类（`KindOf → Event`、`CreditTargetOf → null`）——它**不涉资金**、
+   不参与 SC-005 的资金池核对，**仅供统计页人口图的「入狱」系列取数**。
+   资金类条目的「`Amount != 0`」不变量对它**不适用**（该不变量只约束资金类）。
+3. **不影响既有断言的口径**：触碰惩罚路径的测试 MUST 只对**目标类别**（`Fine`）做
+   `Assert.Single` / 白名单过滤，MUST NOT 再用「账本恰有 0 条 / 恰有 1 条」的全量计数。
+
+**回写登记（同一提交）**：①规格书 §17 裁决块 Q8 与 §12.3 回写；②本节；
+③[002 `data-model.md` §2.1](../002-monthly-settlement-economy/data-model.md)（新增 `MemberImprisoned` 行）；
+④`src/KFL.Core/Enums/{LedgerCategory,LedgerCategoryMetadata}.cs`、
+`src/KFL.Rules/Punishment/PunishmentImposer.cs`、`src/KFL.Presentation/Display.cs`；
+⑤`tests/KFL.Tests/Core/LedgerInvariantTests.cs`、`tests/KFL.Tests/Rules/PunishmentMatrixTests.cs`。

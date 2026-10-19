@@ -99,11 +99,13 @@ R-01/R-10）；米价派生值 `(系数 − 0.4) / 0.6` 也由 Rules 提供（�
 | `ExamTravelCost` | 省试路费 | 资金类 | —（恒为负） | §6、§12.3（005 追加） |
 | `BribeExpense` | 行贿支出 | 资金类 | —（恒为负） | §7.5（006 追加） |
 | `Fine` | 罚金 | 资金类 | —（恒为负） | §7.5（006 追加） |
+| `HouseRentIncome` | 宅邸租 | 资金类 | 现金 | §5.2（2026-10-19 追加：农村宅 0.4 + 城市宅 0.8 贯/月，家族级） |
+| `MemberImprisoned` | 入狱服刑 | **事件类** | — | §7.5（2026-10-19 追加：仅人口统计取数，不涉资金） |
 
 **`LedgerCategoryMetadata` 的职责**（结构事实，不是平衡数值，故随枚举留在 Core，R-04）：
 `KindOf(category) → LedgerEntryKind`、`CreditTargetOf(category) → LedgerCreditTarget?`——返回
-`null` 表示**没有正额入账目标**，即上表「正额入账目标」列为「—」的 **12 个类别**（7 个恒为负的
-支出类 + 5 个事件类）。其中**只有 7 个恒为负的支出类**（`LivingCost`、`LoanPrincipalRepaid`、
+`null` 表示**没有正额入账目标**，即上表「正额入账目标」列为「—」的 **13 个类别**（7 个恒为负的
+支出类 + 6 个事件类）。其中**只有 7 个恒为负的支出类**（`LivingCost`、`LoanPrincipalRepaid`、
 `LoanInterestRepaid`、`AssetPurchase`、`ExamTravelCost`、`BribeExpense`、`Fine`）在收到正额时
 `FamilyEconomy.Apply` MUST 抛异常；5 个
 **事件类**的金额是**事件自身的金额语义**（阶段迁移恒 0，`LoanInterestAccrued` 为利息额、**可正**），

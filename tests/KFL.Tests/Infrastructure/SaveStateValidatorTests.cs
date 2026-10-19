@@ -228,7 +228,7 @@ public sealed class SaveStateValidatorTests
         var dto = Baseline();
         dto.Family.Lifecycle.Proposal = ProposalFor(ForeignId);
 
-        AssertInvalidStructure(dto, dto.Id);
+        AssertInvalidStructureInPlace(dto);
     }
 
     /// <summary>R-04 第 13 条：待应答提议的我方成员 MUST NOT 是已身故者。</summary>
@@ -258,7 +258,7 @@ public sealed class SaveStateValidatorTests
             },
         ];
 
-        AssertInvalidStructure(dto, dto.Id);
+        AssertInvalidStructureInPlace(dto);
     }
 
     /// <summary>R-04 第 14 条：已申请夫妇的配偶关系 MUST 双向一致。</summary>
@@ -274,7 +274,7 @@ public sealed class SaveStateValidatorTests
         var couple = new CoupleKeyDto { HusbandId = dto.Family.Members[0].Id, WifeId = wife.Id };
         dto.Family.Lifecycle.AppliedBirthCouples = [couple];
 
-        AssertInvalidStructure(dto, dto.Id);
+        AssertInvalidStructureInPlace(dto);
     }
 
     /// <summary>R-04 第 15 条：当年购人计数 MUST 与账本里的 <c>PersonPurchase</c> 条数一致。</summary>
@@ -344,6 +344,22 @@ public sealed class SaveStateValidatorTests
         SaveTestSandbox.WriteBytes(service.FilePathOf(slot), ComposeBinaryFile(headerSaveId, payload));
 
         var exception = Assert.Throws<SaveFileException>(() => service.Load(slot));
+        Assert.Equal(SaveFileErrorKind.InvalidStructure, exception.Kind);
+    }
+
+    /// <summary>
+    /// 直接对（未经读档自愈的）领域对象跑校验器，断言以 InvalidStructure 拒绝。
+    /// </summary>
+    /// <remarks>
+    /// 用于**第 13 / 14 条**这两类不变量：读档流水线在 ⑦′ 步会先做一次自愈
+    /// （<c>SaveStateRepair</c>：清掉过期的提议 / 生育簿记），故它们**经文件往返是读得进来的**
+    /// （站在玩家角度是「旧档还能打开」）。想验证的若只是「校验器仍如实拒绝」，就必须绕开自愈这一步。
+    /// </remarks>
+    private static void AssertInvalidStructureInPlace(SaveStateDto dto)
+    {
+        var state = SaveStateMapper.ToDomain(dto);
+
+        var exception = Assert.Throws<SaveFileException>(() => SaveStateValidator.Validate(state));
         Assert.Equal(SaveFileErrorKind.InvalidStructure, exception.Kind);
     }
 

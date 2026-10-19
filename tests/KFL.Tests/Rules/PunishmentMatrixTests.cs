@@ -119,9 +119,12 @@ public class PunishmentMatrixTests
             Assert.Null(sibling.Timers.PromotionBanRemainingMonths);
         }
 
-        // 服刑事件**不落账本**：账本只允许出现罚金（与行贿支出）两类。
+        // 账本里只允许出现这三类：罚金、行贿支出，以及 2026-10-19 起为人口统计图追加的
+        // **入狱事件**（服刑格各落一条；事件类不动资金池，故不参与 SC-005 求和）。
         Assert.True(state.Economy.Ledger.Entries.All(
-            entry => entry.Category is LedgerCategory.Fine or LedgerCategory.BribeExpense));
+            entry => entry.Category is LedgerCategory.Fine
+                or LedgerCategory.BribeExpense
+                or LedgerCategory.MemberImprisoned));
 
         Assert.Equal(PunishmentQueries.PrisonerCount(state.Family, RulesHarness.Date), snapshot.PrisonerCount);
         Assert.Equal(subject.Status.HasFlag(StatusFlag.ServingSentence), snapshot.PrisonerCount == 1);
@@ -147,7 +150,8 @@ public class PunishmentMatrixTests
 
         // 规格书 §12.3：资金类条目的金额 = **本次的资金池变动额**——缺口转贷款不改变资金池，
         // 故条目金额记的是池内付出的 30 贯而非罚金总额；`PaymentResult.Total` 仍恰等于罚金额。
-        var entry = Assert.Single(state.Economy.Ledger.Entries);
+        var entry = Assert.Single(
+            state.Economy.Ledger.Entries, e => e.Category == LedgerCategory.Fine);
         Assert.Equal(LedgerCategory.Fine, entry.Category);
         Assert.Equal(-pool, entry.Amount);
         Assert.Equal(fine, (entry.Amount * -1m) + state.Economy.Treasury.Loan.Principal);
@@ -170,7 +174,9 @@ public class PunishmentMatrixTests
         Assert.Equal(RulesHarness.Guan(1000m) - fine, state.Economy.Treasury.Cash);
         Assert.Equal(RulesHarness.Guan(500m), state.Economy.Treasury.Savings);
         Assert.Equal(Money.Zero, state.Economy.Treasury.Loan.Principal);
-        Assert.Equal(-fine, Assert.Single(state.Economy.Ledger.Entries).Amount);
+        Assert.Equal(
+            -fine,
+            Assert.Single(state.Economy.Ledger.Entries, e => e.Category == LedgerCategory.Fine).Amount);
     }
 
     /// <summary>SC-005：比例罚金对**最终金额**封顶（先乘支出系数、再封顶 50000 贯）。</summary>
@@ -194,7 +200,9 @@ public class PunishmentMatrixTests
 
         PunishmentImposer.Apply(state, subject, ExamLevel.DianShi, new FixedRandomService());
 
-        Assert.Equal(-fine, Assert.Single(state.Economy.Ledger.Entries).Amount);
+        Assert.Equal(
+            -fine,
+            Assert.Single(state.Economy.Ledger.Entries, e => e.Category == LedgerCategory.Fine).Amount);
     }
 
     /// <summary>SC-005：总资产为负（罚金基数按 0）⇒ 罚金 0 贯、**不落条目**、资金池零变动。</summary>
@@ -214,7 +222,9 @@ public class PunishmentMatrixTests
 
         PunishmentImposer.Apply(state, subject, ExamLevel.DianShi, new FixedRandomService());
 
-        Assert.Empty(state.Economy.Ledger.Entries);
+        // 罚金 0 ⇒ **不落罚金条目**（资金类条目不变量）；入狱事件条目与资金池无关，另计。
+        Assert.DoesNotContain(
+            state.Economy.Ledger.Entries, entry => entry.Category == LedgerCategory.Fine);
         Assert.Equal(Money.Zero, state.Economy.Treasury.Cash);
         Assert.Equal(Money.Zero, state.Economy.Treasury.Savings);
         Assert.Equal(RulesHarness.Guan(500m), state.Economy.Treasury.Loan.Principal);

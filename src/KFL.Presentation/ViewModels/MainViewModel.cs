@@ -49,14 +49,22 @@ public sealed class MainViewModel : ObservableObject
     private string _monthlyBalanceText = string.Empty;
     private bool _isBreakdownVisible;
     private string _monthlyBreakdownText = "（点击上方「本月收支」查看按人、按来源的明细）";
-    private bool _isExamBreakdownVisible;
-    private string _examBreakdownText = "（双击顶部考试条查看录取率来源与算式）";
     private bool _autoTreat;
     private Choice<SaveSlot>? _selectedBackup;
     private Choice<SaveSlot>? _selectedMenuSave;
     private string _menuSaveOverviewText = "（选中存档后显示概览）";
     private double _consoleHeight = 440;
+    private bool _moneyChartCumulative;
+    private bool _populationChartCumulative;
+    private string _statsInsights = string.Empty;
+    private string _moneyAmountText = "10";
     private readonly HashSet<Guid> _childbirthPending = [];
+    private bool _showParentLinks = true;
+    private bool _showChildLinks = true;
+    private bool _showSiblingLinks = true;
+    private double _treeWidth = FamilyTree.ColumnStride;
+    private double _treeHeight = FamilyTree.RowStride;
+    private Choice<PersonId>? _selectedEndogamy;
 
     public MainViewModel()
     {
@@ -171,6 +179,77 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>统计页图表（按月聚合自族流水账，可左右滚动）。</summary>
     public ObservableCollection<ChartFrame> Charts { get; } = [];
 
+    /// <summary>成员详情里的关系超链接（需求 7：父母 / 配偶 / 子女 / 兄弟姐妹点击跳转）。</summary>
+    public ObservableCollection<RelationLink> RelationLinks { get; } = [];
+
+    /// <summary>收支与分类两组图取累计口径（需求 11 的切换开关）。</summary>
+    public bool IsMoneyChartCumulative
+    {
+        get => _moneyChartCumulative;
+        set
+        {
+            if (Set(ref _moneyChartCumulative, value))
+            {
+                Raise(nameof(IsMoneyChartMonthly));
+                RefreshStatistics();
+            }
+        }
+    }
+
+    /// <summary>人口与功名图取累计口径（需求 10 的切换开关）。</summary>
+    public bool IsPopulationChartCumulative
+    {
+        get => _populationChartCumulative;
+        set
+        {
+            if (Set(ref _populationChartCumulative, value))
+            {
+                Raise(nameof(IsPopulationChartMonthly));
+                RefreshStatistics();
+            }
+        }
+    }
+
+    /// <summary>人口与功名图取当月口径（与 <see cref="IsPopulationChartCumulative"/> 互斥）。</summary>
+    public bool IsPopulationChartMonthly
+    {
+        get => !_populationChartCumulative;
+        set
+        {
+            if (value)
+            {
+                IsPopulationChartCumulative = false;
+            }
+        }
+    }
+
+    /// <summary>收支与分类两组图取当月口径（与 <see cref="IsMoneyChartCumulative"/> 互斥）。</summary>
+    public bool IsMoneyChartMonthly
+    {
+        get => !_moneyChartCumulative;
+        set
+        {
+            if (value)
+            {
+                IsMoneyChartCumulative = false;
+            }
+        }
+    }
+
+    /// <summary>统计页「算好的数据」（需求 16）：月均收支、结构占比、现金可支撑月数等。</summary>
+    public string StatsInsights
+    {
+        get => _statsInsights;
+        private set => Set(ref _statsInsights, value);
+    }
+
+    /// <summary>自由金额输入框（需求 13：储蓄 / 还贷 / 商本不再只能整存整取）。</summary>
+    public string MoneyAmountText
+    {
+        get => _moneyAmountText;
+        set => Set(ref _moneyAmountText, value);
+    }
+
     /// <summary>家族成员筛选（已归档 / 已死亡 / 已外嫁 / 服刑中 / 在册…）。</summary>
     public Choice<string> SelectedMemberFilter
     {
@@ -212,25 +291,17 @@ public sealed class MainViewModel : ObservableObject
         private set => Set(ref _monthlyBreakdownText, value);
     }
 
-    /// <summary>录取率明细悬浮窗是否可见（需求 18：双击顶部考试条开关）。</summary>
-    public bool IsExamBreakdownVisible
-    {
-        get => _isExamBreakdownVisible;
-        set => Set(ref _isExamBreakdownVisible, value);
-    }
-
-    /// <summary>录取率明细悬浮窗正文（各候选人 × 各影响因子的来源与算式）。</summary>
-    public string ExamBreakdownText
-    {
-        get => _examBreakdownText;
-        private set => Set(ref _examBreakdownText, value);
-    }
-
     /// <summary>自动治疗开关（需求 10）：开启后每次结算完自动为患病成员开始治疗。</summary>
     public bool AutoTreat
     {
         get => _autoTreat;
-        set => Set(ref _autoTreat, value);
+        set
+        {
+            if (Set(ref _autoTreat, value))
+            {
+                RefreshMonthlyBalance();
+            }
+        }
     }
 
     /// <summary>选中的备份压缩包（需求 15）。</summary>
@@ -418,9 +489,64 @@ public sealed class MainViewModel : ObservableObject
             if (Set(ref _selected, value))
             {
                 RefreshDetail();
+                RefreshTreeLines();
             }
         }
     }
+
+    /// <summary>家谱视图：按代分行的成员布局（玩家反馈 8）。</summary>
+    public ObservableCollection<GenerationBand> Generations { get; } = [];
+
+    /// <summary>家谱视图：扁平化的成员方块（画布绝对坐标，便于与行标题共用一个 Canvas）。</summary>
+    public ObservableCollection<TreeNode> TreeNodes { get; } = [];
+
+    /// <summary>家谱视图：选中成员与亲属之间的彩色连线（玩家反馈 8）。</summary>
+    public ObservableCollection<TreeLine> TreeLines { get; } = [];
+
+    /// <summary>家谱显示「父母」连线（玩家反馈 8 的三个可选项之一）。</summary>
+    public bool ShowParentLinks
+    {
+        get => _showParentLinks;
+        set
+        {
+            if (Set(ref _showParentLinks, value))
+            {
+                RefreshTreeLines();
+            }
+        }
+    }
+
+    /// <summary>家谱显示「子女」连线。</summary>
+    public bool ShowChildLinks
+    {
+        get => _showChildLinks;
+        set
+        {
+            if (Set(ref _showChildLinks, value))
+            {
+                RefreshTreeLines();
+            }
+        }
+    }
+
+    /// <summary>家谱显示「兄弟姐妹」连线。</summary>
+    public bool ShowSiblingLinks
+    {
+        get => _showSiblingLinks;
+        set
+        {
+            if (Set(ref _showSiblingLinks, value))
+            {
+                RefreshTreeLines();
+            }
+        }
+    }
+
+    /// <summary>家谱画布宽高（绑定到 Canvas.Width/Height）。</summary>
+    public double TreeWidth => _treeWidth;
+
+    /// <summary>家谱画布高度。</summary>
+    public double TreeHeight => _treeHeight;
 
     public string DetailText
     {
@@ -535,10 +661,63 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        foreach (var line in _session.Log)
+        foreach (var line in MergeLogLines(_session.Log))
         {
             LogLines.Add(line);
         }
+    }
+
+    /// <summary>
+    /// 纪事合并（玩家反馈 15）：把**正文完全相同**的行并成一条，保留首次出现的时间戳并追加
+    /// 「× N」，例如 <c>[10年11月] （10 贯 转入储蓄）× 35</c>。只出现一次的行原样输出。
+    /// </summary>
+    /// <param name="lines">原始纪事（已带 <c>[年 月]</c> 前缀）。</param>
+    /// <returns>合并后的显示序列（保持首次出现的位置）。</returns>
+    private static List<string> MergeLogLines(IReadOnlyList<string> lines)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var first = new Dictionary<string, (int Index, string Prefix, string Body)>(StringComparer.Ordinal);
+
+        for (var index = 0; index < lines.Count; index++)
+        {
+            var (prefix, body) = SplitLogLine(lines[index]);
+            counts.TryGetValue(body, out var seen);
+            counts[body] = seen + 1;
+            first.TryAdd(body, (index, prefix, body));
+        }
+
+        // 按原始顺序输出；每条只在其首次出现的位置出现一次。
+        var emitted = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<string>(lines.Count);
+        foreach (var line in lines)
+        {
+            var (_, body) = SplitLogLine(line);
+            if (!emitted.Add(body))
+            {
+                continue;
+            }
+
+            var (_, prefix, _) = first[body];
+            result.Add(counts[body] > 1
+                ? $"{prefix} {body} × {counts[body]}"
+                : $"{prefix} {body}");
+        }
+
+        return result;
+    }
+
+    /// <summary>把 <c>[年 月] 正文</c> 拆成前缀（含方括号）与正文；没有前缀时前缀为空串。</summary>
+    private static (string Prefix, string Body) SplitLogLine(string line)
+    {
+        if (!line.StartsWith('['))
+        {
+            return (string.Empty, line);
+        }
+
+        var end = line.IndexOf(']');
+        return end < 0
+            ? (string.Empty, line)
+            : (line[..(end + 1)], line[(end + 1)..].TrimStart());
     }
 
     public void RefreshAll()
@@ -626,27 +805,12 @@ public sealed class MainViewModel : ObservableObject
                 + rateText;
         }
 
-        // 每月收支（需求 7）：实时按当前设置推算；点击后弹出按人、按来源的明细。
-        var projectedIncome = MonthlyBreakdown.ProjectedIncome(state);
-        var projectedLiving = MonthlyBreakdown.ProjectedLivingCost(state);
-        var (tutorTotal, tutorCount) = MonthlyBreakdown.ProjectedTutorFee(state);
-        var incomeTotal = projectedIncome.Total;
-        var expenseTotal = Money.FromWen(projectedLiving.Sum(line => line.Amount.Wen) + tutorTotal.Wen);
-        var netTotal = incomeTotal - expenseTotal;
-        MonthlyBalanceText = $"本月收支（推算）｜ 收入 {MonthlyBreakdown.WithSign(incomeTotal)}"
-            + $" ｜ 支出 {MonthlyBreakdown.WithSign(Money.FromWen(-expenseTotal.Wen))}"
-            + $" ｜ 结余 {MonthlyBreakdown.WithSign(netTotal)}"
-            + (tutorCount > 0 ? $"（含名师束脩 {tutorCount} 人）" : string.Empty)
-            + " ｜ 点击查看明细";
+        // 每月收支（需求 7）：实时按当前设置推算；明细走顶部「本月收支明细」按钮。
+        RefreshMonthlyBalance();
 
         if (IsBreakdownVisible)
         {
             MonthlyBreakdownText = MonthlyBreakdown.BuildPopupText(state);
-        }
-
-        if (IsExamBreakdownVisible)
-        {
-            ExamBreakdownText = BuildExamBreakdownText();
         }
 
         RefreshAchievements();
@@ -656,6 +820,33 @@ public sealed class MainViewModel : ObservableObject
         RefreshStatistics();
         IsEnded = state.Ending.IsEnded;
         ChronicleText = BuildChronicle();
+    }
+
+    /// <summary>
+    /// 刷新顶部「本月收支（推算）」一行（需求 7 / 14）：金额部分随设置实时变，
+    /// 末尾的「自动治疗」状态取代了原先那条点不动的「点击查看明细」。
+    /// </summary>
+    private void RefreshMonthlyBalance()
+    {
+        if (_session is null)
+        {
+            MonthlyBalanceText = string.Empty;
+            return;
+        }
+
+        var state = _session.State;
+        var projectedIncome = MonthlyBreakdown.ProjectedIncome(state);
+        var projectedLiving = MonthlyBreakdown.ProjectedLivingCost(state);
+        var (tutorTotal, tutorCount) = MonthlyBreakdown.ProjectedTutorFee(state);
+        var incomeTotal = projectedIncome.Total;
+        var expenseTotal = Money.FromWen(projectedLiving.Sum(line => line.Amount.Wen) + tutorTotal.Wen);
+        var netTotal = incomeTotal - expenseTotal;
+
+        MonthlyBalanceText = $"本月收支（推算）｜ 收入 {MonthlyBreakdown.WithSign(incomeTotal)}"
+            + $" ｜ 支出 {MonthlyBreakdown.WithSign(Money.FromWen(-expenseTotal.Wen))}"
+            + $" ｜ 结余 {MonthlyBreakdown.WithSign(netTotal)}"
+            + (tutorCount > 0 ? $"（含名师束脩 {tutorCount} 人）" : string.Empty)
+            + $" ｜ 自动治疗：{(AutoTreat ? "开" : "关")}";
     }
 
     /// <summary>按「筛选器」重建成员卡片列表（玩家反馈：需要按在册 / 归档 / 亡故 / 外嫁 / 服刑筛选）。</summary>
@@ -703,6 +894,64 @@ public sealed class MainViewModel : ObservableObject
         }
 
         MemberCountText = $"筛选「{_selectedMemberFilter?.Text ?? "在册成员"}」：{shown.Count} 人 ｜ 在册 {family.RegisteredMembers.Count} 人 ｜ 归档 {family.ArchivedMembers.Count} 人";
+
+        RefreshTree(shown);
+    }
+
+    /// <summary>
+    /// 重建家谱视图（玩家反馈 8）：一行一代人，节点按出生先后排列；画布尺寸随人数增长。
+    /// </summary>
+    /// <param name="rows">当前筛选后的成员卡片（与左侧列表同一批）。</param>
+    private void RefreshTree(IReadOnlyList<MemberRow> rows)
+    {
+        Generations.Clear();
+        TreeNodes.Clear();
+        foreach (var band in FamilyTree.Layout(rows))
+        {
+            Generations.Add(band);
+            foreach (var node in band.Nodes)
+            {
+                TreeNodes.Add(node);
+            }
+        }
+
+        var width = FamilyTree.CanvasWidth(Generations);
+        var height = FamilyTree.CanvasHeight(Generations);
+        if (Math.Abs(width - _treeWidth) > 0.01d)
+        {
+            _treeWidth = width;
+            Raise(nameof(TreeWidth));
+        }
+
+        if (Math.Abs(height - _treeHeight) > 0.01d)
+        {
+            _treeHeight = height;
+            Raise(nameof(TreeHeight));
+        }
+
+        RefreshTreeLines();
+    }
+
+    /// <summary>重算家谱里当前选中成员的亲属连线（玩家反馈 8 的三个可选项）。</summary>
+    private void RefreshTreeLines()
+    {
+        TreeLines.Clear();
+
+        if (_session is null || Selected is null)
+        {
+            return;
+        }
+
+        foreach (var line in FamilyTree.Lines(
+            _session.State.Family,
+            Generations,
+            Selected.Person,
+            _showParentLinks,
+            _showChildLinks,
+            _showSiblingLinks))
+        {
+            TreeLines.Add(line);
+        }
     }
 
     /// <summary>选中存档的概览：加载该档读取状态（不写入、不推进），外加文件最后写入时间。</summary>
@@ -722,6 +971,7 @@ public sealed class MainViewModel : ObservableObject
         if (_session is null)
         {
             StatisticsText = string.Empty;
+            StatsInsights = string.Empty;
             return;
         }
 
@@ -752,9 +1002,10 @@ public sealed class MainViewModel : ObservableObject
         }
 
         StatisticsText = string.Join(Environment.NewLine, lines);
+        StatsInsights = StatsCharts.BuildInsights(state);
 
         Charts.Clear();
-        foreach (var frame in StatsCharts.Build(state))
+        foreach (var frame in StatsCharts.Build(state, _moneyChartCumulative, _populationChartCumulative))
         {
             Charts.Add(frame);
         }
@@ -770,9 +1021,10 @@ public sealed class MainViewModel : ObservableObject
         }
 
         // 存档页一进来就能看到概览：默认选中最近写过的那个档。
-        if (_selectedSave is null && Saves.Count > 0)
+        // 玩家反馈 9 / 12：档被删掉或换过之后，**失效的选择必须复位**，否则概览停在已不存在的档上。
+        if (_selectedSave is null || !Saves.Any(option => option.Value.Equals(_selectedSave.Value)))
         {
-            SelectedSave = Saves[0];
+            SelectedSave = Saves.Count > 0 ? Saves[0] : null;
         }
 
         MenuSaves.Clear();
@@ -782,7 +1034,10 @@ public sealed class MainViewModel : ObservableObject
             MenuSaves.Add(new Choice<SaveSlot>(slot, $"{slot.Name} ｜ {format}"));
         }
 
-        SelectedMenuSave ??= MenuSaves.FirstOrDefault();
+        if (_selectedMenuSave is null || !MenuSaves.Any(option => option.Value.Equals(_selectedMenuSave.Value)))
+        {
+            SelectedMenuSave = MenuSaves.FirstOrDefault();
+        }
     }
 
     /// <summary>列出 <c>saves/backups</c> 下的压缩备份（需求 15）。</summary>
@@ -795,7 +1050,10 @@ public sealed class MainViewModel : ObservableObject
             Backups.Add(new Choice<SaveSlot>(slot, $"{slot.Name} ｜ {format} ｜ 压缩备份"));
         }
 
-        SelectedBackup ??= Backups.FirstOrDefault();
+        if (_selectedBackup is null || !Backups.Any(option => option.Value.Equals(_selectedBackup.Value)))
+        {
+            SelectedBackup = Backups.FirstOrDefault();
+        }
     }
 
     /// <summary>主菜单里选中存档的概览（需求 1）。</summary>
@@ -874,6 +1132,7 @@ public sealed class MainViewModel : ObservableObject
         if (_session is null || Selected is null)
         {
             DetailText = "（未选择成员）";
+            RelationLinks.Clear();
             return;
         }
 
@@ -881,12 +1140,22 @@ public sealed class MainViewModel : ObservableObject
         var family = state.Family;
         var date = state.CurrentDate;
         var person = Selected.Person;
+
+        // 关系超链接（需求 7）：与下方的纯文本详情节保持一致，点一下即跳转到对方卡片。
+        RelationLinks.Clear();
+        foreach (var link in FamilyRelations.LinksOf(family, person))
+        {
+            RelationLinks.Add(link);
+        }
+
         var lines = new List<string>
         {
             $"姓名：{person.Name}　{Display.Gender(person.Gender)}　{person.AgeAt(date)} 岁　第 {person.Generation} 代"
                 + (family.HeadId == person.Id ? "　【家主】" : string.Empty)
                 + (Selected.IsArchived ? "　（归档）" : string.Empty),
             $"父母：父 {Selected.FatherText}　母 {Selected.MotherText}",
+            $"子女：{FamilyRelations.ChildrenText(family, person)}",
+            $"兄弟姐妹：{FamilyRelations.SiblingsText(family, person)}",
             $"功名：{Display.Degree(person.CurrentDegree)}"
                 + (person.CurrentPlacement is { } placement ? $"（{Display.Placement(placement)}）" : string.Empty)
                 + $"　官职：{(person.Rank is { } rank ? $"第 {rank.Level} 级" : "无")}"
@@ -969,19 +1238,42 @@ public sealed class MainViewModel : ObservableObject
         }
 
         DetailText = string.Join(Environment.NewLine, lines);
+        RefreshEndogamyCandidates();
     }
 
     // ───────────────────────── 动作派发 ─────────────────────────
 
     private void Execute(string? token)
     {
-        if (_session is null || string.IsNullOrEmpty(token))
+        if (string.IsNullOrEmpty(token))
         {
             return;
         }
 
         var parts = token.Split(':');
         var head = parts[0];
+
+        // 开局菜单专用的动作：此时**还没有会话**，MUST 在下面的空会话守卫之前处理
+        // （否则「读取选中存档」会被静默吞掉，玩家反馈：点了没有任何效果）。
+        if (head == "menuload")
+        {
+            if (SelectedMenuSave is { } menuSlot)
+            {
+                LoadGame(menuSlot.Value);
+            }
+            else
+            {
+                MenuSaveOverviewText = "没有可读取的存档。";
+            }
+
+            return;
+        }
+
+        if (_session is null)
+        {
+            return;
+        }
+
         var error = string.Empty;
 
         switch (head)
@@ -1000,13 +1292,21 @@ public sealed class MainViewModel : ObservableObject
             case "balance":
                 IsBreakdownVisible = !IsBreakdownVisible;
                 break;
-            case "examdetail":
-                IsExamBreakdownVisible = !IsExamBreakdownVisible;
-                if (IsExamBreakdownVisible)
-                {
-                    ExamBreakdownText = BuildExamBreakdownText();
-                }
-
+            case "bank":
+                error = ExecuteBank(parts.Length > 1 ? parts[1] : string.Empty);
+                break;
+            case "examrates":
+                ConsoleOutput = BuildExamRatesText();
+                ConsoleVisible = true;
+                return;
+            case "clearlog":
+                _session.ClearLog();
+                break;
+            case "delete":
+                error = DeleteSelectedSave();
+                break;
+            case "deletebackup":
+                error = DeleteSelectedBackup();
                 break;
             case "autotreat":
                 AutoTreat = !AutoTreat;
@@ -1020,17 +1320,6 @@ public sealed class MainViewModel : ObservableObject
                 else
                 {
                     error = "没有可读取的备份。";
-                }
-
-                break;
-            case "menuload":
-                if (SelectedMenuSave is { } menuSlot)
-                {
-                    LoadGame(menuSlot.Value);
-                }
-                else
-                {
-                    error = "没有可读取的存档。";
                 }
 
                 break;
@@ -1075,6 +1364,12 @@ public sealed class MainViewModel : ObservableObject
                 break;
             case "matchmake":
                 error = WithSelected(session => session.Matchmake(Selected!.Person, parts.Length > 1 && parts[1] == "degree"));
+                break;
+            case "endogamy":
+                error = WithSelected(_ => MarryWithinFamily(SelectedEndogamy?.Value ?? Selected!.Person.Id));
+                break;
+            case "divorce":
+                error = WithSelected(session => session.Divorce(Selected!.Person));
                 break;
             case "proposal":
                 error = _session.RespondToProposal(parts[1] != "reject", parts.Length > 2 && parts[2] == "degree");
@@ -1128,6 +1423,14 @@ public sealed class MainViewModel : ObservableObject
                 return;
             case "menu":
                 Detach();
+                // 玩家反馈 12：回主菜单后必须**重新列一遍存档**——否则菜单里的
+                // 「读取已有存档」还停在上一局的列表上（旧实现只在构造与读档后刷新）。
+                RefreshSaves();
+                RefreshBackups();
+                RefreshMenuSaveOverview();
+                return;
+            case "select":
+                SelectMember(parts.Length > 1 ? parts[1] : string.Empty);
                 return;
             case "console":
                 ConsoleVisible = !ConsoleVisible;
@@ -1142,7 +1445,7 @@ public sealed class MainViewModel : ObservableObject
 
         if (error.Length > 0)
         {
-            _session.Note($"✗ {error}");
+            _session?.Note($"✗ {error}");
         }
 
         RefreshLog();
@@ -1151,6 +1454,163 @@ public sealed class MainViewModel : ObservableObject
 
     private string WithSelected(Func<GameSession, string> action)
         => Selected is null ? "请先选择一名成员。" : action(_session!);
+
+    /// <summary>
+    /// 族内通婚候选（玩家反馈 1）：选中成员的候选者随选择实时刷新，
+    /// XAML 用一个 ComboBox 挑人、一个按钮成婚。
+    /// </summary>
+    public ObservableCollection<Choice<PersonId>> EndogamyCandidates { get; } = [];
+
+    /// <summary>族内通婚对话框里选中的候选者。</summary>
+    public Choice<PersonId>? SelectedEndogamy
+    {
+        get => _selectedEndogamy;
+        set => Set(ref _selectedEndogamy, value);
+    }
+
+    /// <summary>重建族内通婚候选列表（同代、异性、在册未婚成年）。</summary>
+    private void RefreshEndogamyCandidates()
+    {
+        EndogamyCandidates.Clear();
+
+        if (_session is null || Selected is null)
+        {
+            SelectedEndogamy = null;
+            return;
+        }
+
+        var family = _session.State.Family;
+        var date = _session.State.CurrentDate;
+        foreach (var person in LifecycleQueries.EndogamyCandidates(family, Selected.Person, date))
+        {
+            EndogamyCandidates.Add(new Choice<PersonId>(
+                person.Id,
+                $"{person.Name}（{Display.Gender(person.Gender)}{person.AgeAt(date)} 岁 ｜ {Display.Degree(person.CurrentDegree)}）"));
+        }
+
+        if (_selectedEndogamy is null
+            || !EndogamyCandidates.Any(option => option.Value == _selectedEndogamy.Value))
+        {
+            SelectedEndogamy = EndogamyCandidates.FirstOrDefault();
+        }
+    }
+
+    /// <summary>把选中成员与指定候选者结为族内夫妻（玩家反馈 1）。</summary>
+    private string MarryWithinFamily(PersonId candidateId)
+    {
+        if (_session is null || Selected is null)
+        {
+            return "请先选择一名成员。";
+        }
+
+        return _session.State.Family.TryGet(candidateId) is { } candidate
+            ? _session.MarryWithinFamily(Selected.Person, candidate)
+            : "候选者不存在。";
+    }
+
+    /// <summary>
+    /// 自由金额输入（需求 13）：把输入框解析成贯；空 / 非法 / 非正数一律回落成 10 贯
+    /// （与旧按钮「存 10 贯」的手感一致，不会因为输入框没填就报错）。
+    /// </summary>
+    private static Money ParseMoneyInput(string text)
+        => decimal.TryParse(
+                text,
+                System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var guan) && guan > 0m
+            ? Money.FromGuan(guan)
+            : Money.FromGuan(10m);
+
+    /// <summary>资金操作（需求 13）：储蓄 / 取现 / 还贷 / 商本投入与抽回，金额来自输入框。</summary>
+    private string ExecuteBank(string action)
+    {
+        if (_session is null)
+        {
+            return "尚未开局。";
+        }
+
+        var amount = ParseMoneyInput(MoneyAmountText);
+
+        return action switch
+        {
+            "savings" => _session.MoveMoney(toSavings: true, amount),
+            "cash" => _session.MoveMoney(toSavings: false, amount),
+            "repay" => _session.RepayLoan(amount),
+            "merchantin" => _session.MerchantCapital(inject: true, amount),
+            "merchantout" => _session.MerchantCapital(inject: false, amount),
+            _ => "未知的资金操作。",
+        };
+    }
+
+    /// <summary>删除选中存档（需求 9）。确认由界面层（MessageBox）负责，本方法只执行。</summary>
+    private string DeleteSelectedSave()
+    {
+        if (SelectedSave is not { } chosen)
+        {
+            return "没有选中的存档。";
+        }
+
+        var deletingCurrent = _session is not null && _session.Slot.Equals(chosen.Value);
+        var error = GameSession.DeleteSave(chosen.Value);
+        if (error.Length == 0)
+        {
+            if (deletingCurrent)
+            {
+                Detach();
+            }
+
+            RefreshSaves();
+            _session?.Note($"◆ 已删除存档「{chosen.Value.Name}」。");
+        }
+
+        return error;
+    }
+
+    /// <summary>删除选中备份（需求 9）。</summary>
+    private string DeleteSelectedBackup()
+    {
+        if (SelectedBackup is not { } chosen)
+        {
+            return "没有选中的备份。";
+        }
+
+        var error = GameSession.DeleteBackup(chosen.Value);
+        if (error.Length == 0)
+        {
+            RefreshBackups();
+        }
+
+        return error;
+    }
+
+    /// <summary>
+    /// 按 Id 选中成员（需求 7 / 8：详情里的关系超链接与家谱节点跳转都走这里）。
+    /// 已归档的成员也能选中——否则点父母的超链接会「没反应」。
+    /// </summary>
+    /// <param name="text">成员 Id 的字符串形式。</param>
+    public void SelectMember(string text)
+    {
+        if (_session is null || !Guid.TryParse(text, out var id))
+        {
+            return;
+        }
+
+        var target = Members.FirstOrDefault(row => row.Person.Id.Value == id)
+            ?? Archived.FirstOrDefault(row => row.Person.Id.Value == id);
+
+        if (target is null)
+        {
+            // 目标不在当前筛选结果里：放宽到「全部」，再找一次。
+            SelectedMemberFilter = MemberFilters.First(option => option.Value == "all");
+            target = Members.FirstOrDefault(row => row.Person.Id.Value == id)
+                ?? Archived.FirstOrDefault(row => row.Person.Id.Value == id);
+        }
+
+        if (target is not null)
+        {
+            Selected = target;
+        }
+    }
 
     private string WithCouple()
     {
@@ -1216,10 +1676,11 @@ public sealed class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 录取率明细正文（需求 18：双击考试条查看）——列出本窗口内每位候选人的级别与完整算式，
-    /// 以及其自愈率来源（若患病）。数值随行贿次数、学业、仕天赋实时变化。
+    /// 录取率与自愈率明细正文（需求 18）——列出本窗口内每位候选人的级别与完整算式，
+    /// 以及患病成员的自愈率来源。数值随行贿次数、学业、仕天赋实时变化。
+    /// 玩家反馈 14 后它不再是独立窗口，而是控制台 <c>examrates</c> 的输出。
     /// </summary>
-    private string BuildExamBreakdownText()
+    private string BuildExamRatesText()
     {
         if (_session is null)
         {
