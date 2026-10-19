@@ -12,7 +12,8 @@ public sealed class MemberRow
         Family family,
         GameDate date,
         bool archived = false,
-        bool childbirthPending = false)
+        bool childbirthPending = false,
+        bool purchased = false)
     {
         Person = person;
         Name = person.Name;
@@ -32,6 +33,7 @@ public sealed class MemberRow
         MotherText = person.MotherId is { } motherId ? family.TryGet(motherId)?.Name ?? "（不可考）" : "（不可考）";
         IsArchived = archived;
         IsHead = family.HeadId == person.Id;
+        IsPurchased = purchased;
         ChildbirthPending = childbirthPending;
 
         // 状态标志（玩家反馈 3：卡片上直接表明「有没有病 / 有没有在治疗 / 已报名哪一级 / 名师 / 求子 / 入狱」）
@@ -42,6 +44,11 @@ public sealed class MemberRow
         AppliedExamText = person.AppliedExam is { } level ? $"已报{Display.ExamLevel(level)}" : string.Empty;
 
         var badges = new List<string>();
+        if (IsPurchased)
+        {
+            badges.Add("买入");
+        }
+
         if (HasIllness)
         {
             badges.Add("患病");
@@ -122,6 +129,9 @@ public sealed class MemberRow
     public bool IsArchived { get; }
 
     public bool IsHead { get; }
+
+    /// <summary>是否由「买人口」买入（或其是否显示买入标记，由视图模型开关决定）。</summary>
+    public bool IsPurchased { get; }
 
     /// <summary>是否已「申请生育」（本会话内标记，见 MainViewModel）。</summary>
     public bool ChildbirthPending { get; }

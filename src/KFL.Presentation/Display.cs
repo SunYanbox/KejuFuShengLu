@@ -1,3 +1,4 @@
+using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Rules.Bribery;
@@ -53,6 +54,15 @@ public static class Display
 
     public static string Gender(KFL.Core.Enums.Gender gender)
         => gender == KFL.Core.Enums.Gender.Male ? "男" : "女";
+
+    /// <summary>成员简介：姓名（性别，N 岁）；成员缺失时给出占位。</summary>
+    /// <param name="person">成员；<c>null</c> 表示已不可查。</param>
+    /// <param name="date">年龄查询时点。</param>
+    /// <returns>形如「张三（男，14 岁）」。</returns>
+    public static string PersonBrief(Person? person, GameDate date)
+        => person is null
+            ? "（新成员）"
+            : $"{person.Name}（{Gender(person.Gender)}，{person.AgeAt(date)} 岁）";
 
     public static string LivingStandard(LivingStandard standard) => standard switch
     {

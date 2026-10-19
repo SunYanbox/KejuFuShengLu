@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using KFL.Core.Entities;
 using KFL.Core.Enums;
 using KFL.Presentation.Mvvm;
+using KFL.Rules.FamilyLifecycle;
 
 namespace KFL.Presentation.ViewModels;
 
@@ -68,9 +69,34 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>家谱显示「买入」标记（第五轮玩家反馈：买入成员须一眼可辨）。</summary>
+    public bool ShowPurchaseMarks
+    {
+        get => _showPurchaseMarks;
+        set
+        {
+            if (Set(ref _showPurchaseMarks, value))
+            {
+                RefreshMembers();
+            }
+        }
+    }
+
+    /// <summary>家谱只显示家主支脉（第五轮玩家反馈：旁系可折叠）。</summary>
+    public bool ShowHeadBranchOnly
+    {
+        get => _showHeadBranchOnly;
+        set
+        {
+            if (Set(ref _showHeadBranchOnly, value))
+            {
+                RefreshMembers();
+            }
+        }
+    }
+
     /// <summary>家谱画布宽高（绑定到 Canvas.Width/Height）。</summary>
     public double TreeWidth => _treeWidth;
-
     /// <summary>家谱画布高度。</summary>
     public double TreeHeight => _treeHeight;
 
@@ -92,19 +118,34 @@ public sealed partial class MainViewModel : ObservableObject
         var family = state.Family;
         var date = state.CurrentDate;
 
+        // 「买入」标记由账本派生（第五轮玩家反馈）；关掉开关即不写徽章。
+        var purchasedIds = _showPurchaseMarks ? GenealogyQueries.PurchasedPersonIds(state) : null;
+
         Members.Clear();
         foreach (var person in family.RegisteredMembers.OrderByDescending(p => family.HeadId == p.Id).ThenBy(p => p.Id.Value))
         {
-            Members.Add(new MemberRow(person, family, date, childbirthPending: _childbirthPending.Contains(person.Id.Value)));
+            Members.Add(new MemberRow(person, family, date, childbirthPending: _childbirthPending.Contains(person.Id.Value), purchased: purchasedIds?.Contains(person.Id) == true));
         }
 
         Archived.Clear();
         foreach (var person in family.ArchivedMembers.OrderByDescending(p => p.Id.Value))
         {
-            Archived.Add(new MemberRow(person, family, date, archived: true, childbirthPending: _childbirthPending.Contains(person.Id.Value)));
+            Archived.Add(new MemberRow(person, family, date, archived: true, childbirthPending: _childbirthPending.Contains(person.Id.Value), purchased: purchasedIds?.Contains(person.Id) == true));
         }
 
         var all = Members.Concat(Archived).ToList();
+
+        // 「仅显示家主支脉」（第五轮玩家反馈）：联络外的旁系与旁系的配偶一并隐去。
+        // 家主空缺时查询返回空集，此时视为不过滤（否则家谱会整片空白）。
+        if (_showHeadBranchOnly)
+        {
+            var branch = GenealogyQueries.HeadBranchPersonIds(family);
+            if (branch.Count > 0)
+            {
+                all = all.Where(row => branch.Contains(row.Person.Id)).ToList();
+            }
+        }
+
         var filter = _selectedMemberFilter?.Value ?? "registered";
         var shown = filter switch
         {
@@ -115,7 +156,7 @@ public sealed partial class MainViewModel : ObservableObject
             "serving" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.ServingSentence)).ToList(),
             "awaiting" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.AwaitingPost)).ToList(),
             "banned" => all.Where(row => row.Person.Status.HasFlag(StatusFlag.ExamBanned) || row.Person.Status.HasFlag(StatusFlag.PromotionBanned)).ToList(),
-            _ => Members.ToList(),
+            _ => all.Where(row => !row.IsArchived).ToList(),
         };
 
         Members.Clear();

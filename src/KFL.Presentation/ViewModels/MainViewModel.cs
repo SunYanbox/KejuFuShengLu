@@ -54,6 +54,8 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _showParentLinks = true;
     private bool _showChildLinks = true;
     private bool _showSiblingLinks = true;
+    private bool _showPurchaseMarks = true;
+    private bool _showHeadBranchOnly;
     private double _treeWidth = FamilyTree.ColumnStride;
     private double _treeHeight = FamilyTree.RowStride;
     private Choice<PersonId>? _selectedEndogamy;
