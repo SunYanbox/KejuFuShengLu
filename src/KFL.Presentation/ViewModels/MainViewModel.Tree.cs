@@ -106,6 +106,18 @@ public sealed partial class MainViewModel : ObservableObject
         private set => Set(ref _detailText, value);
     }
 
+    /// <summary>成员详情顶部的状态抬头（「姓名（性别，年龄）｜ 状态」，第十轮玩家反馈）。</summary>
+    public string DetailHeadline => _detailHeadline;
+
+    /// <summary>状态抬头的前景色键：异常状态换色，正常时用墨色（与家谱卡片同口径）。</summary>
+    public string DetailBrushKey => _detailBrushKey;
+
+    private void SetDetailHeadline(string headline, string brushKey)
+    {
+        _ = Set(ref _detailHeadline, headline, nameof(DetailHeadline));
+        _ = Set(ref _detailBrushKey, brushKey, nameof(DetailBrushKey));
+    }
+
     /// <summary>按「筛选器」重建成员卡片列表（玩家反馈：需要按在册 / 归档 / 亡故 / 外嫁 / 服刑筛选）。</summary>
     private void RefreshMembers()
     {

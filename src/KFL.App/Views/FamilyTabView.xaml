@@ -3,18 +3,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:presentation="clr-namespace:KFL.Presentation;assembly=KFL.Presentation">
     <!-- 家族页：左家谱（一行一代人）· 中成员详情 · 右动作面板。 -->
-    <Grid>
+    <Grid x:Name="TreeGrid" SizeChanged="OnTreeGridSizeChanged">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="420" MinWidth="240" />
+            <ColumnDefinition x:Name="TreeColumn" Width="420" MinWidth="240" />
             <ColumnDefinition Width="6" />
             <ColumnDefinition Width="*" MinWidth="240" />
             <ColumnDefinition Width="370" MinWidth="240" />
         </Grid.ColumnDefinitions>
 
-        <!-- 家谱 ↔ 成员详情的分隔条（玩家反馈 9）：左右拖动即可扩大家谱可见范围。 -->
+        <!-- 家谱 ↔ 成员详情的分隔条（玩家反馈 9）：左右拖动即可扩大家谱可见范围。
+             家谱列另受 MaxWidth 限制（窗口宽的 80%，见 OnTreeGridSizeChanged），
+             保证分隔条始终留在窗口内、随时可以拖回来。 -->
         <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                       Background="#FFD8CFBB" ResizeBehavior="PreviousAndNext"
-                      ToolTip="左右拖动以调整家谱与成员详情栏的宽度。" />
+                      ToolTip="左右拖动以调整家谱与成员详情栏的宽度（家谱最多占窗口宽度的 80%）。" />
 
         <DockPanel Grid.Column="0" Margin="4">
             <TextBlock DockPanel.Dock="Top" Text="家谱（一行一代人 · 点击方块选中）" Style="{StaticResource SectionHeader}"
@@ -39,11 +41,21 @@
             <!-- 缩放 / 平移（玩家反馈 9）：滚轮缩放（以指针为锚点）、左键拖动平移，均不出内容边界。 -->
             <WrapPanel DockPanel.Dock="Top" Margin="0,2,0,2">
                 <TextBlock Text="视图：" VerticalAlignment="Center" />
-                <Button Content="－" Click="OnZoomOut" Padding="6,0" MinWidth="24" MinHeight="20" FontSize="11"
-                        ToolTip="缩小家谱（也可把指针放到家谱上滚轮缩放）" />
-                <Button Content="＋" Click="OnZoomIn" Padding="6,0" MinWidth="24" MinHeight="20" FontSize="11" Margin="4,0,0,0"
-                        ToolTip="放大（以指针位置为锚点；也可滚轮）" />
-                <Button Content="重置视图" Click="OnResetTreeView" Padding="6,0" MinHeight="20" FontSize="11" Margin="4,0,0,0"
+                <!-- 加减号用图形绘制（而非「－ / ＋」字符）：不同字体下全角减号的高低不居中，
+                     画出来的矩形与十字能保证两个按钮里的符号都精确居中。 -->
+                <Button Click="OnZoomOut" Width="28" MinWidth="28" Height="22" Padding="0" Margin="0"
+                        ToolTip="缩小家谱（也可把指针放到家谱上滚轮缩放）">
+                    <Rectangle Width="12" Height="2" Fill="#FF2B2B2B"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+                <Button Click="OnZoomIn" Width="28" MinWidth="28" Height="22" Padding="0" Margin="4,0,0,0"
+                        ToolTip="放大（以指针位置为锚点；也可滚轮）">
+                    <Grid Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Rectangle Width="12" Height="2" Fill="#FF2B2B2B" VerticalAlignment="Center" />
+                        <Rectangle Width="2" Height="12" Fill="#FF2B2B2B" HorizontalAlignment="Center" />
+                    </Grid>
+                </Button>
+                <Button Content="重置视图" Click="OnResetTreeView" Padding="6,0" MinHeight="22" FontSize="11" Margin="4,0,0,0"
                         ToolTip="恢复默认缩放（100%）与左上角位置" />
                 <TextBlock x:Name="ZoomText" Text="100%" VerticalAlignment="Center" Margin="6,0,0,0"
                            Style="{StaticResource Secondary}" />
@@ -152,14 +164,24 @@
 
         <DockPanel Grid.Column="2" Margin="4">
             <TextBlock DockPanel.Dock="Top" Text="成员详情（卡片点开）" Style="{StaticResource SectionHeader}" />
-            <!-- 关系按钮分三行（玩家反馈 2）：父母与配偶 / 兄弟姐妹 / 子女；按钮颜色随亲属状态变化。 -->
+            <!-- 选中成员的状态抬头：颜色随状态变化（亡故 / 患病与治疗 / 服刑 / 待阙·禁考·禁升·外嫁），
+                 与家谱卡片同口径——详情里也能一眼看出异常状态（第十轮玩家反馈）。 -->
+            <TextBlock DockPanel.Dock="Top" Text="{Binding DetailHeadline}" FontWeight="Bold"
+                       TextWrapping="Wrap" Margin="0,2,0,2"
+                       Foreground="{Binding DetailBrushKey, Converter={StaticResource BrushKey}}" />
+            <!-- 关系按钮分三行（玩家反馈 2）：父母与配偶 / 兄弟姐妹 / 子女；按钮颜色随亲属状态变化。
+                 每行用 Grid 限定宽度（而非横向 StackPanel），超长时 WrapPanel 才会换行。 -->
             <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding RelationRows}" Margin="0,0,0,4">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                            <TextBlock Text="{Binding Title}" Style="{StaticResource Secondary}"
-                                       Width="76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                            <ItemsControl ItemsSource="{Binding Links}">
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="76" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding Title}" Style="{StaticResource Secondary}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <ItemsControl Grid.Column="1" ItemsSource="{Binding Links}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel />
@@ -174,7 +196,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </StackPanel>
+                        </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

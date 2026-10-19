@@ -19,6 +19,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (_session is null || Selected is null)
         {
             DetailText = "（未选择成员）";
+            SetDetailHeadline("（未选择成员）", "InkBrush");
             RelationLinks.Clear();
             RelationRows.Clear();
             return;
@@ -28,6 +29,13 @@ public sealed partial class MainViewModel : ObservableObject
         var family = state.Family;
         var date = state.CurrentDate;
         var person = Selected.Person;
+
+        // 状态抬头（第十轮玩家反馈）：与家谱卡片同口径——亡故 / 患病与治疗 / 服刑 /
+        // 待阙·禁考·禁升·外嫁换色，正常时用墨色。
+        SetDetailHeadline(
+            $"{person.Name}（{Display.Gender(person.Gender)}，{person.AgeAt(date)} 岁）｜ {Display.StatusOf(person, date)}"
+                + (Selected.IsArchived ? "｜ 已归档" : string.Empty),
+            FamilyRelations.BrushKeyOf(person, "InkBrush"));
 
         // 关系超链接（需求 7）：与下方的纯文本详情节保持一致，点一下即跳转到对方卡片。
         RelationLinks.Clear();

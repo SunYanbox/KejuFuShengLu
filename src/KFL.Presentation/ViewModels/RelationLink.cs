@@ -159,11 +159,13 @@ public static class FamilyRelations
 
     /// <summary>按状态给关系按钮选前景色键（第九轮：生病 / 服刑 / 死亡等状态换色以便区分）。</summary>
     /// <param name="person">该关系指向的成员。</param>
+    /// <param name="normalBrushKey">无异常状态时返回的资源键（家谱关系按钮用蓝色，成员详情抬头用墨色）。</param>
     /// <returns>主题资源键：<c>RelationDeceasedBrush</c> / <c>RelationIllBrush</c> /
-    /// <c>RelationSentenceBrush</c> / <c>RelationWarnBrush</c> / <c>RelationBrush</c>。</returns>
-    public static string BrushKeyOf(Person person)
+    /// <c>RelationSentenceBrush</c> / <c>RelationWarnBrush</c> / <paramref name="normalBrushKey"/>。</returns>
+    public static string BrushKeyOf(Person person, string normalBrushKey = "RelationBrush")
     {
         ArgumentNullException.ThrowIfNull(person);
+        ArgumentException.ThrowIfNullOrWhiteSpace(normalBrushKey);
 
         if (person.Status.HasFlag(StatusFlag.Deceased))
         {
@@ -188,7 +190,7 @@ public static class FamilyRelations
             return "RelationWarnBrush";
         }
 
-        return "RelationBrush";
+        return normalBrushKey;
     }
 
     /// <summary>父 / 母 / 配偶三条（第一行）。</summary>

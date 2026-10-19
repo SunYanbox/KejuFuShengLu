@@ -18,6 +18,8 @@ public sealed partial class MainViewModel : ObservableObject
     private GameSession? _session;
     private MemberRow? _selected;
     private string _detailText = "（未选择成员）";
+    private string _detailHeadline = "（未选择成员）";
+    private string _detailBrushKey = "InkBrush";
     private string _statusLine = "尚未开局";
     private string _economyLine = string.Empty;
     private string _examInfo = string.Empty;
@@ -241,6 +243,7 @@ public sealed partial class MainViewModel : ObservableObject
         StatusLine = "尚未开局";
         EconomyLine = string.Empty;
         DetailText = "（未选择成员）";
+        SetDetailHeadline("（未选择成员）", "InkBrush");
         Raise(nameof(IsLoaded));
         Raise(nameof(IsMenuVisible));
     }
