@@ -510,3 +510,17 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1329 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 
+## 回写范围登记（2026-10-19，玩家反馈第九轮修订：分隔条限位、关系行换行、减号对齐与详情状态色）
+
+> 本节由第九轮实现上手后的 4 条修订**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §17 裁决块（2026-10-19，玩家反馈第九轮修订）与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 「－ / ＋」改为图形绘制、两按钮同宽高且符号居中 | 规格书 §12.1 修订段 + §17 Q1；`spec.md` 第九轮修订增补 §1；`src/KFL.App/Views/FamilyTabView.xaml` |
+| 家谱列 `MaxWidth` 钉为窗口宽 80%（`ClampTreeColumn`），分隔条不再能被拖出窗口 | 规格书 §12.1 修订段 + §17 Q2；`spec.md` 增补 §2；`src/KFL.App/Views/FamilyTabView.xaml`（+ `.xaml.cs`） |
+| 关系行改两列 `Grid`，子女 / 兄弟姐妹超长时 `WrapPanel` 换行 | 规格书 §12.2 修订段 + §17 Q3；`spec.md` 增补 §3；`src/KFL.App/Views/FamilyTabView.xaml` |
+| 成员详情状态抬头 `DetailHeadline` / `DetailBrushKey`（与卡片同配色口径） | 规格书 §12.2 修订段 + §17 Q4；`spec.md` 增补 §4；`src/KFL.Presentation/ViewModels/{RelationLink.cs,MainViewModel.cs,MainViewModel.Detail.cs,MainViewModel.Tree.cs}`、`src/KFL.App/Views/FamilyTabView.xaml` |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1329 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+

@@ -26,6 +26,12 @@ public partial class FamilyTabView : UserControl
     /// <summary>每次缩放的比例步长。</summary>
     private const double ZoomStep = 1.15d;
 
+    /// <summary>家谱列的最小宽度（与 XAML 里 <c>TreeColumn</c> 的 MinWidth 一致）。</summary>
+    private const double MinTreeWidth = 240d;
+
+    /// <summary>家谱列最多占窗口宽度的比例：再宽就会把分隔条挤出可见范围，拖不回来。</summary>
+    private const double MaxTreeWidthRatio = 0.80d;
+
     private bool _dragging;
     private Point _dragOrigin;
     private double _dragOffsetX;
@@ -129,6 +135,22 @@ public partial class FamilyTabView : UserControl
         _dragging = false;
         TreeScroll.ReleaseMouseCapture();
         Cursor = Cursors.Arrow;
+    }
+
+    /// <summary>
+    /// 限制家谱列宽度（第十轮玩家反馈）：<c>GridSplitter</c> 认 <c>ColumnDefinition.MaxWidth</c>，
+    /// 因此把家谱列的上限钉在「窗口宽度的 80%」即可保证分隔条始终留在窗口内、随时能拖回来。
+    /// </summary>
+    private void OnTreeGridSizeChanged(object sender, SizeChangedEventArgs e) => ClampTreeColumn();
+
+    private void ClampTreeColumn()
+    {
+        var max = Math.Max(MinTreeWidth, TreeGrid.ActualWidth * MaxTreeWidthRatio);
+        TreeColumn.MaxWidth = max;
+        if (TreeColumn.ActualWidth > max)
+        {
+            TreeColumn.Width = new GridLength(max);
+        }
     }
 
     private static T? FindAncestor<T>(DependencyObject source)
