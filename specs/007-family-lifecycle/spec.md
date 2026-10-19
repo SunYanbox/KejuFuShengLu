@@ -420,7 +420,7 @@
 #### 数值与配置真源
 
 - **FR-001**: 本特性的**全部数值**（见下）MUST 单点声明在 `src/KFL.Rules/Config/` 的新增配置类中，
-  并经 `GameConfig` 门面暴露（`src/KFL.Rules/Config/GameConfig.cs:29` 的既有门面风格；
+  并经 `GameConfig` 门面暴露（`src/KFL.Rules/Config/GameConfig.Officialdom.cs:114` 的既有门面风格；
   其类文档 `:24-27` 明写「明确不含：买人口递增计价、成长衰老疾病死亡的年龄线与概率」，本特性
   MUST 同步修正该注释）：
   遗传（`σ = |父 − 父配偶| / 2 + 5`、学业均值折半系数 0.5、clamp 上下界 0/100、体质下限 20）、
@@ -844,10 +844,10 @@
 
 ### Key Entities
 
-- **成员（`Person`，`src/KFL.Core/Entities/Person.cs`）**：复用 `Generation`(:132)、`BirthDate`/`AgeAt`(:135/:477)、
-  `Talents`(:138)、`Study`(:141)、`Health`(:152)、`Lifespan`(:163)、`FatherId`/`MotherId`(:460/:463)、
-  `SpouseId`/`FormerSpouseIds`(:466/:469)、`IsOutsider`(:472)、`Status`/`Timers`(:370/:386)、
-  `Occupation`(:400)、`Rank`(:346)、`DegreeHistory`(:169)；**新增**「延名师」标志与
+- **成员（`Person`，`src/KFL.Core/Entities/Person.cs` + `Person.{Exam,Officialdom,Family}.cs`）**：复用 `Generation`(`Person.cs:135`)、`BirthDate`(`:138`)/`AgeAt`(`Person.Family.cs:25`)、
+  `Talents`(`:145`)、`Study`(`:148`)、`Health`(`:159`)、`Lifespan`(`:171`)、`FatherId`/`MotherId`(`Person.Family.cs:8/:11`)、
+  `SpouseId`/`FormerSpouseIds`(`:14/:17`)、`IsOutsider`(`:20`)、`Status`/`Timers`(`Person.Officialdom.cs:33/:51`)、
+  `Occupation`(`:67`)、`Rank`(`:9`)、`DegreeHistory`(`Person.Exam.cs:12`)；**新增**「延名师」标志与
   `StatusTimers` 的**疾病程度 `s` + 疗程剩余月数**两项；**不新增**死亡时间/死因字段。
 - **家族（`Family`，`src/KFL.Core/Entities/Family.cs`）**：复用 `HeadId`(:61)、`SetHead`(:308)、
   `Marry`(:245)、`EndMarriage`(:280)、`AddChild`(:143)、`AddOutsider`(:176)、
@@ -1084,9 +1084,9 @@
 4. **交互**：界面提供「族内通婚（选候选者）」与「离婚」两个入口；两者与托媒共用「一夫一妻」约束。
 
 **回写登记（同一提交）**：①规格书 §9.1 的 2026-10-19 `§17 裁决回写` 块；②本节；
-③`src/KFL.Rules/Family/{LifecycleEntry,LifecycleQueries,LifecycleOutcome}.cs`、
-`src/KFL.Presentation/GameSession.cs`、`src/KFL.Presentation/ViewModels/MainViewModel.cs`、
-`src/KFL.App/MainWindow.xaml`（两个入口按钮 + 候选下拉）；
+③`src/KFL.Rules/Family/{LifecycleEntry.Family,LifecycleQueries,LifecycleOutcome}.cs`、
+`src/KFL.Presentation/GameSession.Actions.Family.cs`、`src/KFL.Presentation/ViewModels/MainViewModel.{Actions,Commands,Detail}.cs`、
+`src/KFL.App/Views/FamilyTabView.xaml`（两个入口按钮 + 候选下拉）；
 ④`tests/KFL.Tests/Rules/{LifecycleQueriesTests,MarriageTests}.cs`。
 
 ## 增补（2026-10-19，玩家反馈第四轮：生命周期簿记的失效清理）

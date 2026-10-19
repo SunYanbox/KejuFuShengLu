@@ -131,13 +131,13 @@
 | E-08 | 契约二十四 §2「条款 6」表与 `quickstart.md:32-33`、`:51-52` | 首达年数写 `Year == 103`/`303`；`quickstart.md` 写「**六个**系列」与「宗族血脉 17 / 覆巢之下 11」（与契约二十四 §1 的系列列自相矛盾） | **规格书口径**：`SurvivedYears = CurrentDate.Year − 1` ⇒ `> 100` 首达 `Year == 102`、`> 300` 首达 `302`、`绝处逢生` `>= 100` 首达 `101`；系列为**七**个，计数 `12/8/11/17/11/4/5`（**已就地订正**契约二十四与 `quickstart.md`） | `tasks.md` E-08；`spec.md` Assumptions 5 / US3 AS4 |
 | E-09 | 契约二十四「条款 6」「条款 25」「条款 18」 | 枚举名 `SurvivedAgainstOdds`/`AcedTheLot` 在 `AchievementId` 中**不存在**；`烟消云散` 写成 ACH-**045**；称 `TukeyTrimean` 有两个调用点（其中 ACH-012「需要同口径存续年数」） | `NarrowEscape`（ACH-012）/`HellEnding`（ACH-048）；`烟消云散` = `FamilyExtinct` = **ACH-044**；`TukeyTrimean` 的调用点只有**编年史 ⑥**（**已就地订正**契约二十四） | `tasks.md` E-09；契约二十二 §1 |
 | E-10 | 契约二十二 §3 第 4/5 行 | 「002 借款发生入口」「002 提前清偿入口」**未给路径** | 借款本金唯一来源 = `src/KFL.Rules/Economy/PaymentPrimitive.cs:108-111`（缺口转贷款）；提前清偿 = `FamilyEconomy.RepayLoan`（`src/KFL.Core/Entities/FamilyEconomy.cs:233`）（**已就地订正**契约二十二 §3） | `tasks.md` E-10 |
-| E-11 | 契约二十二 §3 第 8/11 行 | 「007 买功名婚姻入口」「005 科举询问应答入口」**未给路径** | `DegreeMarriagePurchased` 是 `LifecycleEntry.TryMatchmake`（`src/KFL.Rules/Family/LifecycleEntry.cs:40`）/`RespondToProposal`（`:198`）的 `buyDegreeMarriage` 参数；`ExamInquiryAnswered` = `ExamRegistration.AcceptSpecialTribute`（`src/KFL.Rules/Exam/ExamRegistration.cs:170`）（**已就地订正**契约二十二 §3） | `tasks.md` E-11 |
+| E-11 | 契约二十二 §3 第 8/11 行 | 「007 买功名婚姻入口」「005 科举询问应答入口」**未给路径** | `DegreeMarriagePurchased` 是 `LifecycleEntry.TryMatchmake`（`src/KFL.Rules/Family/LifecycleEntry.cs:41`）/`RespondToProposal`（`:207`）的 `buyDegreeMarriage` 参数；`ExamInquiryAnswered` = `ExamRegistration.AcceptSpecialTribute`（`src/KFL.Rules/Exam/ExamRegistration.cs:170`）（**已就地订正**契约二十二 §3） | `tasks.md` E-11 |
 | E-12 | 本文件 `:176`（`AchievementSeries.cs  # 【新】六系列`）与 `:229`（「七系列计数」段落中的「六系列」） | 本文件自身写「**六系列**」，与规格书 §14.1 的**七**个 `####` 系列标题矛盾 | 一律改 **七系列**（`AchievementSeries` 恰 7 个成员）（**已就地订正**本文件） | 规格书 §14.1 :557/:572/:582/:596/:616/:630/:636；`spec.md` 判据总表 :445/:462/:475/:491/:513/:529/:538；契约二十二 条款 2 |
 | E-13 | 本文件 `:16`（「在既有『结算 → 写档 → 备份』编排**之后**追加『成就与绝嗣判定』与『全局成就落盘』两步」） | 读作两步都排在 ④ 之后，与 `contracts/achievement-store.md` §5、`spec.md` FR-034/FR-007（判定在**写档之前**）、`quickstart.md` 场景 4 矛盾 | 表述为「在 ① 结算之后、③ 覆盖写档之前**插入** ② 成就与绝嗣判定；在 ④ 备份之后**追加** ⑤ 全局成就落盘」（**已就地订正**本文件） | `spec.md` FR-034/FR-007；契约二十三 §5 条款 19/22；`quickstart.md` 场景 4 |
 | E-14 | `research.md:538`/`:549`、`data-model.md:610`/`:714`、契约二十二 §2 条款 4 与 §5 表行 | 把「配置字面量守卫/环境守卫」的锚点写成 **SC-008**，而 `spec.md:592` 的 SC-008 实为「绝嗣判定四条口径」 | 配置字面量守卫的真实依据 = **章程「技术栈与工程约束」（规则数值集中配置）**；SC-008 只留绝嗣口径（**已就地订正** `research.md`/`data-model.md`/契约二十二） | `spec.md:592`；章程「技术栈与工程约束」 |
 | E-15 | `tasks.md:127`（T013）、`:324`（T087） | 同 E-14 的锚点错指（T087 还把「变红确认」的对象写成 `SC-008`） | `tasks.md` 既有条目属**历史记录类**，MUST NOT 回改 ⇒ 在 `tasks.md`「收敛补充」段做**追加式更正** | `tasks.md` 收敛补充；AGENTS.md「历史记录类工件 MUST NOT 回改」 |
 | E-16 | FR-031（不实现界面）与 Assumption 19 / Edge Case 1 | 25 条 Assumptions 中 21 条、16 条 Edge Cases 中 12 条无任务文本引用；**FR-031 无显式实现/守卫任务**（仅 `tasks.md:35-39` 范围声明与 T044 的「MUST NOT 改动 `KFL.Presentation`」隐式承担）；**Assumption 19 / Edge Case 1**（FR-032 要求「次序必须被测试钉死」）无任务点名 | FR-031 的守卫并入 T002；次序义务在 T064 文本显式引用 EC1/Assumption 19 ⇒ 在 `tasks.md`「收敛补充」登记追加任务 | `spec.md` :607-694（Assumptions）/ :235-268（Edge Cases）；`tasks.md` :35-39 |
-| E-17 | 契约二十四 §1 条款 1 行 ④「最高 `DegreeLevel`」与 `tasks.md` T008 | `Person` **无** `DegreeLevel` 属性；实际成员是 `Person.CurrentDegree`（`src/KFL.Core/Entities/Person.cs:173`），`DegreeLevel` 是类型名 | 口径写成「`Person.CurrentDegree` 的最大值（含已亡与外嫁归档）」（**已就地订正**契约二十四；`tasks.md` 按追加式更正） | `src/KFL.Core/Entities/Person.cs:173`；`tasks.md` 收敛补充 |
+| E-17 | 契约二十四 §1 条款 1 行 ④「最高 `DegreeLevel`」与 `tasks.md` T008 | `Person` **无** `DegreeLevel` 属性；实际成员是 `Person.CurrentDegree`（`src/KFL.Core/Entities/Person.Exam.cs:15`），`DegreeLevel` 是类型名 | 口径写成「`Person.CurrentDegree` 的最大值（含已亡与外嫁归档）」（**已就地订正**契约二十四；`tasks.md` 按追加式更正） | `src/KFL.Core/Entities/Person.Exam.cs:15`；`tasks.md` 收敛补充 |
 | E-18 | `src/KFL.Infrastructure/Abstractions/ISaveService.cs:93` | `Load` 的 XML doc 仍写「结束于**九条**一致性校验」，实际 `SaveStateValidator` 现为 15 条（14 + `ValidateIdentity`），**不在** T001 的 2 处注释清单内 | 该注释并入 T001 的注释订正清单（**已就地订正**为「十五条」；008 落地后由 T001 一并改为 22 条口径） | `tasks.md` 收敛补充 |
 | E-19 | `tasks.md:191`（T043 ②）、`data-model.md:224`/`:561`、契约二十三 §5 `:184` | 三处都要求 **`KFL.Rules`** 侧在 ⑤ 落盘成功后调 `state.Achievements.RestorePendingUnlocks([])`，但 `data-model.md:224` 与 T009 `:127` 又把该方法声明为 **`internal`**，且 `src/KFL.Core/AssemblyInfo.cs:13` 只放行 `KFL.Infrastructure`、MUST NOT 增放行程序集 | 取**最小改动**变体：`RestorePendingUnlocks` 改为 **`public`** 写通道（`Restore(...)` 仍 `internal`），使三处调用逐字成立；调用方义务（队列 ⊆ `Completed`）由存档期第 17 条强制（**已就地订正** `data-model.md` §2.3 的签名行） | `src/KFL.Core/AssemblyInfo.cs:10-13`；`data-model.md` §3.6；契约二十三 条款 21/22 |
 | E-20 | `tasks.md:225`（T055）与契约二十二 §3 第 11 行 | 两处都要求 `ExamRegistration.AcceptSpecialTribute` 成功后上报 `AchievementTrigger.ExamInquiryAnswered`，但该入口签名为 `(Person, GameDate, IRandomService)`——**没有 `GameState`**，且全仓**无生产调用方**（真实应答方为 U2 界面，由 `ExamSeasonRunner` 的 `SpecialTributeInquiries` 驱动） | 取**加性**变体：`AcceptSpecialTribute` 追加**可选尾参** `GameState? state = null`，`state is not null` 时上报；既有 3 参调用逐字不变，资格判定与随机次序不受影响。属**跨特性（005）形状变更** ⇒ 同提交回写：`specs/005-exam-cycle/contracts/exam-calendar.md:141`、`specs/005-exam-cycle/data-model.md:133`/`:151`、`specs/005-exam-cycle/research.md:124`；005 的 `tasks.md` 属历史记录类，MUST NOT 回改 | `tasks.md` T055/E-11；契约二十二 §3 条款 8~10；`src/KFL.Rules/Exam/ExamRegistration.cs:170` |
@@ -239,7 +239,7 @@ src/KFL.Rules/
 │   └── AchievementQuery.cs          # 只读查询面（供 U1/U2，MUST NOT 持久）
 ├── Config/
 │   ├── AchievementPolicy.cs         # 【新】68 条阈值的唯一真源
-│   └── GameConfig.cs                # 【改】+1 转发视图 Achievements（零字面量）
+│   └── GameConfig.System.cs         # 【改】+1 转发视图 Achievements（零字面量）
 └── Save/TurnRunner.cs               # 【改】①~⑤ 编排；顶部结束拒绝；ctor +1 可选参 IAchievementStore?
 
 src/KFL.Infrastructure/
@@ -255,10 +255,10 @@ src/KFL.Infrastructure/
     ├── SaveFileHeader.cs            # 【改】陈旧注释「恒为 3」→ 5
     └── Serialization/
         ├── SaveStateDto.cs          # 【改】8 → 10 键（[8] achievements / [9] ending）
-        ├── SaveStateValueDtos.cs    # 【改】+5 DTO：AchievementStateDto / AchievementMarkDto / PendingUnlockDto / EndingStateDto / ChronicleDto
+        ├── SaveStateValueDtos.cs + SaveStateValueDtos.Achievements.cs    # 【改】+5 DTO：AchievementStateDto / AchievementMarkDto / PendingUnlockDto / EndingStateDto / ChronicleDto
         ├── MessagePackSaveFormat.cs # 【改】SaveStateMemberCount 8 → 10 + 5 个新成员数常量 + Skip 序列 6 → 8
-        ├── SaveStateMapper.cs       # 【改】两侧补状态 + internal 复原通道（保持元素次序）
-        └── SaveStateValidator.cs    # 【改】+7 条（不夹带可重算派生值）
+        ├── SaveStateMapper.cs + SaveStateMapper.Achievements.cs       # 【改】两侧补状态 + internal 复原通道（保持元素次序）
+        └── SaveStateValidator.cs + SaveStateValidator.Achievements.cs    # 【改】+7 条（不夹带可重算派生值）
 
 src/KFL.App/                         # 【改】组合根：TurnRunner 注入 AchievementStore（可选参，可暂缺省）
 src/KFL.Presentation/                # 【不动】U1/U2 才接 AchievementQuery

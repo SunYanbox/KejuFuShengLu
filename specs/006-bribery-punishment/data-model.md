@@ -12,9 +12,9 @@
 
 | 层 | 新增 | 变更 |
 | --- | --- | --- |
-| `KFL.Core`（net10.0） | `Entities/PunishmentJournal.cs`（当月事实缓冲）、`ValueObjects/PunishmentFacts.cs`（六个事实行记录） | `Entities/Person.cs`（+3 计数与写入通道）、`Entities/Family.cs`（+`PunishmentJournal`）、`Enums/LedgerCategory.cs` 与 `Enums/LedgerCategoryMetadata.cs`（+2 取值） |
-| `KFL.Rules`（net10.0） | `Bribery/`（3）、`Punishment/`（5）、`Config/{BribePolicy,PunishmentPolicy}.cs`、`Economy/TotalAssetsCalculator.cs` | `Settlement/{MonthlySettlementEngine,SettlementResult}.cs`、`Config/GameConfig.cs`、`Exam/ExamAdmission.cs`（仅文档） |
-| `KFL.Infrastructure`（net10.0） | 无（零新增文件、零新增依赖） | `Save/SaveFileFormat.cs`、`Save/Serialization/{SaveStateDto,SaveStateValueDtos,MessagePackSaveFormat,SaveStateMapper,SaveStateValidator}.cs` |
+| `KFL.Core`（net10.0） | `Entities/PunishmentJournal.cs`（当月事实缓冲）、`ValueObjects/PunishmentFacts.cs`（六个事实行记录） | `Entities/Person.cs` 与 `Entities/Person.Exam.cs`（+3 计数与写入通道）、`Entities/Family.cs`（+`PunishmentJournal`）、`Enums/LedgerCategory.cs` 与 `Enums/LedgerCategoryMetadata.cs`（+2 取值） |
+| `KFL.Rules`（net10.0） | `Bribery/`（3）、`Punishment/`（5）、`Config/{BribePolicy,PunishmentPolicy}.cs`、`Economy/TotalAssetsCalculator.cs` | `Settlement/{MonthlySettlementEngine,SettlementResult}.cs`、`Config/GameConfig.Officialdom.cs`、`Exam/ExamAdmission.cs`（仅文档） |
+| `KFL.Infrastructure`（net10.0） | 无（零新增文件、零新增依赖） | `Save/SaveFileFormat.cs`、`Save/Serialization/{SaveStateDto,SaveStateValueDtos.Justice,MessagePackSaveFormat,SaveStateMapper.Justice,SaveStateValidator.Justice}.cs` |
 | `KFL.Presentation` / `KFL.App` | —— | **0 行**（界面属 U1~U5） |
 
 **依赖方向不变**：`KFL.Core ← KFL.Infrastructure ← KFL.Rules ← KFL.Presentation / KFL.App`
@@ -25,7 +25,7 @@
 
 ## 2. `KFL.Core` 的新增与变更
 
-### 2.1 `Person` 新增三成员（`src/KFL.Core/Entities/Person.cs`）
+### 2.1 `Person` 新增三成员（`src/KFL.Core/Entities/Person.Exam.cs`）
 
 | 成员 | 类型 | 可变性 | 语义 | 依据 |
 | --- | --- | --- | --- | --- |
@@ -46,7 +46,7 @@ internal void RestoreBribeCounts(int jieShiBribeCount, int shengShiBribeCount, i
    `RecordBribe` 的形参即维度。
 2. `ResetBribeCounts` **MUST NOT** 把计数降到 0 以下、**MUST NOT** 触碰乘数以外的任何字段；
    乘数是**派生值**（§7.1 的 kⁿ），重置计数即重置乘数——这正是 U4「同行贿叠加」的既有口径。
-3. 连坐降级（`PunishmentDemotion`）**MUST NOT** 清零三者（`Person.cs:181-182` 的既有约束）。
+3. 连坐降级（`PunishmentDemotion`）**MUST NOT** 清零三者（`Person.Exam.cs:134` 的既有约束）。
 
 ### 2.2 六个事实行记录（`src/KFL.Core/ValueObjects/PunishmentFacts.cs`）
 

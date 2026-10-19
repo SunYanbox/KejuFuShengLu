@@ -218,10 +218,10 @@
 | 3 | `AssetSold` | 3 | `AssetMarket.Sell`（`src/KFL.Rules/Economy/AssetMarket.cs:77`）成功后 | 同上（卖出亦可抬高现金） |
 | 4 | `LoanOriginated` | 4 | 缺口转贷款处 `src/KFL.Rules/Economy/PaymentPrimitive.cs:108-111` 成功后（**无独立公开入口**，见 `tasks.md` E-10） | ACH-042、ACH-043 |
 | 5 | `LoanRepaid` | 5 | `FamilyEconomy.RepayLoan`（`src/KFL.Core/Entities/FamilyEconomy.cs:233`）成功后（**无独立公开入口**，见 E-10） | ACH-043 |
-| 6 | `MatchmakingCommenced` | 6 | `LifecycleEntry.TryMatchmake`（`src/KFL.Rules/Family/LifecycleEntry.cs:40`）成功后 | ACH-035（若当月成交） |
-| 7 | `ProposalAnswered` | 7 | `LifecycleEntry.RespondToProposal`（`src/KFL.Rules/Family/LifecycleEntry.cs:198`）（接受或拒绝）成功后 | ACH-035 |
+| 6 | `MatchmakingCommenced` | 6 | `LifecycleEntry.TryMatchmake`（`src/KFL.Rules/Family/LifecycleEntry.cs:41`）成功后 | ACH-035（若当月成交） |
+| 7 | `ProposalAnswered` | 7 | `LifecycleEntry.RespondToProposal`（`src/KFL.Rules/Family/LifecycleEntry.cs:207`）（接受或拒绝）成功后 | ACH-035 |
 | 8 | `DegreeMarriagePurchased` | 8 | `TryMatchmake` / `RespondToProposal` 的 `buyDegreeMarriage: true` 分支成功后（**无独立入口**，见 E-11） | ACH-035 |
-| 9 | `PersonPurchased` | 9 | `LifecycleEntry.BuyPerson`（`src/KFL.Rules/Family/LifecycleEntry.cs:461`）成功后 | ACH-032 |
+| 9 | `PersonPurchased` | 9 | `LifecycleEntry.BuyPerson`（`src/KFL.Rules/Family/LifecycleEntry.Childbirth.cs:83`）成功后 | ACH-032 |
 | 10 | `BribeSubmitted` | 10 | `BribeEntry.Bribe`（`src/KFL.Rules/Bribery/BribeEntry.cs:41`）成功后 | ACH-049~054 |
 | 11 | `ExamInquiryAnswered` | 11 | `ExamRegistration.AcceptSpecialTribute`（`src/KFL.Rules/Exam/ExamRegistration.cs:170`）成功后——008 起该入口追加**可选尾参** `GameState? state = null`，仅在 `state is not null` 时上报（E-20） | ACH-027、ACH-028 |
 | 12 | `DebugWakeReported` | 12 | FR-041 ⑥ 的上报接缝（U4 未来调用） | ACH-064~068 |

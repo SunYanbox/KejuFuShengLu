@@ -523,7 +523,7 @@ public static class AchievementPolicy
 ```
 
 `GameConfig` 新增 `Achievements` 分节，逐成员**转发**（无字面量），风格照
-`src/KFL.Rules/Config/GameConfig.cs` 既有分节（如 `:837` 的 Lifecycle）。
+`src/KFL.Rules/Config/GameConfig.Family.cs` 既有分节（如 `:274` 的 Lifecycle）。
 
 ---
 

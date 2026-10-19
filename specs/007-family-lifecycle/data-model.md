@@ -173,7 +173,7 @@ public sealed class FamilyLifecycleState
 
 ### 2.5 `Person` 的形状变更（+1 可写属性）
 
-`src/KFL.Core/Entities/Person.cs` 在可写成员区（`Occupation`（`:400`）附近）追加：
+`src/KFL.Core/Entities/Person.Officialdom.cs` 在可写成员区（`Occupation`（`:67`）附近）追加：
 
 ```csharp
 private bool _tutoredByMaster;
@@ -286,7 +286,7 @@ public sealed record LifecycleSnapshot
 > 也 MUST NOT 让 ⑧ 去调用结算或成就判定（FR-035：单月只结算一次；判定只发生在 `TurnRunner.Advance` 的 ② / 动作返回之前）。
 > 契约真源见 [008 `achievement-catalog.md` §2/§3](../../008-achievements-extinction/contracts/achievement-catalog.md)。
 
-### 3.3 `Family/LifecycleEntry.cs` —— 玩家动作（可拒绝）
+### 3.3 `Family/LifecycleEntry.cs` + `LifecycleEntry.{Childbirth,Family}.cs` —— 玩家动作（可拒绝）
 
 ```csharp
 public static class LifecycleEntry
@@ -394,13 +394,13 @@ public enum LifecycleRejectReason
 | 类型 | 位置 | 变更 | 波及的守卫/测试 |
 | --- | --- | --- | --- |
 | `StatusTimers` | `KFL.Core/ValueObjects/StatusTimers.cs:21-65` | +2 项（尾插） | `StatusTests.cs`（16 处构造）、`StatusTimersDto` 4 → 6 |
-| `Person` | `KFL.Core/Entities/Person.cs:400` 附近 | +1 可写属性 | `PersonTests.cs` 可写清单 10 → 11 |
+| `Person` | `KFL.Core/Entities/Person.Officialdom.cs:67` 附近 | +1 可写属性 | `PersonTests.cs` 可写清单 10 → 11 |
 | `Family` | `KFL.Core/Entities/Family.cs:55` 附近 | +1 聚合属性 | `FamilyDto` 8 → 9 |
 | `LedgerCategory` | `KFL.Core/Enums/LedgerCategory.cs:22-88` | +16 取值 | `LedgerInvariantTests.cs` 四处清单 |
 | `LedgerCategoryMetadata` | `KFL.Core/Enums/LedgerCategoryMetadata.cs:24-96` | +16 登记、`default:` 文案改 38 | 同上 |
 | `MonthlySettlementEngine` | `KFL.Rules/Settlement/MonthlySettlementEngine.cs` | 九步 → 十步；`:22-32` 步骤清单、`:34-35` MUST NOT 段、`:37-42` 随机次序注释、ctor `:63` +1 参、`Settle` 内插 ⑧ | `SettlementEngineTests.cs:305-345`、`DeterminismTests.cs` |
 | `SettlementResult` | `KFL.Rules/Settlement/SettlementResult.cs:48-120` | +1 `required` 属性 `Lifecycle`（20 → 21） | `SettlementEngineTests.cs:315-337` |
-| `GameConfig` | `KFL.Rules/Config/GameConfig.cs` | +6 转发视图、修正 `:24-27` | `ConfigLiteralTests.cs` |
+| `GameConfig` | `KFL.Rules/Config/GameConfig.cs` + `GameConfig.Family.cs` | +6 转发视图、修正 `:24-27` | `ConfigLiteralTests.cs` |
 | `TurnRunner` | `KFL.Rules/Save/TurnRunner.cs:54` | ctor +1 参 `INameGenerator` | 组合根 `KFL.App` |
 | `SaveFileFormat` | `KFL.Infrastructure/Save/SaveFileFormat.cs:31` | `Version = 3` → `4` | 004 契约、`SaveFormatContractTests` |
 
@@ -459,7 +459,7 @@ public enum LifecycleRejectReason
 | --- | --- | --- |
 | `PersonDto`（`SaveStateDto.cs:143-316`） | 28 键 | **29 键**：尾部 `[Key(28)] bool isTutoredByMaster` |
 | `FamilyDto`（`SaveStateDto.cs:83-133`） | 8 键 | **9 键**：尾部 `[Key(8)] FamilyLifecycleDto lifecycle` |
-| `StatusTimersDto`（`SaveStateValueDtos.cs:258-284`） | 4 键 | **6 键**：尾部 `[Key(4)] int? illnessSeverityBasisPoints`、`[Key(5)] int? treatmentRemainingMonths` |
+| `StatusTimersDto`（`SaveStateValueDtos.Person.cs:46-84`） | 4 键 | **6 键**：尾部 `[Key(4)] int? illnessSeverityBasisPoints`、`[Key(5)] int? treatmentRemainingMonths` |
 | `FamilyLifecycleDto` | — | **新**，7 键：`[Key(0)] int purchaseCount`、`[Key(1)] int purchaseYear`、`[Key(2)] IReadOnlyList<PendingBirthDto> pendingBirths`、`[Key(3)] IReadOnlyList<CoupleKeyDto> appliedBirthCouples`、`[Key(4)] int birthApplicationYear`、`[Key(5)] MarriageProposalDto? proposal`、`[Key(6)] List<MatchmakeApplicationDto> matchmakeApplications`（FR-013 的当月名额，T093 追加） |
 | `PendingBirthDto` | — | **新**，4 键：`husbandId`、`wifeId`、`appliedYear`、`appliedMonth` |
 | `MatchmakeApplicationDto` | — | **新**，3 键：`memberId`、`appliedYear`、`appliedMonth`（T093 追加） |
@@ -481,9 +481,9 @@ lifecycle 分支、在 `:309`（Person 22-27 之后）插 `Skip(1)`（`isTutored
 > `FamilyLifecycleDto`（7 键）**正交**、互不引用；⑧ 只读消费本特性的当月事实，
 > **MUST NOT** 为此新增任何生命周期持久字段。回写真源见 008 契约二十三 §6。
 
-`SaveStateMapper`：`ToDto`（`:38`）补三个新段；`Build`（`:100`）在 `:222`（`RestoreOutsiderBookkeeping`）
+`SaveStateMapper`：`ToDto`（`:38`）补三个新段；`Build`（`:103`）在 `:230`（`RestoreOutsiderBookkeeping`）
 之后追加 `family.Lifecycle.RestoreBookkeeping(...)`（**七参**，末参为托媒申请）、在成员标量段
-（`:149-158` 附近）追加 `person.RestoreTutoring(...)`。
+（`:163-164` 附近）追加 `person.RestoreTutoring(...)`。
 
 `SaveStateValidator` +3 条（第 13~15 条）并对既有 2 条加严：
 - 第 4 条 `EnsureHeadIsRegistered` 追加：**有在册男性而 `HeadId == null` ⇒ 拒**（不变量 13）。

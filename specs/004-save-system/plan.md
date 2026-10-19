@@ -103,7 +103,7 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 > `Save/Serialization/` 7 个：`ISaveFormat`、`MessagePackSaveFormat`、`JsonSaveFormat`、
 > `SaveStateDto`、`SaveStateValueDtos`、`SaveStateMapper`、`SaveStateValidator`）并改 csproj **1** 处
 > （原预估约 17 个）；`KFL.Rules` 增 **3** 个（`Config/SaveCadencePolicy.cs`、`Save/TurnRunner.cs`、
-> `Save/TurnOutcome.cs`）、改 **1** 个（`Config/GameConfig.cs` 的转发组）；测试增 **9** 个文件
+> `Save/TurnOutcome.cs`）、改 **1** 个（`Config/GameConfig.System.cs` 的转发组）；测试增 **9** 个文件
 > （`Infrastructure/` 7 个：`SaveFixtures`、`SaveTestSandbox`、`SaveStateComparer`、`SaveServiceTests`、
 > `SaveFormatContractTests`、`SaveFailureTests`、`AtomicWriteTests`；`Rules/` 2 个：`RecordingSaveService`、
 > `SaveCadenceTests`）、改 **0** 个既有夹具（原预估「增 6 个、改 2 个」；实测把新夹具独立成
@@ -114,7 +114,7 @@ AtomicWriteTests,SaveFormatContractTests}.cs` 与 `tests/KFL.Tests/Rules/SaveCad
 `Entities/OutsiderBookkeeping.cs`），**0** 个领域字段增删；`KFL.Infrastructure` 增 **约 17** 个文件
 （`ISaveService` 与存储侧值类型 5 个、`Save/` 12 个含 4 个 DTO 文件）并改 csproj **1** 处；
 `KFL.Rules` 增 **3** 个（`Config/SaveCadencePolicy.cs`、`Save/TurnRunner.cs`、`Save/TurnOutcome.cs`）、
-改 **1** 个（`Config/GameConfig.cs` 的转发组）；测试增 **6** 个文件、改 **2** 个（存档夹具）；
+改 **1** 个（`Config/GameConfig.System.cs` 的转发组）；测试增 **6** 个文件、改 **2** 个（存档夹具）；
 `.gitignore` 改 1 处；**0** 个界面功能、**0** 行界面代码。
 
 > **无跨特性形状变更（公开面）**：本特性**不**增删 `KFL.Core` 领域字段、**不**改任何上游步骤序列
@@ -278,14 +278,14 @@ src/
 │   │       ├── MessagePackSaveFormat.cs # 【新】R-05/R-09（手写头 + 数组格式主体）
 │   │       ├── JsonSaveFormat.cs        # 【新】R-05/R-08（手写头 + 缩进 JSON 主体）
 │   │       ├── SaveStateDto.cs          # 【新】主体根 DTO + 家族/人物/经济子 DTO（契约十 §4）
-│   │       ├── SaveStateValueDtos.cs    # 【新】天赋 / 计时 / 功名记录 / 资金 / 贷款 / 资产 / 账本 / 饥馑 DTO
-│   │       ├── SaveStateMapper.cs       # 【新】逐字段双向映射（R-02、R-12；data-model §3.11 的次序）
-│   │       └── SaveStateValidator.cs    # 【新】十二条一致性校验（R-04）
+│   │       ├── SaveStateValueDtos.cs + SaveStateValueDtos.{Person,Economy,Family,Justice,Achievements}.cs  # 【新】天赋 / 计时 / 功名记录 / 资金 / 贷款 / 资产 / 账本 / 饥馑 DTO
+│   │       ├── SaveStateMapper.cs + SaveStateMapper.{Person,Economy,Family,Justice,Achievements,Guards}.cs  # 【新】逐字段双向映射（R-02、R-12；data-model §3.11 的次序）
+│   │       └── SaveStateValidator.cs + SaveStateValidator.{Exam,Justice,Lifecycle,Achievements}.cs  # 【新】十二条一致性校验（R-04）
 │   └── KFL.Infrastructure.csproj        # 【改】PackageReference MessagePack 2.5.305
 ├── KFL.Rules/                           # net10.0
 │   ├── Config/
 │   │   ├── SaveCadencePolicy.cs         # 【新】BackupIntervalTurns = 3、纪元 (1,1)、CompletedTurnsAt、ShouldBackup
-│   │   └── GameConfig.cs                # 【改】新增 Save 组转发（仍零字面量）
+│   │   └── GameConfig.System.cs                # 【改】新增 Save 组转发（仍零字面量）
 │   ├── Save/
 │   │   ├── TurnRunner.cs                # 【新】结算 → 覆盖保存 → 命中 3 的倍数则备份（R-17）
 │   │   └── TurnOutcome.cs               # 【新】一次回合的增量快照（MUST NOT 写回 GameState）

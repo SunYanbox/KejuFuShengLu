@@ -172,7 +172,7 @@ src/
 │   │   ├── Loan.cs                  # 【新】本金 + 欠息 + 距上次计息月数（先本后息是自身不变量）
 │   │   ├── Ledger.cs                # 【新】追加式流水账 + 两个维度的聚合查询
 │   │   ├── FamineState.cs           # 【新】饥馑阶段 + 已持续月数
-│   │   ├── Person.cs / Family.cs    # 不动
+│   │   ├── Person.cs  Person.Exam.cs  Person.Officialdom.cs  Person.Family.cs  Person.Invariants.cs  Family.cs    # 不动
 │   │   └── ...
 │   ├── ValueObjects/
 │   │   ├── Money.cs                 # 【新】以「文」为单位的 decimal；无内部舍入
@@ -194,7 +194,7 @@ src/
 │   └── Services/SeededRandomService.cs / GameStateClock.cs / GameStateFactory.cs（**仅此处适配**：`Create` 随 GameState 构造变更透传 `FamilyEconomy`，T020）
 ├── KFL.Rules/                       # net10.0
 │   ├── Config/
-│   │   ├── GameConfig.cs            # 【改】空壳→数值总表（唯一数值真源的总入口）
+│   │   ├── GameConfig.cs  GameConfig.Economy.cs  GameConfig.Price.cs  GameConfig.Officialdom.cs  GameConfig.Family.cs  GameConfig.System.cs  # 【改】空壳→数值总表（唯一数值真源的总入口）
 │   │   ├── LivingCostTable.cs       # 【新】三档 × 四年龄档日耗、出身修正、难度支出系数
 │   │   ├── AgeBracketPolicy.cs      # 【新】年龄档归属边界（男 12 / 女 14 / 18 / 60）
 │   │   ├── IncomeRateTable.cs       # 【新】自耕/田租/务农/做工/经商/铺面 的系数与门槛
