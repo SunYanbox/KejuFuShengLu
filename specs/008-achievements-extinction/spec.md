@@ -719,6 +719,6 @@ MUST NOT 自造亏损事件规则（FR-042）。理由：既不改动 U4 的分�
 
 **回写登记（同一提交）**：①本节；②规格书 §14.1 / §13 的相关说明；
 ③`src/KFL.Rules/Achievements/AchievementCatalog.cs`、`src/KFL.Presentation/ViewModels/AchievementRow.cs`、
-`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`RefreshAchievements` 传 `hidden:`、控制台命令）、
+`src/KFL.Presentation/ViewModels/MainViewModel.{Commands,Refresh.Saves}.cs`（`RefreshAchievements` 传 `hidden:`、控制台命令）、
 `src/KFL.Presentation/GameSession.cs`、`src/KFL.Presentation/AchievementDescriptions.cs`；
-④`src/KFL.App/MainWindow.xaml`（成就页状态列已显示「隐藏/已达成」）。
+④`src/KFL.App/Views/AchievementsTabView.xaml`（成就页状态列已显示「隐藏/已达成」）。

@@ -155,7 +155,7 @@ src/
 │   │   ├── AppointmentTrack.cs         # 【新】一甲 / 二甲 / 三甲 / 特奏名（授官入口的入参）
 │   │   └── ...
 │   ├── Entities/
-│   │   ├── Person.cs                   # 【改】新增 MonthsInOffice；Status/Timers 交叉校验加 AwaitingPost
+│   │   ├── Person.Officialdom.cs       # 【改】新增 MonthsInOffice；Status/Timers 交叉校验加 AwaitingPost
 │   │   └── ...
 │   └── Config/AttributeLimits.cs       # 【改】注释改标：政绩上限 100 归逻辑轨 ③ 的 OfficialCareerPolicy
 ├── KFL.Infrastructure/                 # net10.0
@@ -172,7 +172,7 @@ src/
 │   │   ├── OriginStartTable.cs         # 【新】§10.1 四出身表：初始资产、成员构成、年龄/学业/体质口径
 │   │   ├── AttributePolicy.cs          # 【新】§4.1/§4.2 分布参数（N(60,20)/N(30,15)/N(85,10)/寿数）与正态取样
 │   │   ├── OfficialCareerPolicy.cs     # 【新】§8.2 政策值（待阙 6~24、官阶映射、36 月、25%+0.3%、封顶 70%、上限 100、70 岁、半俸 50%）
-│   │   ├── GameConfig.cs               # 【改】新增 NewGame / Attributes / Career 三组转发（仍零字面量）
+│   │   ├── GameConfig.Officialdom.cs   # 【改】新增 NewGame / Attributes / Career 三组转发（仍零字面量）
 │   │   └── ...
 │   ├── Start/
 │   │   └── NewGameSetup.cs             # 【新】新建存档入口 + NewGameRequest + NewGameSetupResult（薄视图）

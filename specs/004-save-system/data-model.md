@@ -312,7 +312,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | `ISaveFormat` + `MessagePackSaveFormat` / `JsonSaveFormat` | `Save/Serialization/` | `Write(header, dto) → byte[]` / `Read(byte[]) → (header, dto)`；编解码选项的唯一出处（R-08/R-09） |
 | `SaveStateDto` 及其子 DTO | `Save/Serialization/*Dto.cs` | 线上形状的唯一真源（§3；R-02） |
 | `SaveStateMapper` | `Save/Serialization/SaveStateMapper.cs` | `ToDto(GameState)` / `ToDomain(SaveStateDto)`，逐字段显式（§3；R-02/R-12） |
-| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` | R-04 的**二十二条**一致性校验（004 的十五条 = 005/006/007 的增补；**008 新增第 16~22 条**：成就键唯一、待落盘队列 ⊆ 已完成、享年条数上界、计数非负、终局三元自洽、已结束 ⇒ 零在册成员、编年史与家族集合同序同长且存续年数 == `EndedAt.Year − 1`；契约二十三「条款 31~33」） |
+| `SaveStateValidator` | `Save/Serialization/SaveStateValidator.cs` + `SaveStateValidator.{Exam,Justice,Lifecycle,Achievements}.cs` | R-04 的**二十二条**一致性校验（004 的十五条 = 005/006/007 的增补；**008 新增第 16~22 条**：成就键唯一、待落盘队列 ⊆ 已完成、享年条数上界、计数非负、终局三元自洽、已结束 ⇒ 零在册成员、编年史与家族集合同序同长且存续年数 == `EndedAt.Year − 1`；契约二十三「条款 31~33」） |
 | `SaveStateMapper`（008 增补） | 同上 | `⑨′` 步复原次序 **成就面先于终局面**（契约二十三「条款 29/30」） |
 | `SaveService` | `Save/SaveService.cs` | `ISaveService` 的实现：装配 `SaveName`/`SaveCatalog`/`AtomicFileWriter`/`ISaveFormat` |
 
@@ -325,7 +325,7 @@ MUST NOT 使用反射、MUST NOT 使用「无注解契约」序列化（R-02）�
 | `SaveCadencePolicy` | `Config/SaveCadencePolicy.cs` | 静态类：`EpochYear = 1`、`EpochMonth = 1`、`BackupIntervalTurns = 3`、`CompletedTurnsAt(GameDate)`、`ShouldBackup(int)`（R-16） |
 | `TurnRunner` | `Save/TurnRunner.cs` | `TurnRunner(IRandomService randomService, ISaveService? saveService, SaveSlot slot)`；`TurnOutcome Advance(GameState state)`；`void SaveOnExit(GameState state)`（R-17；契约十一 §2） |
 | `TurnOutcome` | `Save/TurnOutcome.cs` | `readonly record struct (SettlementResult Settlement, int CompletedTurns, bool Saved, bool BackedUp)`——一次回合的**增量**快照，MUST NOT 被写回 `GameState` |
-| `GameConfig` | `Config/GameConfig.cs` | **改**：新增 `Save` 组转发（`SaveCadencePolicy` 的三个数值），保持「零字面量」的既有口径 |
+| `GameConfig` | `Config/GameConfig.System.cs` | **改**：新增 `Save` 组转发（`SaveCadencePolicy` 的三个数值），保持「零字面量」的既有口径 |
 
 `SaveCadencePolicy.CompletedTurnsAt` 的语义（**唯一**的回合数定义）：
 

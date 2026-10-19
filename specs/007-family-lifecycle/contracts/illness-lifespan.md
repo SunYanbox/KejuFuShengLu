@@ -37,7 +37,7 @@
 | 救济期 | — | **不减**（含患病减免） | `FamineStage.Relief` 或 `ReliefMode` 期间 **MUST NOT** 下降体质（Assumption 4，取字面） |
 
 **MUST NOT 互替**：患病与饥馑各扣一次；两者同月 ⇒ 两次都扣。**写入前 MUST 自行 clamp 到 `0`**，
-`Person.Health` 的 setter 越界会抛 `ArgumentOutOfRangeException`（`Person.cs:157`）。
+`Person.Health` 的 setter 越界会抛 `ArgumentOutOfRangeException`（`Person.cs:164`）。
 
 **归零后果**：`Health == 0` ⇒ 由**产生该次扣减的子步**登记死亡（⑧-c 患病 ⇒ `Illness`；⑧-e 饥馑 ⇒ `Famine`），
 口径是「先扣体质、再判死亡」；**死亡优先于清除判定**（同月既扣到 0 又掷到清除 ⇒ 仍死亡）。

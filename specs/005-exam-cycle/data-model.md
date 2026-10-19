@@ -40,7 +40,7 @@ public enum ExamLevel
 - 文档口径：考试级别；报名标记只允许 `JieShi` / `ShengShi`（殿试不需报名）。
 - 类文档 MUST 引用规格书 §6，并写明「派生值（科年与考试月）MUST NOT 持久化」。
 
-### 2.2 `Person` 新增三成员（`src/KFL.Core/Entities/Person.cs`）
+### 2.2 `Person` 新增三成员（`src/KFL.Core/Entities/Person.Exam.cs`）
 
 | 成员 | 类型 | 访问 | 含义 | 来源 |
 | --- | --- | --- | --- | --- |

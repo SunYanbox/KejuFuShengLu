@@ -133,7 +133,7 @@ Directory.Build.props                # 统一 warnings-as-errors / Nullable / �
 src/
 ├── KFL.Core/                        # net10.0 —— 实体与值类型，无任何环境依赖
 │   ├── KFL.Core.csproj
-│   ├── Entities/                    # Person.cs  Family.cs  GameState.cs
+│   ├── Entities/                    # Person.cs  Person.Exam.cs  Person.Officialdom.cs  Person.Family.cs  Person.Invariants.cs  Family.cs  GameState.cs
 │   ├── ValueObjects/                # GameDate.cs  PersonId.cs  TalentSet.cs
 │   │                                # DegreeRecord.cs  OfficialRank.cs  StatusTimers.cs
 │   ├── Enums/                       # Gender.cs  DegreeLevel.cs  ImperialPlacement.cs
@@ -148,7 +148,7 @@ src/
 │                                    #   必须在 Infrastructure：Core 看不到接缝（G-05）
 ├── KFL.Rules/                       # net10.0 —— 本阶段只有常量位置，无规则实现
 │   ├── KFL.Rules.csproj
-│   └── Config/                      # GameConfig.cs（空壳，阶段②起填充）
+│   └── Config/                      # GameConfig.cs  GameConfig.Economy.cs  GameConfig.Price.cs  GameConfig.Officialdom.cs  GameConfig.Family.cs  GameConfig.System.cs（空壳，阶段②起填充）
 ├── KFL.Presentation/                # net10.0-windows, UseWPF=true —— 本阶段无内容
 │   └── KFL.Presentation.csproj
 └── KFL.App/                         # net10.0-windows, WinExe —— 空壳窗口

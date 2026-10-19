@@ -182,7 +182,7 @@ public static class TukeyTrimean
 
 **与 ③ 的关系**：`Lifespans` 是「已故成员享年**完整序列**」（FR-013 ③），不是「和 + 个数」——
 因为三均值不是线性统计量，无法由和与个数重算。序列里的每个值 = 该成员死亡当月的 `Person.AgeAt(月份)`
-（`src/KFL.Core/Entities/Person.cs:495`，实现在 `src/KFL.Core/Entities/GameDate.cs:59-74`）。
+（`src/KFL.Core/Entities/Person.Family.cs:25`，实现在 `src/KFL.Core/ValueObjects/GameDate.cs:60-78`）。
 「完整序列」的**上界**可由不变量校验：`Lifespans.Count <= Family.Members.Count(p => p.Status.HasFlag(StatusFlag.Deceased))`
 （见契约二十三 §7；**E-21 修订**：处决与株连在 `DeathRegister` 之外置 `Deceased`、不记享年 ⇒ 只能取上界）。
 
@@ -316,7 +316,7 @@ public EndingState Ending { get; } = new EndingState();
    `SaveStateMapper`、`NewGameSetup` 三处共同依赖）。加两个 ctor 参数会**强制**改动这三处以及所有
    直接构造 `GameState` 的测试；而 008 的真实耦合面只是「存档形状」。
 2. 「新增聚合的值对象 + internal 复原通道」是 007 已验证的模式，
-   `src/KFL.Infrastructure/Save/Serialization/SaveStateMapper.cs:38` / `:77` 就是这条通道的现存实例。
+   `src/KFL.Infrastructure/Save/Serialization/SaveStateMapper.cs:38` / `:79` 就是这条通道的现存实例。
 3. `IL` 侧不会看到 `null`：`Achievements`/`Ending` 恒非空，避免 67 条判据到处写 `?.`。
 
 **替代方案与否决原因**：
@@ -530,7 +530,7 @@ Infrastructure 侧只实现 JSON 读写与解析，**不实现** MessagePack 侧
 ## R-18 阈值常量的落点
 
 **决定**：新增 `src/KFL.Rules/Config/AchievementPolicy.cs`（阈值唯一真源），
-并在 `src/KFL.Rules/Config/GameConfig.cs` 新增 `Achievements` 分节**纯转发**。
+并在 `src/KFL.Rules/Config/GameConfig.System.cs` 新增 `Achievements` 分节**纯转发**。
 
 **理由**：
 

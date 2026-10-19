@@ -41,7 +41,7 @@
 
 ## R-01 结算序列九步 → 十步与 ⑧ 步的编排载体
 
-- **Decision**：新增 `src/KFL.Rules/Lifecycle/PopulationAdvance.cs`，公开入口
+- **Decision**：新增 `src/KFL.Rules/Family/PopulationAdvance.cs`，公开入口
   `public static LifecycleSnapshot Run(GameState state, IRandomService random, INameGenerator names)`；
   `MonthlySettlementEngine.Settle` 在调用 `ExamSeasonRunner.Run` **之前**调用它（插入点即今
   `MonthlySettlementEngine.cs:203` 之前），原 ⑧ 科举季顺延为 ⑨、⑨ 推进时间顺延为 ⑩。
@@ -119,7 +119,7 @@
 
 ## R-07 患病 / 清除概率的公式落点与 `min(1, …)` 短路
 
-- **Decision**：`src/KFL.Rules/Lifecycle/IllnessRules.cs` 两个纯函数：
+- **Decision**：`src/KFL.Rules/Family/IllnessAdvance.cs` 两个概率计算（`DrawInfection` 取值 / `Recovers` 的愈判）：
   `IllnessProbability(int health, Origin dominant)` → `[0, 1]`；
   `CleanseProbability(int healthAfterDeduction, Origin dominant, int ageYears, bool underTreatment)` → `[0, 1]`。
   **短路在函数内部无法表达**（函数不接随机源），故由 `PopulationAdvance` 统一按
@@ -190,7 +190,7 @@
 
 ## R-13 家主继任候选序列实体化
 
-- **Decision**：`src/KFL.Rules/Lifecycle/HeadSuccession.cs`：
+- **Decision**：`src/KFL.Rules/Family/HeadSuccession.cs`：
   `public static IReadOnlyList<Person> Candidates(Family family, GameDate date)` 返回**四档有序**候选序列，
   `public static Person? Select(Family family, GameDate date)` 取首个（空则 `null`）；
   ⑧-h 与 FR-044 的查询面调用**同一函数**。同档内以 `AgeAt` 降序、同岁以 `PersonId` 升序决胜。
@@ -209,7 +209,7 @@
 
 ## R-15 官员压力 `P` 的派生与快照
 
-- **Decision**：`src/KFL.Rules/Lifecycle/OfficialPressure.cs`：
+- **Decision**：`src/KFL.Rules/Family/OfficialPressure.cs`：
   `public static decimal Compute(IReadOnlyList<Person> registeredOfficials)`，
   `public static decimal WeightOf(int rankLevel)`（`w(L) = 0.02 + 1.48 × (18 − L) / 17`）。
   ⑧-a **开头**取一次快照（`CountedMembers.Registered(family)` 中 `Rank != null` 者）算出 `P`，本轮不重算。
@@ -255,7 +255,8 @@
 
 ## R-19 玩家动作入口与结果形状
 
-- **Decision**：`src/KFL.Rules/Lifecycle/LifecycleEntry.cs`（静态类，仿 `src/KFL.Rules/Bribery/BribeEntry.cs`）：
+- **Decision**：`src/KFL.Rules/Family/LifecycleEntry.cs`（静态分部类，逐方法实现散在同名基文件与
+  `LifecycleEntry.{Childbirth,Family}.cs` 两分册；仿 `src/KFL.Rules/Bribery/BribeEntry.cs`）：
   `ProposeMatchmaker(GameState, Person, IRandomService, INameGenerator)`、
   `AnswerProposal(GameState, bool accept, IRandomService, INameGenerator)`、
   `MarryOut(GameState, Person, MarriageTier counterpart)`、
@@ -270,7 +271,7 @@
 
 ## R-20 查询面全纯函数与拒绝原因枚举
 
-- **Decision**：`src/KFL.Rules/Lifecycle/LifecycleQueries.cs` 全部 `static`，不写状态、不消费随机，
+- **Decision**：`src/KFL.Rules/Family/LifecycleQueries.cs` 全部 `static`，不写状态、不消费随机，
   覆盖 FR-044 的九项；拒绝原因 `LifecycleRejectReason`：
   `None` / `InsufficientFunds` / `NotMarriageable` / `NoLowerDegree` / `FertilityWindowClosed` /
   `AlreadyAppliedThisYear` / `HeadVacant` / `NotIll` / `TreatmentInProgress` / `NoProposal`。
@@ -290,13 +291,13 @@
 - **Rationale**：Assumptions 13 要求「先算出当月全部增速（含 1.5/2.25、士出身 ×1.1）再乘 0.5 并四舍五入取整」；
   `Math.Round` 的 AwayFromZero 口径与 `AttributePolicy.Round`（`AttributePolicy.cs:118`）一致。
   **关键陷阱**：`Person.Study` / `Person.Health` 的 setter 会调用
-  `AttributeLimits.EnsureInRange`（`Person.cs:146` / `:157`）并抛 `ArgumentOutOfRangeException`，
+  `AttributeLimits.EnsureInRange`（`Person.cs:153` / `:164`）并抛 `ArgumentOutOfRangeException`，
   **不是静默 clamp**——调用方漏 clamp 会直接崩，故 R-21 把它写成 MUST。
 - **Alternatives**：每月保留小数余额（累加器落盘）——新增持久字段且 001 无先例。
 
 ## R-22 遗传取样实现的落点与随机消费次序
 
-- **Decision**：`src/KFL.Rules/Lifecycle/Inheritance.cs`：
+- **Decision**：`src/KFL.Rules/Family/Inheritance.cs`：
   `public static int Inherit(int a, int b, int floor, IRandomService random)` 与
   `public static int InheritStudy(int a, int b, IRandomService random)`；
   MUST 复用 `AttributePolicy.NextNormal`（`AttributePolicy.cs:66`，Box–Muller，**恰好 2 次 `NextDouble`**）。

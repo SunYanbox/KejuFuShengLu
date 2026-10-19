@@ -19,7 +19,7 @@
 | ① | `SurvivedYears` | 存续年数 = `CurrentDate.Year − 1` | §2 |
 | ② | `Generations` | 传承代数 = `Family.Members.Max(p => p.Generation) + 1` | `KFL.Core/Entities/Family.cs`、`Person.Generation` |
 | ③ | `PeakTotalAssets` | 历史月末总资产极大值 | `AchievementState.PeakTotalAssets`（累计量 ④，`data-model.md §2.4`） |
-| ④ | `HighestDegree` | 族谱历史最高功名 = **全量** `Family.Members` 的 `Person.CurrentDegree` 的最大 `DegreeLevel`（**含已亡与外嫁归档**；空族谱取 `DegreeLevel.BaiShen`——既有枚举零值，**不存在** `DegreeLevel.None`，见 `plan.md` E-13） | `Family.Members` 全量的 `Person.CurrentDegree`（由 `Person.DegreeHistory` 末条派生，`src/KFL.Core/Entities/Person.cs:173`） |
+| ④ | `HighestDegree` | 族谱历史最高功名 = **全量** `Family.Members` 的 `Person.CurrentDegree` 的最大 `DegreeLevel`（**含已亡与外嫁归档**；空族谱取 `DegreeLevel.BaiShen`——既有枚举零值，**不存在** `DegreeLevel.None`，见 `plan.md` E-13） | `Family.Members` 全量的 `Person.CurrentDegree`（由 `Person.DegreeHistory` 末条派生，`src/KFL.Core/Entities/Person.Exam.cs:15`） |
 | ⑤ | `TotalJinShi` | 族谱历史累计进士人数（**按人计**） | `Family.Members` 全量中 `DegreeHistory` 含 `DegreeLevel.JinShi` 的成员数 |
 | ⑥ | `AverageLifespan` | 已故成员享年分布的三均值 | `AchievementState.Lifespans`（累计量 ③）+ §4 |
 | ⑦ | `Genealogy` | 全量 `Family.Members.Select(p => p.Id)`（**含归档**） | `Family.Members` |

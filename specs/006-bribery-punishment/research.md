@@ -347,7 +347,7 @@ private static void DemoteDegree(Person person, GameDate month);
 `Family.Members`（含归档成员）**，以便「已出嫁归档的女儿被跨族追及」（FR-025）自然成立。
 `DemoteDegree` 追加一条 `DegreeRecord`（`Cause = DegreeChangeCause.PunishmentDemotion`，`Level` 降一级，
 白身无降），**清空 `Placement` / `ImperialClass`** 以满足 `DegreeRecord.EnsureCompatible` 的四条兼容性；
-`Person.AppendDegree` 的**降级 MUST NOT 清零解试/省试失败数**约束（`Person.cs:181-182`）已由既有实现保证。
+`Person.AppendDegree` 的**降级 MUST NOT 清零解试/省试失败数**约束（`Person.Exam.cs:28`）已由既有实现保证。
 
 **Rationale**: FR-023/FR-025 要求三分支互斥、范围严格限于五类、外嫁女儿被追及。001 已备好
 `DegreeChangeCause.PunishmentDemotion`（`DegreeChangeCause.cs:16`，文档逐字写明「连坐降级」），

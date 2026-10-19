@@ -106,7 +106,7 @@
 | E-03 | `src/KFL.Rules/Config/GameConfig.cs:24-27` | 「明确不含：买人口递增计价、成长衰老疾病死亡的年龄线与概率」 | 本特性交付后该注释**失真**，MUST 改为「已由 ⑦ 交付，见 `Growth`/`Illness`/`Marriage`/`Childbirth`/`Purchase`」 | FR-001 |
 | E-04 | `src/KFL.Rules/Settlement/SettlementResult.cs:15-19` | `LivingCostLine`/`IncomeLine` 用位置参数式 `record`（无 `required`），与其余子段风格不一 | 本特性新增子段一律 `public required … { get; init; }`；**不回改**既有两行（历史形状，改则扰动 002 契约） | 006 风格；`SettlementResult.cs:48` |
 | E-05 | 本文件自身 | Complexity Tracking 写「六配置类 + 六 `GameConfig` 转发视图」、`:62` 写「6 个配置类、3 个新存档 DTO」、`:142` 写 quickstart「8 个场景」 | 实为 **5 个配置类 + 6 个转发视图**（`data-model.md` §3.7）、**4 个新存档 DTO**（含 `CoupleKeyDto`）、**9 个场景**；`GameConfig.Lifecycle` 若确无成员可转发，MUST 在 `tasks.md` 的回写范围登记中记录 | 本文件 Project Structure、`data-model.md` §3.7、`quickstart.md` |
-| E-06 | `src/KFL.Rules/Config/GameConfig.cs:203-220` | 002 已为饥馑**时间线**建了门面 `GameConfig.Famine`（`MonthsUntilRelief` / `ReliefMonthsUntilSevere` / `ReliefExpenseDiscount` / `LimitMonths` / `RemainingMonths`） | ⑦ 的饥馑**健康影响**数值（`FamineHealthLossPerMonth = 10` / `FamineDeathChance = 0.05m`）**留在 `GrowthPolicy` 并经 `GameConfig.Growth` 暴露**——`FamineHealth.Run` 属 ⑧-e 健康子步，与成长/恢复同域；两个门面职责不同（时间线 vs 健康影响），MUST NOT 视为同一领域的重复门面 | FR-031；`contracts/config-registry.md` §1 |
+| E-06 | `src/KFL.Rules/Config/GameConfig.Price.cs:9-25` | 002 已为饥馑**时间线**建了门面 `GameConfig.Famine`（`MonthsUntilRelief` / `ReliefMonthsUntilSevere` / `ReliefExpenseDiscount` / `LimitMonths` / `RemainingMonths`） | ⑦ 的饥馑**健康影响**数值（`FamineHealthLossPerMonth = 10` / `FamineDeathChance = 0.05m`）**留在 `GrowthPolicy` 并经 `GameConfig.Growth` 暴露**——`FamineHealth.Run` 属 ⑧-e 健康子步，与成长/恢复同域；两个门面职责不同（时间线 vs 健康影响），MUST NOT 视为同一领域的重复门面 | FR-031；`contracts/config-registry.md` §1 |
 
 ## 回写义务清单（AGENTS.md「铁律」+ FR-050 的落地）
 
@@ -170,7 +170,7 @@ src/KFL.Core/
 │   ├── PendingBirth.cs              # 【新】待分娩记录（夫妇 + 申请年月）
 │   └── CoupleKey.cs                 # 【新】夫妇键（夫 PersonId + 妻 PersonId，有序）
 ├── Entities/
-│   ├── Person.cs                    # 【改】+1 可写属性 IsTutoredByMaster（+ internal 复原通道）
+│   ├── Person.cs + Person.Officialdom.cs   # 【改】+1 可写属性 IsTutoredByMaster（+ internal 复原通道）
 │   ├── Family.cs                    # 【改】+1 聚合属性 Lifecycle
 │   └── FamilyLifecycleState.cs      # 【新】买人口计数/待分娩/生育申请/待应答提议
 └── (AssemblyInfo.cs)                # 【不动】只放行 KFL.Infrastructure
@@ -191,7 +191,7 @@ src/KFL.Rules/
 │   ├── HeadSuccession.cs            # ⑧-h 四档候选 + 决胜
 │   ├── OfficialPressure.cs          # P = Σ w(L)
 │   ├── Inheritance.cs               # 遗传公式（复用 AttributePolicy.NextNormal）
-│   ├── LifecycleEntry.cs            # 玩家动作入口（托媒/生育/买人口/应答提议/发起疗程）
+│   ├── LifecycleEntry.cs + LifecycleEntry.{Childbirth,Family}.cs   # 玩家动作入口（托媒/生育/买人口/应答提议/发起疗程）
 │   ├── LifecycleOutcome.cs          # 结果 record + LifecycleRejectReason
 │   ├── LifecycleQueries.cs          # 纯查询面（FR-044）
 │   └── LifecycleSnapshot.cs         # 当月事实段（含 DeathCause）
@@ -201,7 +201,7 @@ src/KFL.Rules/
 │   ├── MarriagePolicy.cs            # 【新】托媒/提亲/捉婿/阶层加权/婚嫁金额表/买功名
 │   ├── ChildbirthPolicy.cs          # 【新】遗传 σ / 生育窗口 / 分娩死亡 / 夭折
 │   ├── PopulationPurchasePolicy.cs  # 【新】10n 计价 / 年龄 8~16
-│   └── GameConfig.cs                # 【改】+6 个转发视图（Growth/Illness/Marriage/Childbirth/Purchase/Lifecycle）+ 修正 24-27 注释
+│   └── GameConfig.Family.cs          # 【改】+6 个转发视图（Growth/Illness/Marriage/Childbirth/Purchase/Lifecycle）+ 修正 24-27 注释
 └── Save/TurnRunner.cs               # 【改】ctor + INameGenerator（R-02）
 
 src/KFL.Infrastructure/
@@ -209,10 +209,10 @@ src/KFL.Infrastructure/
     ├── SaveFileFormat.cs            # 【改】Version 3 → 4
     └── Serialization/
         ├── SaveStateDto.cs          # 【改】PersonDto 28 → 29、FamilyDto 8 → 9
-        ├── SaveStateValueDtos.cs    # 【改】StatusTimersDto 4 → 6；+FamilyLifecycleDto/PendingBirthDto/MarriageProposalDto
+        ├── SaveStateValueDtos.cs + SaveStateValueDtos.{Person,Family}.cs    # 【改】StatusTimersDto 4 → 6；+FamilyLifecycleDto/PendingBirthDto/MarriageProposalDto
         ├── MessagePackSaveFormat.cs # 【改】成员数常量 + Skip 序列（Family 0-2 后插、Person 20 后插、Timers 4 → 6）
-        ├── SaveStateMapper.cs       # 【改】ToDto/ToDomain 两侧补生命周期 + 恢复 internal 通道
-        └── SaveStateValidator.cs    # 【改】+2 条：HeadId 缺失与 Lifecycle 引用完整性
+        ├── SaveStateMapper.cs + SaveStateMapper.{Person,Family}.cs       # 【改】ToDto/ToDomain 两侧补生命周期 + 恢复 internal 通道
+        └── SaveStateValidator.cs + SaveStateValidator.Lifecycle.cs    # 【改】+2 条：HeadId 缺失与 Lifecycle 引用完整性
 
 src/KFL.App/                         # 【改】组合根：TurnRunner 注入 INameGenerator
 src/KFL.Presentation/                # 不动（U1 才接查询面）

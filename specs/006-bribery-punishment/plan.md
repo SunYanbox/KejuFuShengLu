@@ -118,16 +118,16 @@ FR-033）。
 **Scale/Scope**（预估，实现期按实际现状回写）：
 
 - `KFL.Core`：**增 2** 个文件（`Entities/PunishmentJournal.cs`、`ValueObjects/PunishmentFacts.cs`）、
-  **改 4** 个（`Entities/Person.cs`、`Entities/Family.cs`、`Enums/LedgerCategory.cs`、
+  **改 4** 个（`Entities/Person.Exam.cs`、`Entities/Family.cs`、`Enums/LedgerCategory.cs`、
   `Enums/LedgerCategoryMetadata.cs`）；**3** 个领域字段新增 + **1** 个家族成员新增 +
   **2** 个账本类别新增；**0** 个新工程、**0** 个新接缝接口。
 - `KFL.Rules`：**增 11** 个文件（`Bribery/` 3 + `Punishment/` 5 + `Config/` 2 +
   `Economy/TotalAssetsCalculator.cs`）、**改 3** 个（`Settlement/SettlementResult.cs`、
-  `Settlement/MonthlySettlementEngine.cs`、`Config/GameConfig.cs`）+ 文档级 **1** 个
+  `Settlement/MonthlySettlementEngine.cs`、`Config/GameConfig.Officialdom.cs`）+ 文档级 **1** 个
   （`Exam/ExamAdmission.cs` 的两处 `<param>`）。
 - `KFL.Infrastructure`：**增 0** 个文件（无新依赖）、**改 6** 个
-  （`Save/SaveFileFormat.cs`、`Save/Serialization/{SaveStateDto,SaveStateValueDtos,
-  MessagePackSaveFormat,SaveStateMapper,SaveStateValidator}.cs`）。
+  （`Save/SaveFileFormat.cs`、`Save/Serialization/{SaveStateDto,SaveStateValueDtos.Justice,
+  MessagePackSaveFormat,SaveStateMapper.Justice,SaveStateValidator.Justice}.cs`）。
 - `KFL.Presentation` / `KFL.App`：**0** 个界面功能、**0** 行界面代码。
 - 测试：**增 5** 个文件、**改 ≥10** 个既有文件（断言物同步）。
 - **1** 处线上形状版本提升（`SaveFileFormat.Version` 2 → 3），**0** 条迁移路径。
@@ -209,7 +209,7 @@ FR-033）。
 | 12 | `specs/005-exam-cycle/spec.md` | FR-027 `:317`（「清白传家」的行贿计数**已由 ⑥ 交付**）；FR-016 `:268-271`（乘数占位作废）；Out of Scope `:354` 相邻条目 | FR-030、SC-011 |
 | 13 | `src/KFL.Rules/Settlement/MonthlySettlementEngine.cs` 类文档 | 八步 → **九步**；`<list type="number">` 步骤清单插第 ③ 项；`:16` 的步骤数句与 `:33-37` 的随机次序段顺移序号并补「惩罚推进（③）—— 0 次」；「MUST NOT 存在」段 `:30-31` **不动**（惩罚推进是固定步骤，不是被排除项） | FR-020 |
 | 14 | `src/KFL.Core/Enums/LedgerCategory.cs` + `LedgerCategoryMetadata.cs` | 类别计数 **20 → 22**：`:4` 的类文档「20 个取值」→ 22；`:15-16` 的「『贿赂』等阶段⑤⑥⑧ 的类别 MUST NOT 存在」条款改写；`LedgerCategoryMetadata.cs:23` / `:59` 的 `<exception>` 文档与 `:50-51` / `:90-91` 的两处 `default:` 异常文案「20」→「22」；`:33` 的「其余 15 个」→ 17、`:76` 的「恒为负的支出类（5 类）」→ 7 | FR-027、SC-011 |
-| 15 | `src/KFL.Rules/Exam/ExamSeasonRunner.cs` + `Config/ExamPolicy.cs` + `Config/GameConfig.cs` + `Exam/ExamAdmission.cs` | 两处调用点 `:297` / `:323` 改传 006 计算的 `kⁿ`；`ExamPolicy.NeutralBribeMultiplier`（`ExamPolicy.cs:63`）与 `GameConfig.Exam.NeutralBribeMultiplier`（`GameConfig.cs:434`）**删除**（占位作废，k⁰ 由乘数入口的恒等元自然给出）；`ExamAdmission.cs:30` / `:57` 的两处 `<param>` 文档改写 | FR-008、SC-003 |
+| 15 | `src/KFL.Rules/Exam/ExamSeasonRunner.cs` + `Config/ExamPolicy.cs` + `Config/GameConfig.Officialdom.cs` + `Exam/ExamAdmission.cs` | 两处调用点 `:297` / `:323` 改传 006 计算的 `kⁿ`；`ExamPolicy.NeutralBribeMultiplier`（`ExamPolicy.cs:63`）与 `GameConfig.Exam.NeutralBribeMultiplier`（`GameConfig.cs:434`）**删除**（占位作废，k⁰ 由乘数入口的恒等元自然给出）；`ExamAdmission.cs:30` / `:57` 的两处 `<param>` 文档改写 | FR-008、SC-003 |
 | 16 | 断言物（同提交，**不是**历史工件） | `Rules/SpecAnchorTests.cs:235`（占位锚点改为 `BribePolicy` 的 k⁰ 恒等元）；`Rules/ExamAdmissionTests.cs` 的 9 处与 `Rules/ExamSeasonTests.cs` 的 4 处 `NeutralBribeMultiplier` 引用；`Core/PersonTests.cs:16-35`（只读成员全集 16 → 19）；`Core/LedgerInvariantTests.cs`（`:87` 计数、`:89-104` 名称数组、`:106-112` 的 `Bribe` 禁用词守卫改写为「只允许 `BribeExpense` / `Fine`」、`:146-158`、`:264-275`、`:59-78`）；`Architecture/ConfigLiteralTests.cs:54-117`（`RegisteredValues` 46 → 49）；`Infrastructure/{SaveFixtures,SaveStateComparer,SaveFormatContractTests,SaveStateValidatorTests,SaveFailureTests}.cs`（键表、成员数常量与 walker Skip 计数、版本闸门用例、夹具非默认值、比较器、校验口径） | FR-001、FR-032、SC-002、SC-009 |
 | 17 | `specs/006-bribery-punishment/tasks.md` | 登记上述回写范围（同步了哪些文件、同步到哪里），供后续审计核对 | AGENTS.md 铁律第 3 条 |
 
@@ -255,7 +255,7 @@ global.json / Directory.Build.props      # 不动
 src/
 ├── KFL.Core/                            # net10.0
 │   ├── Entities/
-│   │   ├── Person.cs                    # 【改】+3 只读计数、+1 写入通道族、+1 internal 复原
+│   │   ├── Person.cs + Person.Exam.cs   # 【改】+3 只读计数、+1 写入通道族、+1 internal 复原
 │   │   ├── Family.cs                    # 【改】+PunishmentJournal（只读引用 + internal 复原）
 │   │   └── PunishmentJournal.cs         # 【新】当月事实缓冲：追加 / 读取 / 清空 / internal 复原
 │   ├── ValueObjects/
@@ -268,10 +268,10 @@ src/
 │       ├── SaveFileFormat.cs            # 【改】Version 2 → 3（:30）
 │       └── Serialization/
 │           ├── SaveStateDto.cs          # 【改】PersonDto +3 键（25..27）、FamilyDto +1 键（7）
-│           ├── SaveStateValueDtos.cs    # 【改】+PunishmentJournalDto 与事实行 DTO
+│           ├── SaveStateValueDtos.cs + SaveStateValueDtos.Justice.cs   # 【改】+PunishmentJournalDto 与事实行 DTO
 │           ├── MessagePackSaveFormat.cs # 【改】PersonMemberCount 25→28（:50、:254 Skip 3→6）、FamilyMemberCount 7→8（:47、:226 Skip 1→2）
-│           ├── SaveStateMapper.cs       # 【改】双向映射与复原次序（日志复原独立一步）
-│           └── SaveStateValidator.cs    # 【改】+2 条（计数非负、日志引用完整性）→ 校验十二条
+│           ├── SaveStateMapper.cs + SaveStateMapper.Justice.cs   # 【改】双向映射与复原次序（日志复原独立一步）
+│           └── SaveStateValidator.cs + SaveStateValidator.Justice.cs   # 【改】+2 条（计数非负、日志引用完整性）→ 校验十二条
 ├── KFL.Rules/                           # net10.0
 │   ├── Bribery/                         # 【新目录】
 │   │   ├── BribeRules.cs                # 【新】窗口 / 应付金额 / 被抓概率 / 乘数 kⁿ / 触顶判定（全纯函数）
@@ -286,7 +286,7 @@ src/
 │   ├── Config/
 │   │   ├── BribePolicy.cs               # 【新】§7.1/§7.2/§11 的行贿数值单点
 │   │   ├── PunishmentPolicy.cs          # 【新】§7.3/§7.4/§7.5 的 12 格矩阵与罚金/服刑数值单点
-│   │   └── GameConfig.cs                # 【改】+Bribe / +Punishment 转发视图、+Assets.TotalAssets
+│   │   └── GameConfig.Officialdom.cs + GameConfig.Economy.cs   # 【改】+Bribe / +Punishment 转发视图、+Assets.TotalAssets
 │   ├── Economy/
 │   │   └── TotalAssetsCalculator.cs     # 【新】总资产口径的单一访问器（FR-011）
 │   ├── Exam/ExamAdmission.cs            # 【改】仅两处 <param> 文档（公式与 clamp 一字不动）

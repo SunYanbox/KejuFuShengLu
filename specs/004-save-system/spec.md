@@ -499,7 +499,7 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
 
 **回写登记（同一提交）**：①规格书 §14 的 2026-10-19 `§17 裁决回写` 块；②本节；
 ③`src/KFL.Infrastructure/Abstractions/ISaveService.cs`、`src/KFL.Infrastructure/Save/SaveService.cs`、
-`src/KFL.Presentation/GameSession.cs`、`src/KFL.App/MainWindow.xaml`（备份列表 + 读取按钮）；
+`src/KFL.Presentation/GameSession.Persistence.cs`、`src/KFL.App/Views/SavesTabView.xaml`（备份列表 + 读取按钮）；
 ④`tests/KFL.Tests/Rules/RecordingSaveService.cs`（假实现的三个新成员）、
 `tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs`（`BackupPathOf` 加 `.zip`、`CopyBackupOverPrimary` 解包）。
 
@@ -511,8 +511,8 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
 1. **删除存档与备份**：`ISaveService` 新增 `bool Delete(SaveSlot)` 与 `bool DeleteBackup(SaveSlot)`
    （返回 `false` 表示文件不存在，**不抛**）；文件系统删除经 `SaveCatalog.DeleteFile`（带
    `// arch-guard:allow` 同行注释，SC-008）。删除失败（IO/权限）按契约九 §2 抛 `SaveAccessException`。
-   界面层 MUST 提供**二次确认**（`MainWindow.xaml.cs` 的 `OnDeleteSaveClick` / `OnDeleteBackupClick`
-   弹 `MessageBox`），VM 只执行删除；删除**当前正在玩的存档**时，会话先 `Detach()` 再刷新列表。
+   界面层 MUST 提供**二次确认**（存档槽面板 `src/KFL.App/Controls/SaveSlotPanel.xaml.cs` 的
+   `OnDeleteClick` 弹 `MessageBox`），VM 只执行删除；删除**当前正在玩的存档**时，会话先 `Detach()` 再刷新列表。
 2. **列表选择复位**：`RefreshSaves` / `RefreshBackups` 在刷新后若原选中项不在新列表中，
    MUST 将选择**复位**（否则出现「选中项已删、按钮仍指向旧档」的悬空引用，即反馈 12 的
    「回主菜单后偶尔无法读取存档」的成因之一）。
@@ -521,8 +521,8 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
 
 **回写登记（同一提交）**：①规格书 §14 的 2026-10-19 回写块与 §17 裁决块 Q7；②本节；
 ③`src/KFL.Infrastructure/Abstractions/ISaveService.cs`、`src/KFL.Infrastructure/Save/{SaveService,SaveCatalog}.cs`、
-`src/KFL.Presentation/GameSession.cs`、`src/KFL.Presentation/ViewModels/MainViewModel.cs`、
-`src/KFL.App/MainWindow.xaml`、`MainWindow.xaml.cs`；④`tests/KFL.Tests/Rules/RecordingSaveService.cs`。
+`src/KFL.Presentation/GameSession.Persistence.cs`、`src/KFL.Presentation/ViewModels/MainViewModel.Refresh.Saves.cs`、
+`src/KFL.App/Views/SavesTabView.xaml`、`Controls/SaveSlotPanel.xaml.cs`；④`tests/KFL.Tests/Rules/RecordingSaveService.cs`。
 
 ## 增补（2026-10-19，玩家反馈第四轮：读档自愈）
 
@@ -561,6 +561,6 @@ MessagePack `.dat`，可选 JSON `.json`），在**每回合结算后自动覆�
    MUST NOT 静默无反应。
 
 **回写登记（同一提交）**：①规格书文末第四轮裁决块 Q5；②本节；
-③`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`Execute` 的守卫重排 + 删除已不可达的
+③`src/KFL.Presentation/ViewModels/MainViewModel.Commands.cs`（`Execute` 的守卫重排 + 删除已不可达的
 `case "menuload"`）；④端到端验收：`KFL_AUTOSTART=cmd:menuload` 能进档（截图见
 `artifacts/ui-ui-fix-menuload.png`）。

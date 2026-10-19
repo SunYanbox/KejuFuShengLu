@@ -233,7 +233,7 @@ MUST NOT 只写增量（否则会丢历史）。
 **条款 28**：序号一律写底层整数（004 既有约定）；年月用两个 `int` 键（照 `SaveStateDto[1]` / `[2]` 的风格），
 MUST NOT 引入新的日期表示。
 
-**条款 29**：`SaveStateMapper` 的 `MapToDomain`（`src/KFL.Infrastructure/Save/Serialization/SaveStateMapper.cs:77` 附近）
+**条款 29**：`SaveStateMapper` 的 `MapToDomain`（`src/KFL.Infrastructure/Save/Serialization/SaveStateMapper.cs:79` 附近）
 MUST 增加两段复原调用，并 MUST 保持 `Completed` / `PendingUnlocks` 的**元素次序**
 （SC-011 的逐字段比较依赖次序，`SaveStateComparer` 亦依赖）。
 
