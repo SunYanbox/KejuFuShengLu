@@ -1,0 +1,34 @@
+<UserControl x:Class="KFL.App.Views.ConsoleOverlayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 调试控制台浮窗（反引号 ` 开关，需先输入激活序列）。 -->
+    <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="820" Height="{Binding ConsoleHeight}" Margin="12"
+            Background="#F5201F1F" BorderBrush="#FFD8C48A" BorderThickness="2" CornerRadius="4"
+            Visibility="{Binding ConsoleVisible, Converter={StaticResource BoolToVis}}">
+        <DockPanel Margin="8">
+            <TextBlock DockPanel.Dock="Top" Text="调试控制台（反引号 ` 开关）" Foreground="#FFECD9A0" FontWeight="Bold" />
+            <WrapPanel DockPanel.Dock="Bottom">
+                <Button Content="唤醒 ×1" Command="{Binding ConsoleQuickCommand}" CommandParameter="wake 1" />
+                <Button Content="+100 贯" Command="{Binding ConsoleQuickCommand}" CommandParameter="money 100" />
+                <Button Content="治愈" Command="{Binding ConsoleQuickCommand}" CommandParameter="heal" />
+                <Button Content="病故" Command="{Binding ConsoleQuickCommand}" CommandParameter="kill" />
+                <Button Content="清行贿" Command="{Binding ConsoleQuickCommand}" CommandParameter="bribe-reset" />
+                <Button Content="释放" Command="{Binding ConsoleQuickCommand}" CommandParameter="release" />
+                <Button Content="免死" Command="{Binding ConsoleQuickCommand}" CommandParameter="pardon" />
+                <Button Content="解禁令" Command="{Binding ConsoleQuickCommand}" CommandParameter="clearbans" />
+                <Button Content="解全族禁令" Command="{Binding ConsoleQuickCommand}" CommandParameter="clearfamilybans" />
+                <Button Content="帮助" Command="{Binding ConsoleQuickCommand}" CommandParameter="help" />
+                <Button Content="隐藏" Command="{Binding DoCommand}" CommandParameter="console" />
+            </WrapPanel>
+            <TextBox DockPanel.Dock="Bottom" Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}"
+                     Background="#FF101010" Foreground="#FFE8E8E8" FontFamily="Consolas">
+                <TextBox.InputBindings>
+                    <KeyBinding Key="Enter" Command="{Binding ConsoleRunCommand}" />
+                </TextBox.InputBindings>
+            </TextBox>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBlock Text="{Binding ConsoleOutput}" Foreground="#FFD8D8D8" FontFamily="Consolas" TextWrapping="Wrap" />
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

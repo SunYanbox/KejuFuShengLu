@@ -1,0 +1,78 @@
+<UserControl x:Class="KFL.App.Views.SavesTabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:KFL.App.Controls">
+    <!-- 存档与设置页：左列两个存档槽（本机 / 备份），右列存档概览 / 难度 / 命名 / 编年史。 -->
+    <Grid Margin="6">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="340" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0" Margin="0,0,8,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <controls:SaveSlotPanel Grid.Row="0"
+                                    Title="本机存档"
+                                    ItemsSource="{Binding Saves}"
+                                    SelectedItem="{Binding SelectedSave}"
+                                    LoadCommand="{Binding DoCommand}"
+                                    LoadToken="load:selected"
+                                    LoadLabel="读取选中存档"
+                                    DeleteCommand="{Binding DoCommand}"
+                                    DeleteToken="delete"
+                                    DeleteLabel="删除选中存档"
+                                    DeleteNoun="存档"
+                                    DeleteWarning="备份存档不受影响" />
+
+            <controls:SaveSlotPanel Grid.Row="1" Margin="0,6,0,0"
+                                    Title="备份存档（saves\backups，已压缩）"
+                                    ItemsSource="{Binding Backups}"
+                                    SelectedItem="{Binding SelectedBackup}"
+                                    LoadCommand="{Binding DoCommand}"
+                                    LoadToken="loadbackup"
+                                    LoadLabel="读取选中备份"
+                                    DeleteCommand="{Binding DoCommand}"
+                                    DeleteToken="deletebackup"
+                                    DeleteLabel="删除选中备份"
+                                    DeleteNoun="备份"
+                                    DeleteWarning="主存档不受影响" />
+        </Grid>
+
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="12,0,0,0">
+                <TextBlock Text="选中存档概览" Style="{StaticResource SectionHeader}" />
+                <TextBlock Text="{Binding SaveOverviewText}" Style="{StaticResource Monospace}" />
+
+                <TextBlock Text="随时切换难度（次月生效）" Style="{StaticResource SectionHeader}" />
+                <WrapPanel>
+                    <Button Content="简单" Command="{Binding DoCommand}" CommandParameter="difficulty:Easy" />
+                    <Button Content="普通" Command="{Binding DoCommand}" CommandParameter="difficulty:Normal" />
+                    <Button Content="困难" Command="{Binding DoCommand}" CommandParameter="difficulty:Hard" />
+                    <Button Content="地狱" Command="{Binding DoCommand}" CommandParameter="difficulty:Hell" />
+                </WrapPanel>
+
+                <TextBlock Text="当前存档名（另存为用）" Style="{StaticResource SectionHeader}" />
+                <WrapPanel>
+                    <TextBox Text="{Binding SaveName, UpdateSourceTrigger=PropertyChanged}" Width="220" />
+                    <ComboBox ItemsSource="{Binding SaveFormats}" DisplayMemberPath="Text" SelectedItem="{Binding SelectedSaveFormat, Mode=TwoWay}" />
+                </WrapPanel>
+                <WrapPanel>
+                    <Button Content="另存为" Command="{Binding DoCommand}" CommandParameter="saveas" />
+                    <Button Content="改名（标识不变）" Command="{Binding DoCommand}" CommandParameter="rename" />
+                    <Button Content="立即备份" Command="{Binding DoCommand}" CommandParameter="backup" />
+                    <Button Content="返回主菜单" Command="{Binding DoCommand}" CommandParameter="menu" />
+                </WrapPanel>
+
+                <TextBlock Text="自动存档" Style="{StaticResource SectionHeader}" />
+                <TextBlock Text="每回合（月）结算后自动覆盖存档；每 3 回合写一次 saves/backups 备份；退出时自动保存。姓氏在开局时设定。" Style="{StaticResource Secondary}" />
+
+                <TextBlock Text="家族编年史" Style="{StaticResource SectionHeader}" />
+                <TextBlock Text="{Binding ChronicleText}" Style="{StaticResource Monospace}" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
