@@ -273,13 +273,15 @@
 
 - **Decision**：`src/KFL.Rules/Family/LifecycleQueries.cs` 全部 `static`，不写状态、不消费随机，
   覆盖 FR-044 的九项；拒绝原因 `LifecycleRejectReason`：
-  `None` / `InsufficientFunds` / `NotMarriageable` / `NoLowerDegree` / `FertilityWindowClosed` /
+  `None` / `InsufficientFunds` / `NotMarriageable` / `DegreeMarriageBrideIntoOnly` / `FertilityWindowClosed` /
   `AlreadyAppliedThisYear` / `HeadVacant` / `NotIll` / `TreatmentInProgress` / `NoProposal`。
 - **Rationale**：`src/KFL.Rules/Punishment/PunishmentQueries.cs:13-14` 的既有注释逐字
   「MUST NOT 改状态、MUST NOT 消费随机」；FR-044 要求「拒绝原因 MUST 复用 006 引入的既有风格
-  （如 `InsufficientFunds`）并新增 `NotMarriageable` / `NoLowerDegree` / `FertilityWindowClosed` /
+  （如 `InsufficientFunds`）并新增 `NotMarriageable` / `DegreeMarriageBrideIntoOnly` / `FertilityWindowClosed` /
   `AlreadyAppliedThisYear` / `HeadVacant`」，故 `InsufficientFunds` MUST 与 `BribeRejectReason.InsufficientFunds`
   同名同义但**不同枚举**（跨枚举复用会强迫 `KFL.Rules` 的两个子系统互相引用命名空间）。
+  （`DegreeMarriageBrideIntoOnly` 由 2026-10-19 第七轮 Q1 取代原 `NoLowerDegree`：买功名取消了官职与功名前置，
+  唯一剩余的限制是「仅娶入方向」。）
 - **Alternatives**：扩 `BribeRejectReason`——把婚姻拒绝原因塞进行贿枚举，语义漂移。
 
 ## R-21 学业成长与体质写入的取整、clamp 次序

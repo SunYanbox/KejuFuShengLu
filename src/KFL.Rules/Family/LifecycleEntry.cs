@@ -67,17 +67,15 @@ public static partial class LifecycleEntry
             return LifecycleOutcome.Rejected(LifecycleRejectReason.AlreadyAppliedThisMonth);
         }
 
-        // ② 金额：托媒费 + （可选的）买功名费
-        var fee = LifecycleQueries.MatchmakerFee(state);
-        var spouseDegree = buyDegreeMarriage
-            ? LifecycleQueries.LowerDegreeOf(member.CurrentDegree)
-            : null;
-        if (buyDegreeMarriage && spouseDegree is null)
+        // ② 金额：托媒费 + （可选的）买功名费。买功名婚姻**无官职 / 功名前置**，仅限娶入方向
+        // （规格书 §9.3 / §17 2026-10-19 第七轮 Q1、Q2）：0 随机、0 扣费。
+        if (buyDegreeMarriage && direction != MarriageDirection.BrideInto)
         {
-            // 举人 / 白身无更低档 ⇒ 选项灰置：0 次随机、0 扣费
-            return LifecycleOutcome.Rejected(LifecycleRejectReason.NoLowerDegree);
+            return LifecycleOutcome.Rejected(LifecycleRejectReason.DegreeMarriageBrideIntoOnly);
         }
 
+        var fee = LifecycleQueries.MatchmakerFee(state);
+        DegreeLevel? spouseDegree = buyDegreeMarriage ? LifecycleQueries.SpouseDegreeFor(member) : null;
         var degreeFee = spouseDegree is null ? Money.Zero : LifecycleQueries.DegreeMarriageFee(state, member);
         var upfront = fee + degreeFee;
 
@@ -246,12 +244,13 @@ public static partial class LifecycleEntry
         var degreeFee = Money.Zero;
         if (buyDegreeMarriage)
         {
-            if (direction != MarriageDirection.BrideInto || LifecycleQueries.LowerDegreeOf(member.CurrentDegree) is not { } lower)
+            // 买功名婚姻：无官职 / 功名前置，仅限娶入（规格书 §9.3 / §17 2026-10-19 第七轮 Q1、Q2）。
+            if (direction != MarriageDirection.BrideInto)
             {
-                return LifecycleOutcome.Rejected(LifecycleRejectReason.NoLowerDegree);
+                return LifecycleOutcome.Rejected(LifecycleRejectReason.DegreeMarriageBrideIntoOnly);
             }
 
-            degree = lower;
+            degree = LifecycleQueries.SpouseDegreeFor(member);
             degreeFee = LifecycleQueries.DegreeMarriageFee(state, member);
             if (!PaymentPrimitive.CanCover(economy, degreeFee))
             {

@@ -212,14 +212,14 @@ public class LifecycleQueriesTests
         Assert.Equal(LifecycleQueries.DegreeMarriageFee(state, member), feasibility.DegreeMarriageFee);
     }
 
-    /// <summary>非仕族或非官员时买功名选项不可用（FR-017 前置）。</summary>
-    /// <param name="shiStatus">家族是否具仕身份。</param>
-    /// <param name="official">成员是否现任官员。</param>
+    /// <summary>买功名婚姻不要求仕族或现任官员，配偶功名按降一级（举人及以下退一档举人）推算（§17 第七轮 Q2）。</summary>
+    /// <param name="shiStatus">家族是否具仕身份（不再参与判定，保留组合覆盖）。</param>
+    /// <param name="official">成员是否现任官员（只影响价格基准）。</param>
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(false, false)]
-    public void 非仕族或非官员时买功名选项不可用(bool shiStatus, bool official)
+    public void 买功名选项不要求仕族或官员(bool shiStatus, bool official)
     {
         var member = RulesHarness.Member(1, Gender.Male, 30);
         if (official)
@@ -237,9 +237,11 @@ public class LifecycleQueriesTests
 
         var feasibility = LifecycleQueries.MatchmakeFeasibility(state, member, MarriageDirection.BrideInto);
 
-        Assert.False(feasibility.DegreeMarriageAvailable);
-        Assert.Equal(LifecycleRejectReason.NotMarriageable, feasibility.DegreeMarriageRejectReason);
-        Assert.Equal(Money.Zero, feasibility.DegreeMarriageFee);
+        Assert.True(feasibility.DegreeMarriageAvailable);
+        Assert.Equal(LifecycleRejectReason.None, feasibility.DegreeMarriageRejectReason);
+        Assert.True(feasibility.DegreeMarriageFee.IsPositive);
+        Assert.Equal(LifecycleQueries.DegreeMarriageFee(state, member), feasibility.DegreeMarriageFee);
+        Assert.Equal(DegreeLevel.GongShi, LifecycleQueries.SpouseDegreeFor(member));
     }
 
     // ------------------------------------------------------------------ 生育

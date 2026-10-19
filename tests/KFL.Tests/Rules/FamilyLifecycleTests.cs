@@ -213,7 +213,7 @@ public class FamilyLifecycleTests
         Assert.False(Starve(difficulty, (double)GrowthPolicy.FamineDeathChance));
     }
 
-    /// <summary>学业成长：读书与名师加成、付不起名师费退回普通速度、16 岁不遗忘、17 岁起遗忘、患病减半。</summary>
+    /// <summary>学业成长：读书与名师加成、付不起名师费退回普通速度、16 岁不遗忘、17 岁起仅对已指派非读书职业者遗忘、患病减半。</summary>
     [Fact]
     public void 学业成长按配置生效且名师费不足时按普通速度()
     {
@@ -235,13 +235,21 @@ public class FamilyLifecycleTests
 
         var sixteen = RulesHarness.Member(1, Gender.Male, GrowthPolicy.ForgetAgeThreshold);
         sixteen.Study = 30;
+        sixteen.Occupation = Occupation.Farming;
         GrowthAdvance.Run(State(RulesHarness.FamilyOf(sixteen)), RulesHarness.Date);
         Assert.Equal(30, sixteen.Study);
 
+        // 未指派职业（无生计可荒废）不遗忘：学业不会逐月无端倒退（§17 2026-10-19 第七轮 Q6）。
         var seventeen = RulesHarness.Member(1, Gender.Male, GrowthPolicy.ForgetAgeThreshold + 1);
         seventeen.Study = 30;
         GrowthAdvance.Run(State(RulesHarness.FamilyOf(seventeen)), RulesHarness.Date);
-        Assert.Equal(29, seventeen.Study);
+        Assert.Equal(30, seventeen.Study);
+
+        var farming = RulesHarness.Member(2, Gender.Male, GrowthPolicy.ForgetAgeThreshold + 1);
+        farming.Study = 30;
+        farming.Occupation = Occupation.Farming;
+        GrowthAdvance.Run(State(RulesHarness.FamilyOf(farming)), RulesHarness.Date);
+        Assert.Equal(29, farming.Study);
 
         var illStudent = Student(RulesHarness.Guan(1000));
         illStudent.Person.Status |= StatusFlag.Ill;

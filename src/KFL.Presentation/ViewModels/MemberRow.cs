@@ -86,7 +86,8 @@ public sealed class MemberRow
 
         if (person.Status.HasFlag(StatusFlag.MarriedOut))
         {
-            badges.Add("外嫁");
+            // 方向取词（§12.2 / §17 第七轮 Q3）：本人出嫁 ⇒「外嫁」；外来夫婿 ⇒「女婿」。
+            badges.Add(person.Gender == Gender.Male ? "女婿" : "外嫁");
         }
 
         BadgeText = badges.Count > 0 ? string.Join(" ｜ ", badges) : string.Empty;

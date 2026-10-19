@@ -22,12 +22,15 @@ public static class GrowthPolicy
     public const decimal TutorStudyBonusPerMonth = 2.25m;
 
     /// <summary>名师月费（贯；再乘支出系数）。</summary>
-    public const int TutorFeeGuanPerMonth = 5;
+    public const int TutorFeeGuanPerMonth = 2;
 
     /// <summary>士出身藏书加成（乘区）。</summary>
     public const decimal ScholarStudyMultiplier = 1.10m;
 
-    /// <summary>遗忘月扣减（**正值**，写入时取负）。</summary>
+    /// <summary>
+    /// 遗忘月扣减（**正值**，写入时取负）。仅施加于「**已指派非读书职业**」的成员
+    /// （未指派不构成「未读书」，规格书 §17 第七轮 Q5）。
+    /// </summary>
     public const decimal ForgetPerMonth = 0.5m;
 
     /// <summary>遗忘的年龄门槛：<c>AgeAt &gt; 本值</c> 才遗忘（16 岁不遗忘、17 岁起遗忘）。</summary>

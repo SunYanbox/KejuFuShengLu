@@ -38,7 +38,7 @@
 
 | 项 | 值（配置成员） |
 | --- | --- |
-| 费用 | `MarriagePolicy.MatchmakerFeeGuan`（5 贯）`× DifficultyRates.ExpenseFactor(Difficulty)` |
+| 费用 | `MarriagePolicy.MatchmakerFeeGuan`（3 贯）`× DifficultyRates.ExpenseFactor(Difficulty)` |
 | 支付 | 现银 + 储蓄**全额**；不足 ⇒ 拒绝（`InsufficientFunds`），**随机 0 次**、不转贷款、不记 0 金额条目 |
 | 成功率 | `MarriagePolicy.MatchmakerSuccessChance`（50%），承接方向**不影响**成功率（Assumption 16） |
 | 失败 | 不退费；除 ④a 的当月名额记录外 `Lifecycle` 无变化；同一成员同一月至多一次（名额落 `FamilyLifecycleState.MatchmakeApplications`，只在扣款成功后追加；下次尝试自然落在下月） |
@@ -107,9 +107,9 @@
 
 | 阶层 | 聘礼（`...GiftGuan`） | 嫁妆（`...DowryGuan`） |
 | --- | --- | --- |
-| `Commoner` 平民 | 10 | 20 |
-| `Scholar` 士人 | 20 | 30 |
-| `Official` 仕族 | 50 | 100 |
+| `Commoner` 平民 | 6 | 12 |
+| `Scholar` 士人 | 12 | 18 |
+| `Official` 仕族 | 30 | 60 |
 
 方向语义（`x` = 对方阶层金额，`y` = 本家阶层金额，均 `× ExpenseFactor`）：
 
@@ -135,12 +135,17 @@
 `LifecycleQueries.MatchmakeFeasibility` 的 `BetrothalGift*` / `Dowry*` 只作**金额预览**
 （可付性由调用方拿 `Treasury.Cash + Savings` 自行比较，`Available` 仍只表达资格）。
 
-**买功名婚姻的额外项**（FR-017/FR-018）：
+**买功名婚姻的额外项**（FR-017/FR-018；2026-10-19 第七轮 Q1/Q2 取消官职与功名前置）：
 
-- 娶入且本家族 `HasShiStatus` 且我方成员 `Rank != null`：额外支出 `DegreeMarriageFeePaid`
-  = `SalaryTable.AnnualSalaryGuan(level) × MarriagePolicy.DegreeMarriageFeeRatio(1.50)`；
-  配偶功名降一级（进士 → 贡士 → 举人），降级后学业按 `贡士 N(60,10)` / `举人 N(50,10)` 重掷；
-  `DegreeRecord(cause: Initial)` 追加。已是白身 ⇒ 拒绝 `NoLowerDegree`（灰置，不扣费、0 随机）。
+- **无前置**：任一可婚配成员皆可勾选；**仅娶入**可用，嫁出方向 ⇒ `DegreeMarriageBrideIntoOnly`
+  （0 扣费、0 次随机、0 账本条目）。
+- 配偶功名 = `LifecycleQueries.SpouseDegreeFor(member)` = `LowerDegreeOf(CurrentDegree) ?? JuRen`
+  （进士 → 贡士 → 举人；举人与白身一律 **举人**），降级后学业按 `贡士 N(60,10)` / `举人 N(50,10)` 重掷；
+  `DegreeRecord(cause: Initial)` 追加。
+- 费用（`LifecycleQueries.DegreeMarriageFee`）：我方成员 `Rank != null` ⇒
+  `SalaryTable.AnnualSalaryGuan(level) × MarriagePolicy.DegreeMarriageFeeRatio(1.50)`；
+  `Rank == null` ⇒ **档位价**（`DegreeMarriageGongShiFeeGuan` = 180 贯 / `DegreeMarriageJuRenFeeGuan` = 60 贯，
+  再乘支出系数）；娶入记 `DegreeMarriageFeePaid`。
 - 嫁出且外嫁者本人 `Rank != null`：额外收入 `DegreeMarriageDowryReceived`
   = 其 `AnnualSalaryGuan(level) × 1.50`。
 
@@ -152,6 +157,8 @@
    MUST NOT 重回在册（FR-032、Assumption 7）。
 4. 丧偶一律经 `Family.EndMarriage`（`Family.cs:280`）；成婚一律经 `Family.Marry`（`:245`）。
 5. 只剩外嫁成员时 MUST NOT 判绝嗣（绝嗣不在本特性，FR-046）。
+6. **徽记文案**（2026-10-19 第七轮 Q3）：同一 `MarriedOut` 位按性别分读——本家出嫁女性显示「外嫁」，
+   经 `Family.AddOutsider` 引入的男性婿显示「女婿」；派生集合口径不因文案而变。
 
 ## 7. 生育（`LifecycleEntry.ApplyChildbirth` + ⑧-b）
 

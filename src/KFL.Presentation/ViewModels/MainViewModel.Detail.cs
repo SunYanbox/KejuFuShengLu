@@ -182,7 +182,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (person.Status.HasFlag(StatusFlag.AwaitingPost)) { badges.Add($"待阙（余 {person.Timers.AwaitingPostRemainingMonths ?? 0} 月）"); }
         if (person.Status.HasFlag(StatusFlag.ExamBanned)) { badges.Add("禁考"); }
         if (person.Status.HasFlag(StatusFlag.PromotionBanned)) { badges.Add("禁升"); }
-        if (person.Status.HasFlag(StatusFlag.MarriedOut)) { badges.Add("外嫁"); }
+        // 方向取词（§12.2 / §17 第七轮 Q3）：本人出嫁 ⇒「外嫁」；嫁出婚姻随女入籍的外来夫婿 ⇒「女婿」。
+        if (person.Status.HasFlag(StatusFlag.MarriedOut)) { badges.Add(person.Gender == Gender.Male ? "女婿" : "外嫁"); }
         if (person.Status.HasFlag(StatusFlag.Retired)) { badges.Add("致仕"); }
         if (person.Status.HasFlag(StatusFlag.Deceased)) { badges.Add("身故"); }
         return badges.Count > 0 ? string.Join(" ｜ ", badges) : "（无）";

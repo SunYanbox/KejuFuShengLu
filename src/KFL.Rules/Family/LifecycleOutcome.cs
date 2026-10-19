@@ -39,8 +39,8 @@ public enum LifecycleRejectReason
     /// <summary>现银 + 储蓄不足（MUST NOT 转贷款；MUST NOT 记 0 金额条目）。</summary>
     InsufficientFunds = 2,
 
-    /// <summary>买功名婚姻无更低档功名（举人 / 白身）⇒ 选项灰置；0 随机、0 扣费。</summary>
-    NoLowerDegree = 3,
+    /// <summary>买功名婚姻仅限**娶入**方向（嫁出侧配偶不入本家籍，为其买功名只利他人）。</summary>
+    DegreeMarriageBrideIntoOnly = 3,
 
     /// <summary>女方不在生育窗口（16~45 岁）。</summary>
     FertilityWindowClosed = 4,

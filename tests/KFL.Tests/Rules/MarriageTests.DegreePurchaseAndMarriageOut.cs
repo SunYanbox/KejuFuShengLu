@@ -50,26 +50,20 @@ public partial class MarriageTests
         Assert.Equal(DegreeChangeCause.Initial, spouse.DegreeHistory[0].Cause);
     }
 
-    /// <summary>举人 / 白身无更低档 ⇒ 买功名选项灰置：纯拒绝、不扣费、0 次随机。</summary>
-    /// <param name="memberDegree">我方成员当前功名。</param>
-    [Theory]
-    [InlineData(DegreeLevel.BaiShen)]
-    [InlineData(DegreeLevel.JuRen)]
-    public void 无更低功名时买功名选项灰置(DegreeLevel memberDegree)
+    /// <summary>买功名婚姻无官职 / 功名前置：白身成员也可为配偶买举人（§17 2026-10-19 第七轮 Q1、Q2）。</summary>
+    [Fact]
+    public void 白身成员无需官职即可买功名婚姻()
     {
-        var member = RulesHarness.Official(1, MarriagePolicy.PressureHighestLevel, age: 30);
-        if (memberDegree != DegreeLevel.BaiShen)
-        {
-            member.AppendDegree(new DegreeRecord(memberDegree, null, RulesHarness.Date, DegreeChangeCause.Initial));
-        }
-
+        var member = RulesHarness.Member(1, Gender.Male, age: 30);
         var state = State(
             Difficulty.Normal,
             Origin.Artisan,
-            RulesHarness.Guan(SalaryTable.AnnualSalaryGuan(MarriagePolicy.PressureHighestLevel) * 4m),
-            true,
+            RulesHarness.Guan(MarriagePolicy.DegreeMarriageJuRenFeeGuan * 4m),
+            false,
             member);
-        var random = new ScriptedRandom();
+
+        var random = new ScriptedRandom(SuccessRoll, RollIn(MarriageClass.Commoner, WeightsOf(state)));
+        var expectedFee = Money.FromGuan(MarriagePolicy.DegreeMarriageJuRenFeeGuan);
 
         var outcome = LifecycleEntry.TryMatchmake(
             state,
@@ -79,17 +73,46 @@ public partial class MarriageTests
             new FixedNameGenerator(),
             buyDegreeMarriage: true);
 
+        Assert.True(outcome.Accepted, $"reject={outcome.RejectReason}; amount={outcome.Amount}");
+        Assert.Equal(-expectedFee, TotalOf(state, LedgerCategory.DegreeMarriageFeePaid));
+
+        var spouse = state.Family.SpouseOf(member.Id);
+        Assert.NotNull(spouse);
+        Assert.Equal(DegreeLevel.JuRen, spouse.CurrentDegree);
+    }
+
+    /// <summary>买功名婚姻仅限娶入：嫁出方向纯拒绝、0 扣费、0 次随机。</summary>
+    [Fact]
+    public void 嫁出方向不可买功名()
+    {
+        var member = RulesHarness.Member(1, Gender.Female, age: 20);
+        var state = State(
+            Difficulty.Normal,
+            Origin.Artisan,
+            RulesHarness.Guan(MarriagePolicy.DegreeMarriageJuRenFeeGuan * 4m),
+            false,
+            member);
+        var random = new ScriptedRandom();
+
+        var outcome = LifecycleEntry.TryMatchmake(
+            state,
+            member,
+            MarriageDirection.GroomOut,
+            random,
+            new FixedNameGenerator(),
+            buyDegreeMarriage: true);
+
         Assert.False(outcome.Accepted);
-        Assert.Equal(LifecycleRejectReason.NoLowerDegree, outcome.RejectReason);
+        Assert.Equal(LifecycleRejectReason.DegreeMarriageBrideIntoOnly, outcome.RejectReason);
         Assert.Equal(Money.Zero, outcome.Amount);
         Assert.Null(outcome.Entry);
         Assert.Equal(0, random.DoublesRequested);
         Assert.Equal(0, random.IntsRequested);
         Assert.Empty(state.Economy.Ledger.Entries);
 
-        var feasibility = LifecycleQueries.MatchmakeFeasibility(state, member, MarriageDirection.BrideInto);
+        var feasibility = LifecycleQueries.MatchmakeFeasibility(state, member, MarriageDirection.GroomOut);
         Assert.False(feasibility.DegreeMarriageAvailable);
-        Assert.Equal(LifecycleRejectReason.NoLowerDegree, feasibility.DegreeMarriageRejectReason);
+        Assert.Equal(LifecycleRejectReason.DegreeMarriageBrideIntoOnly, feasibility.DegreeMarriageRejectReason);
     }
 
     // ------------------------------------------------------------------ 嫁出（§9.2 第 2 行 / §9.3 第 2 行）
