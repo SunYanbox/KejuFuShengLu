@@ -1,0 +1,51 @@
+<UserControl x:Class="KFL.App.Views.AchievementsTabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 成就页：表头 + 可滚动成就明细（系列 / 编号 / 名称 / 状态 / 条件 / 达成于）。 -->
+    <DockPanel Margin="6">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <TextBlock Text="成就一览" Style="{StaticResource SectionHeader}" />
+            <TextBlock Text="{Binding AchievementSummary}" />
+        </StackPanel>
+        <Grid DockPanel.Dock="Top" Margin="4,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="90" />
+                <ColumnDefinition Width="190" />
+                <ColumnDefinition Width="70" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="280" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="系列" FontWeight="Bold" />
+            <TextBlock Grid.Column="1" Text="编号" FontWeight="Bold" />
+            <TextBlock Grid.Column="2" Text="名称" FontWeight="Bold" />
+            <TextBlock Grid.Column="3" Text="状态" FontWeight="Bold" />
+            <TextBlock Grid.Column="4" Text="达成条件" FontWeight="Bold" />
+            <TextBlock Grid.Column="5" Text="达成于（难度 年/月 · 本机时刻）" FontWeight="Bold" />
+        </Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Achievements}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="4,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="190" />
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="280" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding Series}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Code}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Name}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Column="3" Text="{Binding StateText}" />
+                            <TextBlock Grid.Column="4" Text="{Binding Description}" TextWrapping="Wrap" Foreground="#FF444444" />
+                            <TextBlock Grid.Column="5" Text="{Binding Detail}" FontSize="12" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

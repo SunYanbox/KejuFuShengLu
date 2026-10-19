@@ -1,0 +1,115 @@
+<UserControl x:Class="KFL.App.Controls.StatChartCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 统计页一张图：标题 / 摘要 / Y 轴固定 + 绘图区独立横向滚动 / 悬停热区 / 图例。
+         DataContext 为 ChartFrame，由调用方（统计页 ItemsControl）传入。 -->
+    <Border BorderBrush="#FFBFAE8E" BorderThickness="1" CornerRadius="3"
+            Margin="0,0,0,8" Padding="8" Background="{StaticResource PanelBrush}">
+        <StackPanel>
+            <TextBlock Text="{Binding Title}" FontWeight="Bold" />
+            <TextBlock Text="{Binding Summary}" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
+            <!-- Y 轴固定（不随横向滚动走掉），绘图区单独横向滚动（反馈 6） -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="64" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Canvas Grid.Column="0" Width="64" Height="{Binding Height}" ClipToBounds="False">
+                    <Line X1="63" Y1="0" X2="63" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                    <ItemsControl ItemsSource="{Binding YTicks}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="2" />
+                                <Setter Property="Canvas.Top" Value="{Binding Position}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Text}" Margin="0,-9,0,0" FontSize="12" Foreground="#FF5A5A5A" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Canvas>
+                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                              Loaded="OnChartScrollLoaded" SizeChanged="OnChartScrollLoaded">
+                    <Canvas Width="{Binding Width}" Height="{Binding Height}" Margin="-64,0,0,0" ClipToBounds="False">
+                        <Line X1="64" Y1="0" X2="64" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                        <Line X1="64" Y1="{Binding Height}" X2="{Binding Width}" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
+                        <ItemsControl ItemsSource="{Binding Series}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Polyline Points="{Binding Points}" Stroke="{Binding BrushKey, Converter={StaticResource BrushKey}}"
+                                              StrokeThickness="2" Fill="Transparent" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding XTicks}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Canvas.Left" Value="{Binding Position}" />
+                                    <Setter Property="Canvas.Top" Value="{Binding DataContext.XTickTop, RelativeSource={RelativeSource AncestorType=Canvas}}" />
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Text}" FontSize="12" Foreground="#FF5A5A5A" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <!-- 悬停热区：透明矩形 + ToolTip，显示该月各系列数值（反馈 5） -->
+                        <ItemsControl ItemsSource="{Binding Hovers}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                    <Setter Property="Canvas.Top" Value="0" />
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Rectangle Width="{Binding Width}" Height="{Binding DataContext.Height, RelativeSource={RelativeSource AncestorType=Canvas}}"
+                                               Fill="Transparent" ToolTip="{Binding Text}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Canvas>
+                </ScrollViewer>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Series}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,10,0">
+                            <Rectangle Width="16" Height="4" VerticalAlignment="Center"
+                                       Fill="{Binding BrushKey, Converter={StaticResource BrushKey}}" />
+                            <TextBlock Text="{Binding Name}" Margin="4,0,0,0" FontSize="13" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Border>
+</UserControl>

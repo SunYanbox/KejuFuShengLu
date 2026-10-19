@@ -1,0 +1,17 @@
+<UserControl x:Class="KFL.App.Views.EndingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 结局遮罩层：家族绝嗣后显示编年史，提供读档 / 回主菜单。 -->
+    <Border Background="#FFFDF6E9" Visibility="{Binding IsEnded, Converter={StaticResource BoolToVis}}">
+        <StackPanel Width="760" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="家族绝嗣 · 结局" FontSize="28" FontWeight="Bold" Foreground="#FF8B1A1A" HorizontalAlignment="Center" />
+            <ScrollViewer Height="430" Margin="0,12,0,12">
+                <TextBlock Text="{Binding ChronicleText}" Style="{StaticResource Monospace}" />
+            </ScrollViewer>
+            <WrapPanel HorizontalAlignment="Center">
+                <Button Content="读档" Command="{Binding DoCommand}" CommandParameter="load:selected" />
+                <Button Content="回主菜单" Command="{Binding DoCommand}" CommandParameter="menu" />
+            </WrapPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

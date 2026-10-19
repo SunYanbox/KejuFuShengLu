@@ -1,0 +1,36 @@
+<UserControl x:Class="KFL.App.Views.StartMenuView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 开局菜单：出身 / 难度 / 姓氏 / 种子 + 读取已有存档。 -->
+    <Border Background="#FFFDF6E9" Visibility="{Binding IsMenuVisible, Converter={StaticResource BoolToVis}}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10">
+            <StackPanel Width="560" VerticalAlignment="Top" HorizontalAlignment="Center">
+                <TextBlock Text="科举浮生录" FontSize="34" FontWeight="Bold" Foreground="#FF8B1A1A" HorizontalAlignment="Center" />
+                <TextBlock Text="一姓之兴衰，自此月始。" HorizontalAlignment="Center" Margin="0,4,0,16" />
+
+                <TextBlock Text="出身" Style="{StaticResource SectionHeader}" />
+                <ComboBox ItemsSource="{Binding Origins}" DisplayMemberPath="Text" SelectedItem="{Binding SelectedOrigin}" />
+
+                <TextBlock Text="难度" Style="{StaticResource SectionHeader}" />
+                <ComboBox ItemsSource="{Binding Difficulties}" DisplayMemberPath="Text" SelectedItem="{Binding SelectedDifficulty}" />
+
+                <TextBlock Text="姓氏（可留空随机）" Style="{StaticResource SectionHeader}" />
+                <TextBox Text="{Binding NewSurname, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="随机种子" Style="{StaticResource SectionHeader}" />
+                <TextBox Text="{Binding NewSeed, UpdateSourceTrigger=PropertyChanged}" />
+
+                <Button Content="开局" Command="{Binding StartGameCommand}" Margin="0,14,0,0" MinWidth="140" HorizontalAlignment="Center" />
+
+                <TextBlock Text="读取已有存档" Style="{StaticResource SectionHeader}" Margin="0,14,0,0" />
+                <ListBox ItemsSource="{Binding MenuSaves}" DisplayMemberPath="Text" Height="120"
+                         SelectedItem="{Binding SelectedMenuSave, Mode=TwoWay}" />
+                <Button Content="读取选中存档" Command="{Binding DoCommand}" CommandParameter="menuload"
+                        Margin="0,6,0,0" HorizontalAlignment="Left" />
+                <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding MenuSaveOverviewText}" Style="{StaticResource Monospace}" />
+                </ScrollViewer>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

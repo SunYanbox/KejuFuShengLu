@@ -1,0 +1,18 @@
+<UserControl x:Class="KFL.App.Controls.SaveSlotPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <!-- 存档槽列表（本机存档 / 备份存档两处共用）：
+         标题 + 列表 + 读取 / 删除按钮，删除带二次确认（玩家反馈 9）。 -->
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Title, ElementName=Root}"
+                   Style="{StaticResource SectionHeader}" />
+        <Button DockPanel.Dock="Bottom" Content="{Binding DeleteLabel, ElementName=Root}" Margin="0,2,0,0"
+                Foreground="#FF8B1A1A" Click="OnDeleteClick" />
+        <Button DockPanel.Dock="Bottom" Content="{Binding LoadLabel, ElementName=Root}" Margin="0,2,0,0"
+                Command="{Binding LoadCommand, ElementName=Root}"
+                CommandParameter="{Binding LoadToken, ElementName=Root}" />
+        <ListBox ItemsSource="{Binding ItemsSource, ElementName=Root}" DisplayMemberPath="Text"
+                 SelectedItem="{Binding SelectedItem, ElementName=Root, Mode=TwoWay}" />
+    </DockPanel>
+</UserControl>
