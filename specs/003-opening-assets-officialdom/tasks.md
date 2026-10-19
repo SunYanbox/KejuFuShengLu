@@ -459,3 +459,19 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1309 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 
+## 回写范围登记（2026-10-19，玩家反馈第五轮：买入成员标记、纪事买入信息与家主支脉视图）
+
+> 本节由第五轮玩家反馈（3 条）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §17 裁决块（2026-10-19，玩家反馈第五轮）与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 买入成员身份**派生自账本**（`PersonBought` 事件条目的 `PersonId`；组内通婚所生子女不入集，不新增成员字段/不改存档形状） | `科举浮生录规格书.md` §12.2、§17 Q1；`specs/003-.../spec.md` 增补 §1；`src/KFL.Rules/Family/GenealogyQueries.cs`（新） |
+| 卡片徽章行首位新增「买入」+ 开关 `ShowPurchaseMarks`（默认开） | 规格书 §12.2、§17 Q2；`spec.md` 增补 §2；`src/KFL.Presentation/ViewModels/{MemberRow.cs,MainViewModel.cs,MainViewModel.Tree.cs}` |
+| 纪事买入行带出姓名/性别/年龄（`Display.PersonBrief`；月度采购与立即购买两处） | 规格书 §12.3、§17 Q3；`spec.md` 增补 §3；`src/KFL.Presentation/{Display.cs,GameSession.Actions.Family.cs,GameSession.Turns.cs}` |
+| 「仅显示家主支脉」开关 `ShowHeadBranchOnly`（默认关；直系祖先 + 直系后代 + 其偶，不含旁系；空家主 = 不过滤） | 规格书 §12.1、§17 Q4；`spec.md` 增补 §4；`src/KFL.Rules/Family/GenealogyQueries.cs`（新）、`src/KFL.Presentation/ViewModels/MainViewModel.Tree.cs` |
+| 家谱开关行两个 CheckBox（买入标记 `#FF8B1A1A` / 仅家主支脉 `#FF00695C`，均 TwoWay + ToolTip） | `spec.md` 增补 §5；`src/KFL.App/Views/FamilyTabView.xaml` |
+| 派生查询的规则层覆盖 | `spec.md` 增补 §1/§4；`tests/KFL.Tests/Rules/GenealogyQueriesTests.cs`（新，5 例：空集 / 买入者入集而其所生子女不入 / 多次买入逐条入集 / 支脉含祖先·后代·配偶不含旁系 / 家主空缺为空集） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1319 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+
