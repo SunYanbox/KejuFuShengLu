@@ -12,11 +12,11 @@
         </Grid.ColumnDefinitions>
 
         <!-- 家谱 ↔ 成员详情的分隔条（玩家反馈 9）：左右拖动即可扩大家谱可见范围。
-             家谱列另受 MaxWidth 限制（窗口宽的 80%，见 OnTreeGridSizeChanged），
-             保证分隔条始终留在窗口内、随时可以拖回来。 -->
-        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                      Background="#FFD8CFBB" ResizeBehavior="PreviousAndNext"
-                      ToolTip="左右拖动以调整家谱与成员详情栏的宽度（家谱最多占窗口宽度的 80%）。" />
+             用 Thumb 自行计算列宽（而不是 GridSplitter），才能把家谱列限制在
+             「窗口宽的 80%」且给右侧动作栏与成员详情留足空间——分隔条始终留在窗口内。 -->
+        <Thumb Grid.Column="1" Width="6" Cursor="SizeWE" Background="#FFD8CFBB"
+               DragDelta="OnSplitterDrag"
+               ToolTip="左右拖动以调整家谱与成员详情栏的宽度（家谱最多占窗口宽度的 80%）。" />
 
         <DockPanel Grid.Column="0" Margin="4">
             <TextBlock DockPanel.Dock="Top" Text="家谱（一行一代人 · 点击方块选中）" Style="{StaticResource SectionHeader}"

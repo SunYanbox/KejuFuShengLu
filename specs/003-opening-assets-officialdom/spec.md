@@ -625,12 +625,14 @@ Q1~Q8；②本节；③`src/KFL.Rules/Career/PromotionForecast.cs`（新）、`s
 
 1. **缩放工具条**：「－ / ＋」改为图形绘制（12×2 矩形 / 12×12 十字），两按钮同宽高 `28×22`、
    `MinWidth=28`、符号精确居中；「重置视图」同高。全角字符的字形基线在不同字体下不居中，故不再使用。
-2. **分隔条限位**：家谱列 `MaxWidth` 动态钉为**窗口宽度的 80%**（`MinTreeWidth = 240`），
-   由 `OnTreeGridSizeChanged` → `ClampTreeColumn()` 维护；`GridSplitter` 认 `ColumnDefinition.MaxWidth`，
-   故分隔条始终留在窗口内，MUST NOT 被拖出可见范围。
+2. **分隔条限位**：分隔条改用 **`Thumb` 自行计算列宽**（`GridSplitter` 拖动时不认按窗口比例算出的上限）：
+   家谱列宽 = `clamp(当前宽 + 横向位移, 240, min(窗口宽 × 80%, 窗口宽 − 370 − 6 − 240))`；
+   窗口变窄时由 `OnTreeGridSizeChanged` 一并收回，故分隔条**始终留在窗口内**，MUST NOT 被拖出可见范围。
 3. **关系行换行**：每行改为两列 `Grid`（标题 76 + 链接 `*`），内层 `WrapPanel` 因此在有限宽度下换行；
    子女 / 兄弟姐妹过多时向下折行，MUST NOT 横向溢出成员详情栏。
-4. **成员详情状态抬头**：`MainViewModel` 新增 `DetailHeadline` / `DetailBrushKey`（`SetDetailHeadline`），
+4. **关系按钮带出状态**：状态非「在册」时按钮文字为 `{称谓} {姓名} · {状态}`
+   （如「五儿子 曹复礼 · 身故」「二女儿 曹清照 · 患病」）；悬浮提示仍给出完整状态。
+5. **成员详情状态抬头**：`MainViewModel` 新增 `DetailHeadline` / `DetailBrushKey`（`SetDetailHeadline`），
    文本为 `{姓名}（{性别}，{年龄} 岁）｜ {状态}`（归档时追加「｜ 已归档」），
    颜色取 `FamilyRelations.BrushKeyOf(person, "InkBrush")`——与卡片关系按钮同口径，正常态为墨色。
    `RefreshDetail()` 与「回主菜单」的清空路径都会同步复位该抬头。

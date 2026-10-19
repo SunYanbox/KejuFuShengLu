@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -31,6 +32,15 @@ public partial class FamilyTabView : UserControl
 
     /// <summary>家谱列最多占窗口宽度的比例：再宽就会把分隔条挤出可见范围，拖不回来。</summary>
     private const double MaxTreeWidthRatio = 0.80d;
+
+    /// <summary>右侧动作栏的固定宽度（与 XAML 第 3 列一致）。</summary>
+    private const double ActionsWidth = 370d;
+
+    /// <summary>分隔条自身宽度（与 XAML 第 1 列一致）。</summary>
+    private const double SplitterWidth = 6d;
+
+    /// <summary>成员详情列的最小宽度（与 XAML 第 2 列 MinWidth 一致）。</summary>
+    private const double MinDetailWidth = 240d;
 
     private bool _dragging;
     private Point _dragOrigin;
@@ -138,15 +148,30 @@ public partial class FamilyTabView : UserControl
     }
 
     /// <summary>
-    /// 限制家谱列宽度（第十轮玩家反馈）：<c>GridSplitter</c> 认 <c>ColumnDefinition.MaxWidth</c>，
-    /// 因此把家谱列的上限钉在「窗口宽度的 80%」即可保证分隔条始终留在窗口内、随时能拖回来。
+    /// 分隔条拖动（第十轮玩家反馈）：<b>自己</b>算列宽而不用 <c>GridSplitter</c>，
+    /// 因为 <c>GridSplitter</c> 拖动时不认 80% 这类按窗口比例算出来的上限。
+    /// 上限取「窗口宽的 80%」与「扣掉动作栏、分隔条与详情列最小宽度后剩下的空间」的较小者，
+    /// 故分隔条**永远留在窗口内**，随时能拖回来。
     /// </summary>
-    private void OnTreeGridSizeChanged(object sender, SizeChangedEventArgs e) => ClampTreeColumn();
-
-    private void ClampTreeColumn()
+    private void OnSplitterDrag(object sender, DragDeltaEventArgs e)
     {
-        var max = Math.Max(MinTreeWidth, TreeGrid.ActualWidth * MaxTreeWidthRatio);
-        TreeColumn.MaxWidth = max;
+        var max = MaxTreeWidth();
+        var width = Math.Clamp(TreeColumn.ActualWidth + e.HorizontalChange, MinTreeWidth, max);
+        TreeColumn.Width = new GridLength(width);
+    }
+
+    private double MaxTreeWidth()
+    {
+        var available = TreeGrid.ActualWidth;
+        var byRatio = available * MaxTreeWidthRatio;
+        var bySpace = available - ActionsWidth - SplitterWidth - MinDetailWidth;
+        return Math.Max(MinTreeWidth, Math.Min(byRatio, bySpace));
+    }
+
+    /// <summary>窗口变窄时把家谱列一并收回到上限内（否则分隔条会被挤到窗口外）。</summary>
+    private void OnTreeGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var max = MaxTreeWidth();
         if (TreeColumn.ActualWidth > max)
         {
             TreeColumn.Width = new GridLength(max);
