@@ -150,7 +150,7 @@ public static class IllnessAdvance
             return;
         }
 
-        var (infectionMultiplier, _) = DominantMultipliers(person);
+        var (infectionMultiplier, _, _) = DominantMultipliers(person);
         var health = Math.Clamp(person.Health, IllnessPolicy.HealthFloor, IllnessPolicy.HealthCeiling);
         var chance = (IllnessPolicy.InfectionChanceAtFullHealth
                       + ((IllnessPolicy.InfectionChanceAtFloorHealth - IllnessPolicy.InfectionChanceAtFullHealth)
@@ -176,17 +176,28 @@ public static class IllnessAdvance
     /// <summary>清除判定：返回 <c>true</c> = 概率已钳到 1（必愈且 MUST NOT 消费随机）。</summary>
     private static bool Recovers(GameState state, Person person, bool treated, out double chance)
     {
-        var (_, recoveryMultiplier) = DominantMultipliers(person);
+        var breakdown = BreakdownOf(person, state.CurrentDate, treated);
+        chance = (double)breakdown.Rate;
+        return breakdown.Rate >= 1m;
+    }
+
+    /// <summary>自愈率逐项拆解（与 <see cref="Recovers"/> 同一份算式；供界面展示）。</summary>
+    internal static HealRateBreakdown BreakdownOf(Person person, GameDate date, bool treated)
+    {
+        var (_, recoveryMultiplier, talentName) = DominantMultipliers(person);
         var health = person.Health;
 
-        var raw = treated
-            ? (((health * IllnessPolicy.TreatedRecoveryCoefficient / 100m)
-                + IllnessPolicy.TreatedRecoveryOffset) * recoveryMultiplier)
-            : health * IllnessPolicy.BaseRecoveryCoefficient / 100m * recoveryMultiplier;
+        var basePart = treated
+            ? (health * IllnessPolicy.TreatedRecoveryCoefficient / 100m) + IllnessPolicy.TreatedRecoveryOffset
+            : health * IllnessPolicy.BaseRecoveryCoefficient / 100m;
 
-        var total = raw + ClearBonus(person.AgeAt(state.CurrentDate));
-        chance = Math.Min(1d, (double)total);
-        return chance >= 1d;
+        var raw = basePart * recoveryMultiplier;
+        var ageBonus = ClearBonus(person.AgeAt(date));
+        var debugBonus = DebugOverrides.HealRateBonusOf(person.Id);
+        var rate = Math.Min(1m, Math.Max(0m, raw + ageBonus + debugBonus));
+
+        return new HealRateBreakdown(
+            health, treated, basePart, recoveryMultiplier, talentName, raw, ageBonus, debugBonus, rate);
     }
 
     /// <summary>三段年龄增益（<b>加算</b>在「基础 × 天赋乘数」之上）：<c>3~12 ⇒ +0.60</c>、<c>12~24 ⇒ +0.30</c>、其余 0。</summary>
@@ -201,18 +212,20 @@ public static class IllnessAdvance
     }
 
     /// <summary>主导天赋单点：四项天赋<b>最高</b>的一项，并列按 农 → 商 → 仕 → 工 取先者（T053）。</summary>
-    private static (decimal Infection, decimal Recovery) DominantMultipliers(Person person)
+    private static (decimal Infection, decimal Recovery, string Name) DominantMultipliers(Person person)
     {
         var talents = person.Talents;
         var best = talents.Agriculture;
         var infection = IllnessPolicy.TalentMultiplierFarmer;
         var recovery = IllnessPolicy.FarmerRecoveryMultiplier;
+        var name = "农";
 
         if (talents.Commerce > best)
         {
             best = talents.Commerce;
             infection = IllnessPolicy.TalentMultiplierMerchant;
             recovery = IllnessPolicy.MerchantRecoveryMultiplier;
+            name = "商";
         }
 
         if (talents.Officialdom > best)
@@ -220,15 +233,17 @@ public static class IllnessAdvance
             best = talents.Officialdom;
             infection = IllnessPolicy.TalentMultiplierScholar;
             recovery = IllnessPolicy.ScholarRecoveryMultiplier;
+            name = "仕";
         }
 
         if (talents.Craft > best)
         {
             infection = IllnessPolicy.TalentMultiplierArtisan;
             recovery = IllnessPolicy.ArtisanRecoveryMultiplier;
+            name = "工";
         }
 
-        return (infection, recovery);
+        return (infection, recovery, name);
     }
 
     /// <summary>药费 <c>(0.05 + 0.45s) 贯 × 支出系数</c>。</summary>

@@ -59,8 +59,33 @@ public static class OfficialCareerPolicy
         AppointmentTrack.SecondClass => 13,
         AppointmentTrack.ThirdClass => 15,
         AppointmentTrack.SpecialTribute => 18,
+        AppointmentTrack.JuRen => 17,
         _ => throw new ArgumentOutOfRangeException(
-            nameof(track), track, "未登记的入仕途径（规格书 §8.2 共四种）。"),
+            nameof(track), track, "未登记的入仕途径（规格书 §8.2 共五种）。"),
+    };
+
+    /// <summary>
+    /// 功名对应的**职级上限**（能升到的最高品；数字越小官越大）。
+    /// </summary>
+    /// <remarks>
+    /// 2026-10-19 平衡性裁决：功名只限制职级上限（影响俸禄上限），不阻止继续科举。
+    /// 举人 L17 起步、最高升到 L16；特奏名 L18 起步、最高 L15；三甲 / 二甲 / 一甲依次到 L12 / L8 / L4。
+    /// </remarks>
+    /// <param name="degree">当前功名。</param>
+    /// <param name="imperialClass">进士甲第（非进士传 <c>null</c>）。</param>
+    /// <returns>可晋升到的最小级数。</returns>
+    public static int PromotionCapLevelOf(DegreeLevel degree, ImperialClass? imperialClass) => degree switch
+    {
+        DegreeLevel.BaiShen => SalaryTable.LowestLevel,
+        DegreeLevel.JuRen => 16,
+        DegreeLevel.GongShi => 13,
+        DegreeLevel.JinShi => imperialClass switch
+        {
+            ImperialClass.FirstClass => 4,
+            ImperialClass.SecondClass => 8,
+            _ => 12,
+        },
+        _ => SalaryTable.LowestLevel,
     };
 
     /// <summary>

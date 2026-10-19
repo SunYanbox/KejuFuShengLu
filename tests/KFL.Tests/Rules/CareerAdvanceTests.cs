@@ -63,7 +63,8 @@ public class CareerAdvanceTests
     [Fact]
     public void 第三十五个在职月不判定而第三十六个在职月判定并重置计时()
     {
-        var person = RulesHarness.Official(
+        // 进士（三甲，职级上限 L12）⇒ L15 仍有晋升空间。
+        var person = RulesHarness.OfficialWithDegree(
             1, level: 15, monthsInOffice: GameConfig.Career.AppraisalPeriodMonths - 2, merit: 0);
         var family = RulesHarness.FamilyOf(person);
 
@@ -175,10 +176,47 @@ public class CareerAdvanceTests
     /// <summary>一次判定的结果（官阶、政绩、晋升记录）。</summary>
     private sealed record AppraisalOutcome(int Level, int Merit, IReadOnlyList<CareerPromotion> Promotions);
 
-    /// <summary>造一名在任官员并让其在**本月**正好到期判定。</summary>
+    /// <summary>
+    /// 玩家反馈 8 / 16（规格书 §8.2 的 2026-10-19 裁决）：官阶不得越过**功名职级上限**，
+    /// 且顶到上限者**不掷骰、不消耗随机**（否则会白白吃掉确定性随机序列）。
+    /// </summary>
+    [Fact]
+    public void 功名职级上限挡住晋升且不消耗随机()
+    {
+        // 三甲进士的上限是 L12；L12 已在限内，其下一次晋升 MUST 被挡下。
+        Assert.Equal(12, OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.JinShi, ImperialClass.ThirdClass));
+
+        var person = RulesHarness.OfficialWithDegree(
+            1,
+            level: OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.JinShi, ImperialClass.ThirdClass),
+            monthsInOffice: GameConfig.Career.AppraisalPeriodMonths - 1,
+            merit: 100);
+        var family = RulesHarness.FamilyOf(person);
+        var random = new CountingRandomService(0.0d);
+
+        var result = OfficialCareerAdvance.Run(family, Date, random);
+
+        Assert.Equal(12, person.Rank!.Value.Level);
+        Assert.Empty(result.Promotions);
+        Assert.Equal(0, random.Doubles);
+    }
+
+    /// <summary>功名决定天花板：白身 L18、举人 L16、贡士 L13，进士按甲第分档。</summary>
+    [Fact]
+    public void 功名职级上限表逐档等于裁决值()
+    {
+        Assert.Equal(SalaryTable.LowestLevel, OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.BaiShen, null));
+        Assert.Equal(16, OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.JuRen, null));
+        Assert.Equal(13, OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.GongShi, null));
+        Assert.Equal(4, OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.JinShi, ImperialClass.FirstClass));
+        Assert.Equal(8, OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.JinShi, ImperialClass.SecondClass));
+        Assert.Equal(12, OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel.JinShi, ImperialClass.ThirdClass));
+    }
+
+    /// <summary>造一名在任官员（进士，三甲）并让其在**本月**正好到期判定。</summary>
     private static AppraisalOutcome Appraise(int level, int merit, double roll)
     {
-        var person = RulesHarness.Official(
+        var person = RulesHarness.OfficialWithDegree(
             1, level: level, monthsInOffice: GameConfig.Career.AppraisalPeriodMonths - 1, merit: merit);
 
         var result = OfficialCareerAdvance.Run(
@@ -190,9 +228,10 @@ public class CareerAdvanceTests
     /// <summary>把连续 40 个月的官阶 / 政绩 / 在职月数 / 待阙剩余月数摊平成可比较的轨迹串。</summary>
     private static string Trajectory(int seed)
     {
-        var official = RulesHarness.Official(
+        var official = RulesHarness.OfficialWithDegree(
             1, level: 15, monthsInOffice: GameConfig.Career.AppraisalPeriodMonths - 6, merit: 0);
-        var junior = RulesHarness.Official(2, level: 5, merit: 50);
+        var junior = RulesHarness.OfficialWithDegree(
+            2, level: 5, imperialClass: ImperialClass.FirstClass, merit: 50);
         var graduate = RulesHarness.Member(3, Gender.Male, 40);
 
         graduate.AppendDegree(new DegreeRecord(

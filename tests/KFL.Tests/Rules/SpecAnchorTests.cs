@@ -213,10 +213,11 @@ public class SpecAnchorTests
         Assert.Equal(14, GameConfig.Exam.MinimumAge);
         Assert.Equal(3, GameConfig.Exam.JieShiExemptionFailureThreshold);
 
-        // 三级基础率：解试 1%、省试 10%、殿试进甲 5%（§6）。
-        Assert.Equal(0.01m, GameConfig.Exam.JieShiBaseRate);   // arch-guard:allow 锚点即被验证对象
-        Assert.Equal(0.10m, GameConfig.Exam.ShengShiBaseRate); // arch-guard:allow 锚点即被验证对象
-        Assert.Equal(0.05m, GameConfig.Exam.ImperialPromotionBaseRate); // arch-guard:allow 锚点即被验证对象
+        // 三级基础率：解试 25%、省试 30%、殿试进甲 15%
+        // （§6；2026-10-19 平衡性裁决：原 1% / 10% / 5% 过难，见规格书 §6 勘误）。
+        Assert.Equal(0.25m, GameConfig.Exam.JieShiBaseRate);   // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.30m, GameConfig.Exam.ShengShiBaseRate); // arch-guard:allow 锚点即被验证对象
+        Assert.Equal(0.15m, GameConfig.Exam.ImperialPromotionBaseRate); // arch-guard:allow 锚点即被验证对象
 
         // 学业系数 0.4 + 0.012 × 学业（§6）：0 → 0.4、50 → 1.0、100 → 1.6。
         Assert.Equal(0.4m, GameConfig.Exam.StudyFactorBase);       // arch-guard:allow 锚点即被验证对象

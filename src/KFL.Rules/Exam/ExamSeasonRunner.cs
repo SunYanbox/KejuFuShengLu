@@ -121,7 +121,17 @@ public static class ExamSeasonRunner
         // ④ 录取 / 进甲判定：全部人员的判定 MUST 先完成，然后才进入 ⑤。
         foreach (var person in candidates)
         {
-            outcomes.Add(Judge(person, examLevel, month, state.Family.HasShiStatus, random, exempted.Contains(person.Id)));
+            var outcome = Judge(
+                person, examLevel, month, state.Family.HasShiStatus, random, exempted.Contains(person.Id));
+            outcomes.Add(outcome);
+
+            // ④-b 中举即授官（2026-10-19 裁决）：举人授 L17，不置待阙、不影响继续应省试。
+            if (examLevel == ExamLevel.JieShi && outcome.Passed
+                && AppointmentEntry.BeginForJuRen(person))
+            {
+                appointments.Add(new ExamAppointmentLine(person.Id, AppointmentTrack.JuRen, 0));
+            }
+
             person.ClearExamApplication();
         }
 
@@ -130,8 +140,25 @@ public static class ExamSeasonRunner
         {
             foreach (var person in candidates)
             {
-                if (person.Rank is not null || person.Status.HasFlag(StatusFlag.AwaitingPost))
+                if (person.Status.HasFlag(StatusFlag.AwaitingPost))
                 {
+                    continue;
+                }
+
+                // 殿试者可能已因中举而在任（举人 L17）：此处按甲第把他直接提为对应起家官阶。
+                if (person.Rank is { } currentRank)
+                {
+                    var track = AppointmentEntry.TrackOf(person);
+                    var target = OfficialCareerPolicy.InitialRankOf(track);
+
+                    if (target < currentRank.Level)
+                    {
+                        person.Rank = new OfficialRank(target);
+                        person.MonthsInOffice = 0;
+                        person.Merit = 0;
+                        appointments.Add(new ExamAppointmentLine(person.Id, track, 0));
+                    }
+
                     continue;
                 }
 

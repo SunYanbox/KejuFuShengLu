@@ -40,8 +40,11 @@ public class ExamRegistrationTests
     /// <summary>殿试月：科年的次年 4 月。</summary>
     private static readonly GameDate DianShiMonth = new(80, 4);
 
-    /// <summary>解试月**之前**（科年 7 月）——冲着解试去却不在窗口内。</summary>
+    /// <summary>解试月**之前**（科年 7 月）——报名窗口的前半段（需求 4/9：当月及前一月）。</summary>
     private static readonly GameDate BeforeJieShi = new(79, 7);
+
+    /// <summary>解试月前**两**月（科年 6 月）——窗口之外。</summary>
+    private static readonly GameDate TwoMonthsBeforeJieShi = new(79, 6);
 
     /// <summary>解试月**之后**（科年 9 月）——同样是窗口外。</summary>
     private static readonly GameDate AfterJieShi = new(79, 9);
@@ -105,12 +108,19 @@ public class ExamRegistrationTests
     }
 
     [Fact]
-    public void 有官阶者不合格()
+    public void 有官阶者仍合格且可应下一级考试()
     {
+        // 2026-10-19 需求 8/21：举人即授官，仍可应省试；有官阶不再剥夺报考资格。
         var official = RulesHarness.Official(1, 3);
-
         Assert.NotNull(official.Rank);
-        Assert.False(ExamRegistration.IsEligible(official, Date));
+        Assert.True(ExamRegistration.IsEligible(official, Date));
+
+        // 举人（有官阶）确实以省试为目标级别，而不是被自动报考解试。
+        var juRen = JuRen(2);
+        Assert.True(AppointmentEntry.BeginForJuRen(juRen));
+        Assert.NotNull(juRen.Rank);
+        Assert.Equal(ExamLevel.ShengShi, ExamRegistration.TargetLevelOf(juRen));
+        Assert.True(ExamRegistration.IsEligible(juRen, Date));
     }
 
     [Fact]
@@ -162,8 +172,12 @@ public class ExamRegistrationTests
         Assert.True(ExamRegistration.CanRegister(baiShen, JieShiMonth));
         Assert.True(ExamRegistration.CanRegister(juRen, ShengShiMonth));
 
-        // 窗口外的两个邻月。
-        Assert.False(ExamRegistration.CanRegister(baiShen, BeforeJieShi));
+        // 报名窗口 = 考试当月 **及前一月**（需求 4/9：玩家必须有机会在考试判定前报名）。
+        Assert.True(ExamRegistration.CanRegister(baiShen, BeforeJieShi));
+        Assert.Equal(ExamLevel.JieShi, ExamRegistration.RegisterLevelOf(BeforeJieShi));
+
+        // 窗口之外：考前两月与考后。
+        Assert.False(ExamRegistration.CanRegister(baiShen, TwoMonthsBeforeJieShi));
         Assert.False(ExamRegistration.CanRegister(baiShen, AfterJieShi));
 
         // 殿试月恒不接受报名（殿试由省试及第自动进入，FR-005）。
@@ -181,7 +195,7 @@ public class ExamRegistrationTests
         var baiShen = BaiShen(1);
         var before = Describe(baiShen);
 
-        Assert.Throws<InvalidOperationException>(() => ExamRegistration.Register(baiShen, BeforeJieShi));
+        Assert.Throws<InvalidOperationException>(() => ExamRegistration.Register(baiShen, TwoMonthsBeforeJieShi));
         Assert.Throws<InvalidOperationException>(() => ExamRegistration.Register(baiShen, AfterJieShi));
         Assert.Throws<InvalidOperationException>(() => ExamRegistration.Register(baiShen, DianShiMonth));
 
@@ -242,19 +256,22 @@ public class ExamRegistrationTests
         var official = RulesHarness.Official(4, 3);
         var family = RulesHarness.FamilyOf(baiShen, tooYoung, juRen, official);
 
-        // 解试月：名单里只有既合格、级别又对口、且尚未报名的那个白身。
+        // 解试月：名单里是「既合格、级别又对口、且尚未报名」的白身——含**有官阶**的白身
+        // （需求 8/21：有官阶不再剥夺报考资格）。
         Assert.Equal(
-            new[] { baiShen.Id },
+            new[] { baiShen.Id, official.Id },
             ExamRegistration.EligibleUnapplied(family, JieShiMonth).Select(person => person.Id));
 
-        // 省试月：换成举人；白身级别不符。
+        // 省试月：换成举人；白身（含有官阶者）级别不符。
         Assert.Equal(
             new[] { juRen.Id },
             ExamRegistration.EligibleUnapplied(family, ShengShiMonth).Select(person => person.Id));
 
         // 报名后本人移出。
         ExamRegistration.Register(baiShen, JieShiMonth);
-        Assert.Empty(ExamRegistration.EligibleUnapplied(family, JieShiMonth));
+        Assert.Equal(
+            new[] { official.Id },
+            ExamRegistration.EligibleUnapplied(family, JieShiMonth).Select(person => person.Id));
     }
 
     [Fact]
@@ -264,8 +281,8 @@ public class ExamRegistrationTests
         var juRen = JuRen(2);
         var family = RulesHarness.FamilyOf(baiShen, juRen);
 
-        // 邻月：没有任何级别在招。
-        Assert.Empty(ExamRegistration.EligibleUnapplied(family, BeforeJieShi));
+        // 窗口之外：考前两月与考后都没有任何级别在招。
+        Assert.Empty(ExamRegistration.EligibleUnapplied(family, TwoMonthsBeforeJieShi));
         Assert.Empty(ExamRegistration.EligibleUnapplied(family, AfterJieShi));
 
         // 殿试月恒为空表（不存在「报名参加殿试」这一状态）。

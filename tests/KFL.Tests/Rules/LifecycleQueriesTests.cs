@@ -100,9 +100,12 @@ public class LifecycleQueriesTests
 
     // ------------------------------------------------------------------ 提议的有效期
 
-    /// <summary>提议只在产出当月有效：次月查询返 <c>null</c>（无状态位、无清理动作）。</summary>
+    /// <summary>
+    /// 提议在产出当月与**次月**都有效（2026-10-19 需求 20：结算产出提议后日期已推进一月，
+    /// 玩家必须还有整月可应答），第三个月起失效（无状态位、无清理动作）。
+    /// </summary>
     [Fact]
-    public void 提议当月有效次月即失效()
+    public void 提议当月与次月有效第三月起失效()
     {
         var member = RulesHarness.Member(1, Gender.Male, 20);
         var state = State(
@@ -120,14 +123,17 @@ public class LifecycleQueriesTests
         var proposal = state.Family.Lifecycle.Proposal;
         Assert.NotNull(proposal);
         Assert.Equal(proposal, LifecycleQueries.PendingProposal(state.Family, state.CurrentDate));
-        Assert.Null(LifecycleQueries.PendingProposal(state.Family, NextMonth(state.CurrentDate)));
+        Assert.Equal(proposal, LifecycleQueries.PendingProposal(state.Family, NextMonth(state.CurrentDate)));
+        Assert.Null(LifecycleQueries.PendingProposal(state.Family, NextMonth(NextMonth(state.CurrentDate))));
 
-        // 过期后成员恢复可托媒
+        // 提议仍挂着的次月不可再托媒；第三个月提议过期后恢复可托媒。
+        Assert.False(LifecycleQueries.IsMarriageable(
+            state.Family, member, MarriageDirection.BrideInto, NextMonth(state.CurrentDate)));
         Assert.True(LifecycleQueries.IsMarriageable(
             state.Family,
             member,
             MarriageDirection.BrideInto,
-            NextMonth(state.CurrentDate)));
+            NextMonth(NextMonth(state.CurrentDate))));
     }
 
     // ------------------------------------------------------------------ 婚配候选与可行性

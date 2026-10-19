@@ -492,3 +492,16 @@ Task: "T035 [P] [US1] AchievementStoreFailureTests.cs（SC-007）"
 - [ ] T101 补 8 号触发点的 ACH-035 断言并删除陈旧备注：`tests/KFL.Tests/Rules/AchievementTriggerTests.cs:34-37` 的「ACH-035 在即时判定里无法解锁」已因 E-24 的状态面兜底（`src/KFL.Rules/Achievements/AchievementPredicates.cs:123-125` 的 `|| HasDegreeMarriageRecord(ctx.State)`）而失真，须删除或改写；在触发器八（`:231-247` 买功名婚姻成功路径）上补断言 `AchievementQuery.IsCompleted(state, AchievementId.DegreeMarriage)` 为真，并保留 `Report` 幂等断言 per FR-009（12 个动作入口之第 8 行）+ 契约二十二 §3 第 8 行 + E-24 (partial)
 - [ ] T102 同步 008 自身活工件的判定入口签名：`specs/008-achievements-extinction/data-model.md:335-336` 的 `Judge(...)` 声明与 `:557` 的调用示例都补第 4 个参数 `IReadOnlyList<OriginRecord> archiveOrigins`（实现为 4 参：`src/KFL.Rules/Achievements/AchievementAdjudicator.cs:43-47` 同时校验 `archiveMarks` 与 `archiveOrigins`；`:392-393` 的 `AchievementContext` 已含该面，供 ACH-047 使用） per FR-040 + FR-036 + AGENTS.md「活工件 MUST 与当前实现一致」 (partial)
 - [ ] T103 清掉两处陈旧的存档版本文案：`src/KFL.Infrastructure/Save/SaveFileException.cs:21` 的 `FormatVersion != 3` 与 `src/KFL.Infrastructure/Save/Serialization/JsonSaveFormat.cs:16` 的 `{"FormatVersion":4,…` 一律改为当前 `SaveFileFormat.Version`（= 5，参照 `src/KFL.Infrastructure/Save/SaveFileHeader.cs:21`「本版本恒为 5」），不改任何行为 per FR-036 / Q3 裁决 + 契约二十三 §6 (partial)
+
+## 回写范围登记（2026-10-19，玩家反馈批次：隐藏成就 + 控制台强制解锁调试秘辛）
+
+> 本节由玩家反馈修复（反馈 12）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = `spec.md` 末尾的同日增补（判定条件、解锁时机与 `SaveFileFormat.Version` 均**未变**）。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 隐藏成就展示口径 `AchievementCatalog.IsHidden` | `specs/008-achievements-extinction/spec.md` 增补 §1；`src/KFL.Rules/Achievements/AchievementCatalog.cs`（`RareIds` / `HiddenSources` / `IsHidden`）、`src/KFL.Presentation/ViewModels/AchievementRow.cs`（`IsHidden` / `IsMasked`）、`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`RefreshAchievements` 传 `hidden:`） |
+| 调试秘辛可真实触发（`wake` 是唯一合法路径） | `spec.md` 增补 §2；`src/KFL.Presentation/AchievementDescriptions.cs`（ACH-064~068 由「（本版本恒不解锁）」改为「（隐藏成就）」） |
+| 控制台 `ach-unlock <ACH-064\|64\|all>` 强制解锁 | `spec.md` 增补 §3；`src/KFL.Presentation/GameSession.cs`（`DebugUnlockAchievement`，写入路径与正常解锁一致）、`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`ExecuteConsole` / `ConsoleCommands`） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1286 通过 0 失败 / 恰六工程 / 无 `*.sln`。

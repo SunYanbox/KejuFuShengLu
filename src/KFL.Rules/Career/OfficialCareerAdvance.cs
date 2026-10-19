@@ -194,21 +194,30 @@ public static class OfficialCareerAdvance
         person.MonthsInOffice = 0;
     }
 
-    /// <summary>考课掷骰：恰好 1 次 <c>NextDouble</c>；成功且未到最高品时级数 −1。</summary>
+    /// <summary>
+    /// 考课掷骰：成功且未到「功名职级上限 / 最高品」时级数 −1。
+    /// 已到顶者**不掷骰**（不消耗随机），以免「升不动」扰乱确定性轨迹。
+    /// </summary>
     private static bool TryPromote(Person person, IRandomService random, out CareerPromotion promotion)
     {
         promotion = null!;
 
         var current = person.Rank!.Value;
-        var roll = (decimal)random.NextDouble();
 
-        if (roll >= OfficialCareerPolicy.PromotionChance(person.Merit))
+        // 功名职级上限（2026-10-19 裁决）：功名只限制能升到哪一品；升不动就不升。
+        var cap = OfficialCareerPolicy.PromotionCapLevelOf(
+            person.CurrentDegree,
+            person.DegreeHistory.Count > 0 ? person.DegreeHistory[^1].Class : null);
+
+        // 成功也维持 L1（MUST NOT 越界），或已顶到功名上限：直接返回，不消耗随机。
+        if (current.Level <= SalaryTable.HighestLevel || current.Level - 1 < cap)
         {
             return false;
         }
 
-        // 成功但已在最高品：维持 L1，MUST NOT 越界（也不登记「晋升」）。
-        if (current.Level <= SalaryTable.HighestLevel)
+        var roll = (decimal)random.NextDouble();
+
+        if (roll >= OfficialCareerPolicy.PromotionChance(person.Merit))
         {
             return false;
         }

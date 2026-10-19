@@ -457,3 +457,27 @@
   属**历史记录类**，按规格书 §16.2 的迁移口径保留旧编号、MUST NOT 回改）。本特性因此
   **不再有编号回写任务**；仅余 001 `spec.md`（FR-008）与 `data-model.md`（`DegreeRecord` 小节）
   的**甲第字段**补注（T003）以及 `KFL.Core` 的三处注释改标（T010）。
+
+## 增补（2026-10-19，玩家反馈批次：举人授官与功名职级上限）
+
+> 依据：规格书 §8.2 于 2026-10-19 新增的 `§17 裁决回写` 块。本节**取代**上文「只有进士入仕」
+> 与「考课无上限」的旧口径（含 FR-015 的 `EnsureEligible` 前置条件集合）。
+
+1. **举人即授官**：解试中第（`DegreeLevel.JuRen`）当次结算内立即授
+   `OfficialRank(OfficialCareerPolicy.InitialRankOf(AppointmentTrack.JuRen))` = **L17**，
+   在职月数与政绩归零；**不置待阙**（待阙会阻断其继续应省试）。`AppointmentTrack` 新增 `JuRen` 值
+   （枚举 4 → 5；`ValueObjectTests.三个新枚举齐备` 同步）。
+2. **职级上限表**：新增 `OfficialCareerPolicy.PromotionCapLevelOf(DegreeLevel, ImperialClass?)`——
+   白身 L18、举人 L16、贡士 L13、进士一甲 L4 / 二甲 L8 / 三甲 L12。考课升到上限即停，
+   **已到上限者不掷骰**（不消耗随机，保确定性轨迹）。
+3. **已有官阶者中进士**：殿试授官入口改为「新授初始官阶**高于**现阶才改阶，否则维持现阶」，
+   `AwaitingPost` 者跳过；不再抛「已有官阶者 MUST NOT 再次及第入仕」的路径。
+4. **官阶不再是报考失格条件**：`ExamRegistration.IsEligible` 删除 `Rank is null` 一项；
+   `SpecialTributeEligible` 保留该要求（已受官举人不再走特奏名，属有意取舍）。
+
+**回写登记（同一提交）**：①规格书 §8.2 的 2026-10-19 `§17 裁决回写` 块；②本节；
+③`specs/005-exam-cycle/spec.md`（报名资格与举人授官的联动）；④
+`src/KFL.Rules/Config/OfficialCareerPolicy.cs`、`src/KFL.Rules/Career/{AppointmentEntry,OfficialCareerAdvance}.cs`、
+`src/KFL.Rules/Exam/ExamSeasonRunner.cs`、`src/KFL.Core/Enums/AppointmentTrack.cs`；
+⑤`tests/KFL.Tests/Rules/{CareerAdvanceTests,ExamRegistrationTests,ExamSeasonTests,SpecAnchorTests}.cs`
+与 `tests/KFL.Tests/Rules/RulesTestHarness.cs`（新增 `OfficialWithDegree` 夹具）。

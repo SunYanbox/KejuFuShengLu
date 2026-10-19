@@ -113,11 +113,34 @@ public interface ISaveService
 
     /// <summary>为当前档生成一份备份（覆盖式，永远只留一份）。</summary>
     /// <remarks>
-    /// 落点为 <c>&lt;根&gt;/backups/&lt;档名&gt;.&lt;与主文件相同的扩展名&gt;</c>，
-    /// 经原子写完成；MUST NOT 按时间戳追加、MUST NOT 保留多份。备份是**一份可读的完整存档**
-    /// （回滚 = 把备份拷回主文件）。备份失败不得影响已写好的主文件，且 MUST NOT 静默
-    /// （契约九 §7）。备份时机由契约十一决定。
+    /// 落点为 <c>&lt;根&gt;/backups/&lt;档名&gt;.&lt;与主文件相同的扩展名&gt;.zip</c>（2026-10-19 需求 14：
+    /// 备份一律压缩），经原子写完成；MUST NOT 按时间戳追加、MUST NOT 保留多份。
+    /// 备份是**一份可读的完整存档**（回滚 = 用 <see cref="LoadBackup"/> 读回）。
+    /// 备份失败不得影响已写好的主文件，且 MUST NOT 静默（契约九 §7）。备份时机由契约十一决定。
     /// </remarks>
     /// <param name="slot">档名 + 格式。</param>
     void Backup(SaveSlot slot);
+
+    /// <summary>列出 <c>backups/</c> 下的全部备份（2026-10-19 需求 15）。</summary>
+    /// <remarks>按档名升序；只列出能解析出「档名 + 内部扩展名 + <c>.zip</c>」三项的文件。</remarks>
+    /// <returns>备份槽位（格式取自内部扩展名）。</returns>
+    IReadOnlyList<SaveSlot> ListBackups();
+
+    /// <summary>从备份读档（2026-10-19 需求 15）：与 <see cref="Load"/> 同一套校验，只是先解压。</summary>
+    /// <param name="slot">备份槽位（档名 + 格式）。</param>
+    /// <returns>复原出的新状态。</returns>
+    GameState LoadBackup(SaveSlot slot);
+
+    /// <summary>
+    /// 「另存为」：以**新存档标识**写出一份副本，并返回从该副本读回的新状态
+    /// （2026-10-19 需求 13：原实现直接复用旧标识，撞上「同一标识不得并存于两个档名」）。
+    /// </summary>
+    /// <remarks>
+    /// 标识在写盘前重新生成，故返回值与入参 <paramref name="state"/> 是两份独立对象；
+    /// 调用方 MUST 用返回值替换手上的对局状态，否则后续自动存档会写回旧标识。
+    /// </remarks>
+    /// <param name="state">要复制的状态。</param>
+    /// <param name="slot">新档位。</param>
+    /// <returns>新标识的对局状态。</returns>
+    GameState SaveAsFork(GameState state, SaveSlot slot);
 }

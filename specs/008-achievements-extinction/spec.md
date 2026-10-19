@@ -694,3 +694,31 @@ MUST NOT 自造亏损事件规则（FR-042）。理由：既不改动 U4 的分�
     Assumptions 5~7、12、25。
     **本规格书已无 ⚠ 待复核项**；若实现阶段发现新空白，按 §17③ 暂停提问并新增裁决块，
     MUST NOT 自造数值（规格书 §17 末句）。
+
+## 增补（2026-10-19，玩家反馈批次：隐藏成就 + 控制台强制解锁调试秘辛）
+
+> 依据：规格书 §14.1 与 §13 的既有口径 + 玩家反馈 12。本节只补两处**展示与调试口径**，
+> 不改任何成就的判定条件、解锁时机与持久化格式（`SaveFileFormat.Version` 不变）。
+
+1. **隐藏成就的展示口径**：新增 `AchievementCatalog.IsHidden(AchievementDefinition)`，
+   命中三类之一即隐藏——① `AchievementSeries.DebugSecrets`（ACH-064~068 全部）；
+   ② `AchievementSource` ∈ {`Lifecycle`, `Ending`, `Pending`, `GlobalArchive`, `Famine`}；
+   ③ 稀有非攒量成就（`RareIds`：金榜题名、富甲一方、长寿、虎口余生、知府、宰辅、跨代科名、
+   贿赂封顶、家族连坐、四出身、地狱结局）。未达成时 UI **隐藏名称与达成条件**
+   （`AchievementRow.IsMasked` → 名称「？？？（隐藏成就）」、条件「达成条件隐藏——达成后自动揭示。」、
+   状态「隐藏」）；达成后按普通成就展示。**判定与解锁逻辑不受影响**，隐藏纯属展示面。
+2. **调试秘辛成就可被真实触发**（反馈 12）：ACH-064~068 读 `Achievements.DebugWakeCount`，
+   由 `GameSession.DebugWake(int)` → `AchievementCounters.ReportsDebugWake` 递增，即控制台
+   `wake [N]` 是**唯一**的合法触发路径。因此 `src/KFL.Presentation/AchievementDescriptions.cs`
+   中 ACH-064~068 的说明由「（本版本恒不解锁）」改为「（隐藏成就）」。
+3. **控制台强制解锁**（调试用途）：新增 `GameSession.DebugUnlockAchievement(string code)`，
+   接受 `ACH-064` / `64` / `all` / `*`，写入路径与正常解锁完全一致
+   （`new AchievementMark(definition.Id, State.Difficulty, State.CurrentDate)` +
+   `State.Achievements.MarkCompletedAndEnqueue(mark, State.Id)`，即仍走全局持久化与难度独立标记），
+   控制台命令为 `ach-unlock <ACH-064|64|all>`。
+
+**回写登记（同一提交）**：①本节；②规格书 §14.1 / §13 的相关说明；
+③`src/KFL.Rules/Achievements/AchievementCatalog.cs`、`src/KFL.Presentation/ViewModels/AchievementRow.cs`、
+`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`RefreshAchievements` 传 `hidden:`、控制台命令）、
+`src/KFL.Presentation/GameSession.cs`、`src/KFL.Presentation/AchievementDescriptions.cs`；
+④`src/KFL.App/MainWindow.xaml`（成就页状态列已显示「隐藏/已达成」）。

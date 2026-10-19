@@ -35,19 +35,55 @@ public static class ExamAdmission
     /// 殿试不走本入口：进殿试者 100% 成为进士（不掷骰、不受封顶影响，契约十三 §4.2 ①）。
     /// </remarks>
     public static decimal AdmissionRate(
+        ExamLevel level, Person person, bool hasShiStatus, decimal bribeMultiplier) =>
+        Breakdown(level, person, hasShiStatus, bribeMultiplier).Rate;
+
+    /// <summary>
+    /// 录取率**逐项拆解**（2026-10-19 需求 18）：界面双击展示的全部来源与取值。
+    /// </summary>
+    /// <param name="level">考试级别；只接受解试 / 省试。</param>
+    /// <param name="person">考生。</param>
+    /// <param name="hasShiStatus">家族是否已是仕族。</param>
+    /// <param name="bribeMultiplier">贿赂乘数。</param>
+    /// <returns>逐项拆解（<see cref="ExamRateBreakdown.Rate"/> 与 <see cref="AdmissionRate"/> 恒等）。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="person"/> 为 <c>null</c>。</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="level"/> 不是解试或省试。</exception>
+    public static ExamRateBreakdown Breakdown(
         ExamLevel level, Person person, bool hasShiStatus, decimal bribeMultiplier)
     {
         ArgumentNullException.ThrowIfNull(person);
 
+        var baseRate = ExamPolicy.BaseRateOf(level);
+        var studyFactor = ExamPolicy.StudyFactor(person.Study);
+        var officialdomFactor = 1m + (person.Talents.Officialdom / (decimal)ExamPolicy.OfficialdomDivisor);
         var shiBonus = hasShiStatus ? ExamPolicy.ShiStatusAdmissionBonus : 1m;
+        var debug = DebugOverrides.ExamRateBonusOf(person.Id);
 
-        return Clamp(
-            ExamPolicy.BaseRateOf(level)
-            * ExamPolicy.StudyFactor(person.Study)
-            * (1m + (person.Talents.Officialdom / (decimal)ExamPolicy.OfficialdomDivisor))
-            * bribeMultiplier
-            * shiBonus);
+        var raw = baseRate * studyFactor * officialdomFactor * bribeMultiplier * shiBonus;
+        var withDebug = Math.Max(0m, raw + debug);
+
+        return new ExamRateBreakdown(
+            level,
+            baseRate,
+            person.Study,
+            studyFactor,
+            person.Talents.Officialdom,
+            officialdomFactor,
+            bribeMultiplier,
+            BribeCountOf(level, person),
+            shiBonus,
+            debug,
+            raw,
+            Clamp(withDebug));
     }
+
+    private static int BribeCountOf(ExamLevel level, Person person) => level switch
+    {
+        ExamLevel.JieShi => person.JieShiBribeCount,
+        ExamLevel.ShengShi => person.ShengShiBribeCount,
+        ExamLevel.DianShi => person.DianShiBribeCount,
+        _ => 0,
+    };
 
     /// <summary>
     /// 殿试进甲率（契约十三 §4.2 ②）：<c>5% × 学业系数 × (1 + 仕天赋 / 400) × 贿赂乘数</c>，
@@ -66,10 +102,11 @@ public static class ExamAdmission
         ArgumentNullException.ThrowIfNull(person);
 
         return Clamp(
-            ExamPolicy.ImperialPromotionBaseRate
-            * ExamPolicy.StudyFactor(person.Study)
-            * (1m + (person.Talents.Officialdom / (decimal)ExamPolicy.OfficialdomDivisor))
-            * bribeMultiplier);
+            (ExamPolicy.ImperialPromotionBaseRate
+                * ExamPolicy.StudyFactor(person.Study)
+                * (1m + (person.Talents.Officialdom / (decimal)ExamPolicy.OfficialdomDivisor))
+                * bribeMultiplier)
+            + DebugOverrides.ExamRateBonusOf(person.Id));
     }
 
     /// <summary>

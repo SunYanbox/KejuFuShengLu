@@ -193,6 +193,42 @@ public class AchievementCatalogTests
         Assert.Equal(期望代码, 实得.Select(条目 => 条目.Code).ToArray());
     }
 
+    /// <summary>
+    /// 玩家反馈 12（规格书 §17 的 2026-10-19 裁决）：调试秘辛**全系**为隐藏成就——
+    /// 条件先在界面上藏起来，达成后再揭示；非攒量的稀有成就同样隐藏。
+    /// </summary>
+    [Fact]
+    public void 调试秘辛五条与稀有非攒量成就都是隐藏成就()
+    {
+        foreach (var 条目 in AchievementCatalog.All.Where(条目 => 条目.Series == AchievementSeries.DebugSecrets))
+        {
+            Assert.True(AchievementCatalog.IsHidden(条目), $"{条目.Code}（调试秘辛）MUST 是隐藏成就。");
+        }
+
+        foreach (var 条目 in AchievementCatalog.All)
+        {
+            if (条目.Source is AchievementSource.Ending or AchievementSource.Lifecycle)
+            {
+                Assert.True(AchievementCatalog.IsHidden(条目), $"{条目.Code}（{条目.Source}）MUST 是隐藏成就。");
+            }
+        }
+
+        // 常见攒量成就 MUST NOT 被藏起来——否则成就页会变成一片问号。
+        Assert.False(AchievementCatalog.IsHidden(AchievementCatalog.Of(AchievementId.FoundationLaid)));
+        Assert.False(AchievementCatalog.IsHidden(AchievementCatalog.Of(AchievementId.ThreeGenerations)));
+        Assert.False(AchievementCatalog.IsHidden(AchievementCatalog.Of(AchievementId.LargeHousehold)));
+    }
+
+    /// <summary>玩家反馈 12：隐藏成就的判定 MUST 只吃「定义」、不吃运行期状态。</summary>
+    [Fact]
+    public void 隐藏判定是纯函数且对同一条目稳定()
+    {
+        foreach (var 条目 in AchievementCatalog.All)
+        {
+            Assert.Equal(AchievementCatalog.IsHidden(条目), AchievementCatalog.IsHidden(AchievementCatalog.Of(条目.Id)));
+        }
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

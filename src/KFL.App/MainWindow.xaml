@@ -19,13 +19,23 @@
                 <TextBlock Text="{Binding StatusLine}" Foreground="White" FontWeight="Bold" />
             </Border>
             <Border Grid.Row="1" Background="#FFF3E6CF" Padding="8,3">
-                <TextBlock Text="{Binding EconomyLine}" />
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="本月收支明细" Padding="8,1"
+                            Command="{Binding DoCommand}" CommandParameter="balance"
+                            ToolTip="单击显示按人、按来源罗列的本月收支悬浮窗（需求 7）" />
+                    <TextBlock Text="{Binding EconomyLine}" />
+                </DockPanel>
             </Border>
             <Border Grid.Row="2" Background="#FFEADFC6" Padding="8,3">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding ExamInfo}" />
-                    <TextBlock Text="{Binding AchievementSummary}" Margin="24,0,0,0" Foreground="#FF5A5A5A" />
-                </StackPanel>
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding MonthlyBalanceText}" FontWeight="Bold" Foreground="#FF1F5C2E" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding ExamInfo}" TextWrapping="Wrap"
+                                   MouseLeftButtonUp="OnExamInfoMouseUp"
+                                   ToolTip="双击显示本场考试的录取率来源与算式（需求 18）" />
+                        <TextBlock Text="{Binding AchievementSummary}" Margin="24,0,0,0" Foreground="#FF5A5A5A" />
+                    </StackPanel>
+                </DockPanel>
             </Border>
 
             <TabControl Grid.Row="3" Margin="6,4,6,0">
@@ -60,6 +70,8 @@
                                                 <TextBlock Text="{Binding DegreeText}" />
                                                 <TextBlock Text="{Binding RankText}" />
                                                 <TextBlock Text="{Binding StatusText}" Style="{StaticResource Secondary}" />
+                                                <TextBlock Text="{Binding BadgeText}" Foreground="#FF8B1A1A" TextWrapping="Wrap"
+                                                           FontSize="12" />
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
@@ -81,6 +93,8 @@
                                     <Button Content="下月" Command="{Binding DoCommand}" CommandParameter="advance" />
                                     <Button Content="快进一年" Command="{Binding DoCommand}" CommandParameter="ff:12" />
                                     <Button Content="快进三月" Command="{Binding DoCommand}" CommandParameter="ff:3" />
+                                    <Button Content="快进到科举" Command="{Binding DoCommand}" CommandParameter="ffexam"
+                                            ToolTip="直接推进到下一次科举报名窗口（要求 6）" />
                                     <Button Content="停止" Command="{Binding DoCommand}" CommandParameter="stop" />
                                 </WrapPanel>
                                 <TextBlock Text="{Binding AdvanceLabel}" Style="{StaticResource Secondary}" />
@@ -136,9 +150,8 @@
                                     <Button Content="名师开关" Command="{Binding DoCommand}" CommandParameter="tutor" />
                                     <Button Content="立为家主" Command="{Binding DoCommand}" CommandParameter="head" />
                                 </WrapPanel>
-
-                                <TextBlock Text="调试入口" Style="{StaticResource SectionHeader}" />
-                                <TextBlock Text="按键 S-U-N-T-I-O-N 激活控制台，再按反引号 ` 开关。司法调试（释放 / 免死 / 解禁令 / 解全族禁令）与加钱、悟道、治愈、病故等已全部移入控制台。" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
+                                <CheckBox Content="自动治疗（每月为患病成员开疗程）" IsChecked="{Binding AutoTreat, Mode=TwoWay}"
+                                          Margin="0,4,0,0" ToolTip="要求 10" />
 
                                 <TextBlock Text="存档" Style="{StaticResource SectionHeader}" />
                                 <WrapPanel>
@@ -156,24 +169,20 @@
                     <DockPanel Margin="6">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
                             <Button Content="导出流水账 CSV" Command="{Binding DoCommand}" CommandParameter="export" />
-                            <TextBlock Text="三张折线图按月聚合自族流水账，可左右滚动；下方仍保留文字汇总。" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            <TextBlock Text="三张折线图按月聚合自族流水账，纵向排列、左右对齐（同一画布宽度）；下方仍保留文字汇总。" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
                         </StackPanel>
 
-                        <ScrollViewer DockPanel.Dock="Top" Height="316" HorizontalScrollBarVisibility="Auto"
-                                      VerticalScrollBarVisibility="Disabled" Margin="0,0,0,6">
+                        <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,6">
                             <ItemsControl ItemsSource="{Binding Charts}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderBrush="#FFBFAE8E" BorderThickness="1" CornerRadius="3"
-                                                Margin="0,0,8,0" Padding="8" Background="{StaticResource PanelBrush}">
+                                                Margin="0,0,0,8" Padding="8" Background="{StaticResource PanelBrush}"
+                                                HorizontalAlignment="Left">
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Title}" FontWeight="Bold" />
-                                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Secondary}" Width="420" />
+                                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Secondary}" Width="820" TextWrapping="Wrap" />
                                                 <Canvas Width="{Binding Width}" Height="{Binding Height}" ClipToBounds="False">
                                                     <!-- 网格底：坐标轴 -->
                                                     <Line X1="0" Y1="0" X2="0" Y2="{Binding Height}" Stroke="#FFCFC3A8" />
@@ -316,13 +325,28 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <DockPanel Grid.Column="0">
-                            <TextBlock DockPanel.Dock="Top" Text="本机存档" Style="{StaticResource SectionHeader}" />
-                            <Button DockPanel.Dock="Bottom" Content="读取选中存档"
-                                    Command="{Binding DoCommand}" CommandParameter="load:selected" />
-                            <ListBox ItemsSource="{Binding Saves}" DisplayMemberPath="Text"
-                                     SelectedItem="{Binding SelectedSave, Mode=TwoWay}" />
-                        </DockPanel>
+                        <Grid Grid.Column="0" Margin="0,0,8,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <DockPanel Grid.Row="0">
+                                <TextBlock DockPanel.Dock="Top" Text="本机存档" Style="{StaticResource SectionHeader}" />
+                                <Button DockPanel.Dock="Bottom" Content="读取选中存档"
+                                        Command="{Binding DoCommand}" CommandParameter="load:selected" />
+                                <ListBox ItemsSource="{Binding Saves}" DisplayMemberPath="Text"
+                                         SelectedItem="{Binding SelectedSave, Mode=TwoWay}" />
+                            </DockPanel>
+
+                            <DockPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock DockPanel.Dock="Top" Text="备份存档（saves\backups，已压缩）" Style="{StaticResource SectionHeader}" />
+                                <Button DockPanel.Dock="Bottom" Content="读取选中备份"
+                                        Command="{Binding DoCommand}" CommandParameter="loadbackup" />
+                                <ListBox ItemsSource="{Binding Backups}" DisplayMemberPath="Text"
+                                         SelectedItem="{Binding SelectedBackup, Mode=TwoWay}" />
+                            </DockPanel>
+                        </Grid>
 
                         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="12,0,0,0">
@@ -344,6 +368,8 @@
                                 </WrapPanel>
                                 <WrapPanel>
                                     <Button Content="另存为" Command="{Binding DoCommand}" CommandParameter="saveas" />
+                                    <Button Content="改名（标识不变）" Command="{Binding DoCommand}" CommandParameter="rename" />
+                                    <Button Content="立即备份" Command="{Binding DoCommand}" CommandParameter="backup" />
                                     <Button Content="返回主菜单" Command="{Binding DoCommand}" CommandParameter="menu" />
                                 </WrapPanel>
 
@@ -362,10 +388,45 @@
                 <TextBlock DockPanel.Dock="Top" Text="纪事（家族流水）" Style="{StaticResource SectionHeader}" />
                 <ListBox ItemsSource="{Binding LogLines}" FontFamily="Consolas, Microsoft YaHei" FontSize="12" />
             </DockPanel>
+
+            <!-- 本月收支悬浮窗（需求 7）：按人、按来源罗列 -->
+            <Border Grid.Row="0" Grid.RowSpan="5" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,96,40,0" MaxWidth="760" MaxHeight="620"
+                    Background="#FFFDF6E9" BorderBrush="#FF8B1A1A" BorderThickness="2" CornerRadius="4" Padding="10"
+                    Visibility="{Binding IsBreakdownVisible, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top">
+                        <Button DockPanel.Dock="Right" Content="关闭" Padding="8,1"
+                                Command="{Binding DoCommand}" CommandParameter="balance" />
+                        <TextBlock Text="本月收支明细（按人 / 按来源）" Style="{StaticResource SectionHeader}" />
+                    </DockPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding MonthlyBreakdownText}" FontFamily="Consolas, Microsoft YaHei" FontSize="13" />
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- 考试录取率明细悬浮窗（需求 18）：双击顶部考试条打开 -->
+            <Border Grid.Row="0" Grid.RowSpan="5" HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="40,96,0,0" MaxWidth="760" MaxHeight="620"
+                    Background="#FFFDF6E9" BorderBrush="#FF1F5C2E" BorderThickness="2" CornerRadius="4" Padding="10"
+                    Visibility="{Binding IsExamBreakdownVisible, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top">
+                        <Button DockPanel.Dock="Right" Content="关闭" Padding="8,1"
+                                Command="{Binding DoCommand}" CommandParameter="examdetail" />
+                        <TextBlock Text="录取率来源与算式（双击考试条开关）" Style="{StaticResource SectionHeader}" />
+                    </DockPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding ExamBreakdownText}" FontFamily="Consolas, Microsoft YaHei" FontSize="13" />
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
         </Grid>
 
         <Border Background="#FFFDF6E9" Visibility="{Binding IsMenuVisible, Converter={StaticResource BoolToVis}}">
-            <StackPanel Width="560" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10">
+            <StackPanel Width="560" VerticalAlignment="Top" HorizontalAlignment="Center">
                 <TextBlock Text="科举浮生录" FontSize="34" FontWeight="Bold" Foreground="#FF8B1A1A" HorizontalAlignment="Center" />
                 <TextBlock Text="一姓之兴衰，自此月始。" HorizontalAlignment="Center" Margin="0,4,0,16" />
 
@@ -383,8 +444,16 @@
 
                 <Button Content="开局" Command="{Binding StartGameCommand}" Margin="0,14,0,0" MinWidth="140" HorizontalAlignment="Center" />
 
-                <TextBlock Text="也可在「存档与设置」页读取已有存档。" HorizontalAlignment="Center" Margin="0,12,0,0" Style="{StaticResource Secondary}" />
+                <TextBlock Text="读取已有存档" Style="{StaticResource SectionHeader}" Margin="0,14,0,0" />
+                <ListBox ItemsSource="{Binding MenuSaves}" DisplayMemberPath="Text" Height="120"
+                         SelectedItem="{Binding SelectedMenuSave, Mode=TwoWay}" />
+                <Button Content="读取选中存档" Command="{Binding DoCommand}" CommandParameter="menuload"
+                        Margin="0,6,0,0" HorizontalAlignment="Left" />
+                <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding MenuSaveOverviewText}" FontFamily="Consolas, Microsoft YaHei" TextWrapping="Wrap" />
+                </ScrollViewer>
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <Border Background="#FFFDF6E9" Visibility="{Binding IsEnded, Converter={StaticResource BoolToVis}}">
@@ -400,7 +469,7 @@
             </StackPanel>
         </Border>
 
-        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="820" Height="440" Margin="12"
+        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="820" Height="{Binding ConsoleHeight}" Margin="12"
                 Background="#F5201F1F" BorderBrush="#FFD8C48A" BorderThickness="2" CornerRadius="4"
                 Visibility="{Binding ConsoleVisible, Converter={StaticResource BoolToVis}}">
             <DockPanel Margin="8">

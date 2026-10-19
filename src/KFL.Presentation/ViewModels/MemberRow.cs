@@ -1,4 +1,5 @@
 using KFL.Core.Entities;
+using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 
 namespace KFL.Presentation.ViewModels;
@@ -6,7 +7,12 @@ namespace KFL.Presentation.ViewModels;
 /// <summary>成员卡片行（一次刷新重建一次的只读快照视图）。</summary>
 public sealed class MemberRow
 {
-    public MemberRow(Person person, Family family, GameDate date, bool archived = false)
+    public MemberRow(
+        Person person,
+        Family family,
+        GameDate date,
+        bool archived = false,
+        bool childbirthPending = false)
     {
         Person = person;
         Name = person.Name;
@@ -22,8 +28,61 @@ public sealed class MemberRow
         Merit = person.Merit;
         StatusText = Display.StatusOf(person, date);
         SpouseText = person.SpouseId is { } spouseId ? family.TryGet(spouseId)?.Name ?? "—" : "—";
+        FatherText = person.FatherId is { } fatherId ? family.TryGet(fatherId)?.Name ?? "（不可考）" : "（不可考）";
+        MotherText = person.MotherId is { } motherId ? family.TryGet(motherId)?.Name ?? "（不可考）" : "（不可考）";
         IsArchived = archived;
         IsHead = family.HeadId == person.Id;
+        ChildbirthPending = childbirthPending;
+
+        // 状态标志（玩家反馈 3：卡片上直接表明「有没有病 / 有没有在治疗 / 已报名哪一级 / 名师 / 求子 / 入狱」）
+        HasIllness = person.Status.HasFlag(StatusFlag.Ill);
+        IsTreated = person.Timers.TreatmentRemainingMonths is not null;
+        IsImprisoned = person.Status.HasFlag(StatusFlag.ServingSentence);
+        IsTutored = person.IsTutoredByMaster;
+        AppliedExamText = person.AppliedExam is { } level ? $"已报{Display.ExamLevel(level)}" : string.Empty;
+
+        var badges = new List<string>();
+        if (HasIllness)
+        {
+            badges.Add("患病");
+        }
+
+        if (IsTreated)
+        {
+            badges.Add("治疗中");
+        }
+
+        if (IsImprisoned)
+        {
+            badges.Add("入狱");
+        }
+
+        if (AppliedExamText.Length > 0)
+        {
+            badges.Add(AppliedExamText);
+        }
+
+        if (IsTutored)
+        {
+            badges.Add("名师");
+        }
+
+        if (ChildbirthPending)
+        {
+            badges.Add("求子");
+        }
+
+        if (person.Status.HasFlag(StatusFlag.AwaitingPost))
+        {
+            badges.Add("待阙");
+        }
+
+        if (person.Status.HasFlag(StatusFlag.MarriedOut))
+        {
+            badges.Add("外嫁");
+        }
+
+        BadgeText = badges.Count > 0 ? string.Join(" ｜ ", badges) : string.Empty;
     }
 
     public Person Person { get; }
@@ -54,9 +113,36 @@ public sealed class MemberRow
 
     public string SpouseText { get; }
 
+    /// <summary>父亲姓名（无记录时为「（不可考）」）。</summary>
+    public string FatherText { get; }
+
+    /// <summary>母亲姓名（无记录时为「（不可考）」）。</summary>
+    public string MotherText { get; }
+
     public bool IsArchived { get; }
 
     public bool IsHead { get; }
+
+    /// <summary>是否已「申请生育」（本会话内标记，见 MainViewModel）。</summary>
+    public bool ChildbirthPending { get; }
+
+    /// <summary>是否患病。</summary>
+    public bool HasIllness { get; }
+
+    /// <summary>是否正在治疗（医疗计时 > 0）。</summary>
+    public bool IsTreated { get; }
+
+    /// <summary>是否在服刑。</summary>
+    public bool IsImprisoned { get; }
+
+    /// <summary>是否受名师之教。</summary>
+    public bool IsTutored { get; }
+
+    /// <summary>「已报解试 / 已报省试」，未报名时为空串。</summary>
+    public string AppliedExamText { get; }
+
+    /// <summary>卡片状态徽记串（空串表示无状态标记）。</summary>
+    public string BadgeText { get; }
 
     public string HeadMark => IsHead ? "家主" : string.Empty;
 

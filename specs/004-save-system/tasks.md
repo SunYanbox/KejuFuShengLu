@@ -534,3 +534,17 @@ MEDIUM = 契约细则或次要验收锚点的行为/断言缺口；LOW = 边界�
 **审核项「2.x」——本轮修复的实现与验证落点（无工件口径变更）**：`src/KFL.Infrastructure/Save/Serialization/{MessagePackSaveFormat.cs,JsonSaveFormat.cs,SaveStateMapper.cs}`、`src/KFL.Infrastructure/Save/{AtomicFileWriter.cs,SaveCatalog.cs,SaveService.cs}`、`tests/KFL.Tests/Infrastructure/{SaveFailureTests.cs,SaveStateValidatorTests.cs（新增）,SaveFormatContractTests.cs,AtomicWriteTests.cs,SaveServiceTests.cs,SaveStateComparer.cs,SaveTestSandbox.cs}`；`contracts/save-format.md` §2（JSON 头次序与重复成员）与 `save-service.md` §4.1（豁免行预算复核）**文本未改**——本轮只是把实现拉回契约既有要求。
 
 **有意不回改**（历史记录类工件）：本文件 Phase 1~6 / Phase 7 既有条目、`specs/002-monthly-settlement-economy/implementation-notes.md`、各 `checklists/`、`specs/004-save-system/contracts/save-cadence.md:10`（未插入任何上游步骤）、`specs/001-core-skeleton/spec.md:7`（前瞻性授权句），以及描述**被否决替代方案**的「跨特性形状变更」字样（`research.md:375/386/404`、`plan.md:337/349`、002 `data-model.md` §3.6 不变量段）。
+
+## 回写范围登记（2026-10-19，玩家反馈批次：备份压缩、另存为换标识、备份读档）
+
+> 本节由玩家反馈修复（反馈 13/14/15）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §14 的 2026-10-19 `§17 裁决回写` 块与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 备份落点改 `backups/<存档名><扩展名>.zip`（单条目、Optimal） | `科举浮生录规格书.md` §14；`specs/004-save-system/spec.md` 增补 §1；`src/KFL.Infrastructure/Save/SaveService.cs`（`BackupSuffix`、`Zip`/`Unzip`、`TryDescribeBackup`/`TryReadBackupHeader`、`RenameBackup`、`RemoveStaleBackups`）；`tests/KFL.Tests/Infrastructure/SaveTestSandbox.cs`（`BackupPathOf` 加 `.zip`、`CopyBackupOverPrimary` 解包） |
+| 另存为铸造新存档标识 `SaveAsFork`；`Rename` 标识不变 | 规格书 §14 + `spec.md` 增补 §2；`src/KFL.Infrastructure/Abstractions/ISaveService.cs`（三个新成员）、`src/KFL.Infrastructure/Save/SaveService.cs`（`payload.Id = Guid.NewGuid(); // arch-guard:allow 契约九 §5…`）、`src/KFL.Presentation/GameSession.cs`（`SaveAs`/`Rename`/`State` 改为可写）；`tests/KFL.Tests/Rules/RecordingSaveService.cs` |
+| 备份读档 `ListBackups` / `LoadBackup` + 界面入口 | 规格书 §14 + `spec.md` 增补 §3；`ISaveService.cs`、`SaveService.cs`、`src/KFL.Presentation/GameSession.cs`（`ListBackups`/`LoadBackup`）、`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`Backups` 集合、`RefreshBackups`、`loadbackup`）、`src/KFL.App/MainWindow.xaml`（「备份存档（已压缩）」栏 + 「读取选中备份」按钮） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1286 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+`save-format.md`、`save-service.md` 的**键表与版本常量未变**（`SaveFileFormat.Version` 仍为 5）。

@@ -145,6 +145,34 @@ internal static class RulesHarness
     }
 
     /// <summary>
+    /// **有科举功名**的在任官员夹具（2026-10-19 需求 16：功名只限制职级上限）。
+    /// 未附功名者（纯 <see cref="Official"/>）按白身处理，职级上限为最低品，考课不再晋升。
+    /// </summary>
+    /// <param name="index">夹具标识下标。</param>
+    /// <param name="level">官阶级数（1~18）。</param>
+    /// <param name="degree">功名。</param>
+    /// <param name="imperialClass">甲第（仅进士有效）。</param>
+    /// <param name="monthsInOffice">在职月数（&gt;= 0）。</param>
+    /// <param name="merit">政绩（&gt;= 0）。</param>
+    public static Person OfficialWithDegree(
+        int index,
+        int level,
+        DegreeLevel degree = DegreeLevel.JinShi,
+        ImperialClass? imperialClass = ImperialClass.ThirdClass,
+        int monthsInOffice = 0,
+        int merit = 0)
+    {
+        var person = Official(index, level, monthsInOffice, merit);
+        person.AppendDegree(new DegreeRecord(
+            degree,
+            imperialClass == ImperialClass.FirstClass ? ImperialPlacement.ZhuangYuan : null,
+            Date,
+            DegreeChangeCause.ExamPass,
+            imperialClass));
+        return person;
+    }
+
+    /// <summary>
     /// 禁升期官员夹具（003）：本特性**只消费**该计时、不清算也不建立（逻辑轨 ⑥）。
     /// </summary>
     /// <param name="index">夹具标识下标。</param>

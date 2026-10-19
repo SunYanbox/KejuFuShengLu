@@ -491,3 +491,18 @@ Task: "T013 新建 src/KFL.Rules/Exam/ExamCalendar.cs（依赖 T005）"
    已被占满，该措辞双重失真；改为「004 对契约三钉死的结算步骤序列一个字都没动（005 后该序列为
    八步）——存档不是序列里的任何一步，而是套在结算外面的一层编排（R-17）」。该文件不在 T058 原列
    的三处之内，按 AGENTS.md 铁律第 3 条在此承接登记。
+
+## 回写范围登记（2026-10-19，玩家反馈批次：基础率、报名窗口、举人授官）
+
+> 本节由玩家反馈修复（反馈 4/5/8/9/21/22）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §5 / §6 的 2026-10-19 `§17 裁决回写` 块与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 基础录取率 0.01/0.10/0.05 → 0.25/0.30/0.15 | `科举浮生录规格书.md` §6；`specs/005-exam-cycle/spec.md` 增补 §1；`src/KFL.Rules/Config/ExamPolicy.cs`；`tests/KFL.Tests/Rules/{SpecAnchorTests,ExamAdmissionTests}.cs` |
+| 报名窗口 = 考试当月 ∪ 前一月（`RegisterLevelOf`） | `科举浮生录规格书.md` §5；`specs/005-exam-cycle/spec.md` 增补 §2；`src/KFL.Rules/Exam/ExamRegistration.cs`、`src/KFL.Presentation/GameSession.cs`（`HasPendingDecision` / `AutoRegisterForUpcomingExam`）、`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`RefreshAll` / `RefreshDetail`）；`tests/KFL.Tests/Rules/ExamRegistrationTests.cs` |
+| 举人即授官引发 `IsEligible` 去掉 `Rank is null` | `specs/003-opening-assets-officialdom/spec.md` 增补 §4（交叉引用本节增补 §3）；`src/KFL.Rules/Exam/ExamRegistration.cs`、`src/KFL.Rules/Exam/ExamSeasonRunner.cs`；`tests/KFL.Tests/Rules/ExamSeasonTests.cs` |
+
+**门禁实测（2026-10-19）**：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false` → 0 警告 0 错误；
+`dotnet test … -p:_MSTestEnableParentProcessQuery=false` → **1286 通过 / 0 失败 / 0 skipped**；
+`dotnet sln KejuFuShengLu.slnx list` → 恰好六个工程；`*.sln` 全树扫描 → 无输出。

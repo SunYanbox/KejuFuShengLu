@@ -95,6 +95,9 @@ public static class StatsCharts
     private const int YearlyTickStep = 12;
     private const int MonthPixelStep = 44;
 
+    /// <summary>三张图的基准画布宽度（玩家反馈：纵向排列且左右对齐，避免相邻纵轴跨度极大）。</summary>
+    private const int FrameWidth = 880;
+
     /// <summary>按 Ledger 逐月聚合，返回 3 张图；Ledger 为空时返回 1 张带说明的空图（Series 为空列表）。</summary>
     /// <param name="state">当前存档状态（只读，不会被修改）。</param>
     /// <returns>固定顺序的三张折线图；无流水时是单张说明图。</returns>
@@ -117,7 +120,7 @@ public static class StatsCharts
                     "月度收支（暂无流水）",
                     UnitName,
                     "族中尚无流水账；先推进几个游戏月份，折线图会随 Ledger 自动生成。",
-                    Math.Max(900, 0),
+                    FrameWidth,
                     ChartHeight,
                     [],
                     [],
@@ -225,7 +228,7 @@ public static class StatsCharts
         List<GameDate> months,
         IReadOnlyList<LineSpec> lines)
     {
-        var width = (double)Math.Max(900, months.Count * MonthPixelStep);
+        var width = (double)Math.Max(FrameWidth, months.Count * MonthPixelStep);
         var minimum = 0d;
         var maximum = 0d;
         var magnitudes = new List<double>();

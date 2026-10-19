@@ -490,3 +490,26 @@ US1 的判定没有输入。持续报考是规格书 §3 明写的玩家便利�
   `Person`/`Family` 字段表与不变量；⑦`specs/004-save-system/contracts/save-format.md` 的键表与
   版本常量 + `specs/004-save-system/data-model.md`；⑧`LedgerCategory` 的类别计数与「无该类别」
   断言（19 → 20）。回写范围 MUST 在 `tasks.md` 中登记（FR-028；章程「需求真源」）。
+
+## 增补（2026-10-19，玩家反馈批次：基础率、报名窗口、举人授官）
+
+> 依据：规格书 §6 / §5 于 2026-10-19 新增的 `§17 裁决回写` 块。本节**取代**上文涉及下列三项的旧口径。
+
+1. **基础录取率上调**：解试 `JieShiBaseRate` 0.01 → **0.25**、省试 `ShengShiBaseRate` 0.10 → **0.30**、
+   殿试基础进甲率 `ImperialPromotionBaseRate` 0.05 → **0.15**。学业系数（0.4 + 0.012 × 学业）、
+   仕天赋除数（400）、仕族加成（×1.1，不入进甲率）、贿赂乘数与封顶（0.899999）**一律不变**。
+   理由：玩家反馈「学业 100 仍几乎考不中」「几乎人人靠三次保底免解才中举」，两级落差过大。
+2. **报名窗口 = 考试当月 ∪ 该月前一月**：`ExamRegistration.RegisterLevelOf(GameDate)` 为唯一窗口口径
+   （当月是解试/省试取当月，否则下月是解试/省试取该级别，其余 `null`）。`CanRegister`、
+   `EligibleUnapplied`、结算第 ⑨ 步的持续报考自动报名与 UI 的「本月可报名/已报名」全部按它取。
+   理由：结算在进入考试月的**同一次推进内**完成判定，玩家没有报名与行贿的时机（反馈 4/9）。
+   窗口外报名仍抛 `InvalidOperationException` 且逐字段不变；殿试仍无需报名。
+3. **举人即授官（跨特性）**：解试中第取得举人时立即授 L17（不设待阙），详见
+   `specs/003-opening-assets-officialdom/spec.md` 的同日增补；因此 `IsEligible` 不再要求
+   `Rank is null`（有官阶者可继续应省试），`SpecialTributeEligible` 仍要求无官阶。
+
+**回写登记（同一提交）**：①规格书 §5 / §6 的 2026-10-19 `§17 裁决回写` 块；②本节；
+③`specs/003-*/spec.md`（举人授官、职级上限）；④`src/KFL.Rules/Config/ExamPolicy.cs`、
+`src/KFL.Rules/Exam/ExamRegistration.cs`、`src/KFL.Rules/Exam/ExamSeasonRunner.cs`；
+⑤`tests/KFL.Tests/Rules/{SpecAnchorTests,ExamAdmissionTests,ExamRegistrationTests,ExamSeasonTests}.cs`
+的对应锚点。

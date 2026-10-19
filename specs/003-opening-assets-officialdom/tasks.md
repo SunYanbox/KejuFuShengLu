@@ -429,3 +429,16 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 0 skipped**；`dotnet sln KejuFuShengLu.slnx list` → 恰好**六个**工程；`.sln` 全树扫描 → 无输出。
 `tests/KFL.Tests/KFL.Tests.csproj` 的 `_MSTestEnableParentProcessQuery` 仍为**注释态**。
 
+## 回写范围登记（2026-10-19，玩家反馈批次：举人授官与功名职级上限）
+
+> 本节由玩家反馈修复（反馈 8/16/21/22）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §8.2 的 2026-10-19 `§17 裁决回写` 块与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 举人即授官（`AppointmentTrack.JuRen`，L17，不待阙） | `科举浮生录规格书.md` §8.2；`specs/003-opening-assets-officialdom/spec.md` 增补 §1；`src/KFL.Core/Enums/AppointmentTrack.cs`、`src/KFL.Rules/Config/OfficialCareerPolicy.cs`、`src/KFL.Rules/Career/AppointmentEntry.cs`、`src/KFL.Rules/Exam/ExamSeasonRunner.cs`；`tests/KFL.Tests/Core/ValueObjectTests.cs`（枚举 4 → 5） |
+| 功名职级上限 `PromotionCapLevelOf`（白身 18 / 举人 16 / 贡士 13 / 一甲 4 / 二甲 8 / 三甲 12） | `科举浮生录规格书.md` §8.2；`spec.md` 增补 §2；`src/KFL.Rules/Config/OfficialCareerPolicy.cs`、`src/KFL.Rules/Career/OfficialCareerAdvance.cs`（`TryPromote`：`current.Level <= HighestLevel \|\| current.Level - 1 < cap` 时**不掷骰**）；`tests/KFL.Tests/Rules/{CareerAdvanceTests,SpecAnchorTests}.cs`、`tests/KFL.Tests/Rules/RulesTestHarness.cs`（新增 `OfficialWithDegree` 夹具） |
+| 已有官阶者中进士只升不降（殿试授官入口） | `spec.md` 增补 §3；`src/KFL.Rules/Exam/ExamSeasonRunner.cs` 第 ⑤ 步；`src/KFL.Rules/Career/AppointmentEntry.cs`（`EnsureEligible` 现有路径不再被殿试触发） |
+
+**门禁实测（2026-10-19）**：0 警告 0 错误 / 1286 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+
