@@ -708,8 +708,9 @@ MUST NOT 自造亏损事件规则（FR-042）。理由：既不改动 U4 的分�
    （`AchievementRow.IsMasked` → 名称「？？？（隐藏成就）」、条件「达成条件隐藏——达成后自动揭示。」、
    状态「隐藏」）；达成后按普通成就展示。**判定与解锁逻辑不受影响**，隐藏纯属展示面。
 2. **调试秘辛成就可被真实触发**（反馈 12）：ACH-064~068 读 `Achievements.DebugWakeCount`，
-   由 `GameSession.DebugWake(int)` → `AchievementCounters.ReportsDebugWake` 递增，即控制台
-   `wake [N]` 是**唯一**的合法触发路径。因此 `src/KFL.Presentation/AchievementDescriptions.cs`
+   由 `GameSession.DebugRecordWake()` → `AchievementCounters.ReportsDebugWake` 每次 1 次递增。
+   **自 2026-10-20 起**，`S-U-N-T-I-O-N` 每次激活与反引号每次打开各上报一次（`wake [N]` 命令已移除，
+   见本节末尾「增补（2026-10-20，玩家反馈第十轮）」）。因此 `src/KFL.Presentation/AchievementDescriptions.cs`
    中 ACH-064~068 的说明由「（本版本恒不解锁）」改为「（隐藏成就）」。
 3. **控制台强制解锁**（调试用途）：新增 `GameSession.DebugUnlockAchievement(string code)`，
    接受 `ACH-064` / `64` / `all` / `*`，写入路径与正常解锁完全一致
@@ -722,3 +723,26 @@ MUST NOT 自造亏损事件规则（FR-042）。理由：既不改动 U4 的分�
 `src/KFL.Presentation/ViewModels/MainViewModel.{Commands,Refresh.Saves}.cs`（`RefreshAchievements` 传 `hidden:`、控制台命令）、
 `src/KFL.Presentation/GameSession.cs`、`src/KFL.Presentation/AchievementDescriptions.cs`；
 ④`src/KFL.App/Views/AchievementsTabView.xaml`（成就页状态列已显示「隐藏/已达成」）。
+
+## 增补（2026-10-20，玩家反馈第十轮：调试控制台）
+
+> 依据：规格书 §13.1 / §13.3 与 §17「裁决块：2026-10-20（玩家反馈第十轮：调试控制台）」。
+> 本节只补**唤醒入口**与调试命令对成就计数的影响，不改 ACH-064~068 的判据、阈值与解锁时机，
+> 不改存档形状（`SaveFileFormat.Version` 不变）。
+
+1. **唤醒入口**：`wake [N]` 命令已从控制台移除。ACH-064~068 的 `DebugWakeCount` 改由两个真实入口
+   每次 +1：①键入 `S-U-N-T-I-O-N` 激活成功；②已激活后用反引号**打开**控制台（关闭不计）。
+   两条路径都经 `GameSession.DebugRecordWake()` → `AchievementCounters.ReportsDebugWake(State, 1)`，
+   MUST NOT 在界面层直接写 `AchievementState`。
+2. **调试生子**：`birth` / `birth <男|女> ...` 经 `Childbirth.DeliverNow` 立即产子成功后，
+   与正常分娩一样累加 `AchievementState.RecordBirths(1)`；该路径**不掷难产死亡、不消费待产队列**，
+   MUST NOT 被月度结算复用。
+3. **其余调试命令**（`kill` / `revive` / `setdate` / `rank`）不改变任何成就累计量；
+   `kill` 走 `DeathSettlement.Run`，故当月若在正常结算之外调用，不会生成 `SettlementResult`
+   供成就判定消费，属调试预期。
+
+**回写登记（同一提交）**：①本节与 §2 的入口更正；②规格书 §13.1 / §13.3 与 §17 同日裁决块；
+③`specs/008-achievements-extinction/tasks.md` 的「回写范围登记（2026-10-20）」；
+④代码侧：`src/KFL.Presentation/GameSession.Debug.cs`（`DebugRecordWake`）、
+`src/KFL.Presentation/ViewModels/MainViewModel.Console.cs`（删除 `wake`、新增命令与历史）、
+`src/KFL.Rules/Family/Childbirth.cs`（`DeliverNow`）、`src/KFL.Core/Entities/GameState.cs`（`DebugSetDate`）。

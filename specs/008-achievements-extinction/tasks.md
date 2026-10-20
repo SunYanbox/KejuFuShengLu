@@ -505,3 +505,17 @@ Task: "T035 [P] [US1] AchievementStoreFailureTests.cs（SC-007）"
 | 控制台 `ach-unlock <ACH-064\|64\|all>` 强制解锁 | `spec.md` 增补 §3；`src/KFL.Presentation/GameSession.cs`（`DebugUnlockAchievement`，写入路径与正常解锁一致）、`src/KFL.Presentation/ViewModels/MainViewModel.cs`（`ExecuteConsole` / `ConsoleCommands`） |
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1286 通过 0 失败 / 恰六工程 / 无 `*.sln`。
+
+## 回写范围登记（2026-10-20，玩家反馈第十轮：调试控制台）
+
+> 本节为**追加登记**，不回改上文任何既有条目（历史记录类工件，见 AGENTS.md「回写义务」）。
+> 授权落点 = `spec.md` 末尾「增补（2026-10-20，玩家反馈第十轮：调试控制台）」与规格书 §17 同日裁决块。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 唤醒入口由 `wake [N]` 改为「S-U-N-T-I-O-N 激活 + 反引号打开」各 +1 | `spec.md` 增补 §1、§2 的入口更正（原文「`wake [N]` 是唯一合法路径」改为 `DebugRecordWake()` 两个真实入口）；规格书 §13.1、§14.1 与 §17 裁决块 Q10；`src/KFL.Presentation/GameSession.Debug.cs`（`DebugRecordWake`）、`src/KFL.Presentation/ViewModels/MainViewModel.Console.cs`（删除 `wake`、`ToggleConsole` / `ActivateConsole` 上报） |
+| 控制台五项命令与历史 | `spec.md` 增补 §2、§3；规格书 §13.3 与 §17 裁决块 Q1~Q9；`src/KFL.App/MainWindow.xaml.cs`（反引号焦点与 IME 归一化）、`src/KFL.App/Views/ConsoleOverlayView.xaml`（+ `.xaml.cs`，历史键）、`src/KFL.Presentation/ViewModels/MainViewModel.Console.cs`（`kill` 改选中、`revive` / `birth` / `rank` / `setdate`、`difficulty-list` 文案、50 条历史）、`src/KFL.Presentation/GameSession.Debug.cs`、`src/KFL.Rules/Family/Childbirth.cs`（`DeliverNow`）、`src/KFL.Core/Entities/GameState.cs`（`DebugSetDate`） |
+| 断言物（同提交，**不是**历史工件） | `tests/KFL.Tests/Rules/ChildbirthTests.cs` 新增三条 `DeliverNow` 用例（指定属性零随机且不消费待产队列、未指定属性只掷属性骰、无效夫妇拒绝） |
+
+**历史记录类工件未回改**：本文件 T001~T103 既有条目、`specs/001~007` 的既有 `tasks.md` 条目与
+`implementation-notes.md`、既有 `checklists/` 一律保留原文；本节只追加登记。

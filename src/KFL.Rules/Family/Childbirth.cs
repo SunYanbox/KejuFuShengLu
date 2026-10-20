@@ -86,44 +86,8 @@ public static class Childbirth
                 deaths.Add(wife, DeathCause.Childbirth);
             }
 
-            // ② 性别：0 ⇒ 男、1 ⇒ 女。
-            var gender = random.Next(0, 2) == 0 ? Gender.Male : Gender.Female;
-
-            // ③ 遗传：天赋（农、商、仕、工）→ 学业 → 体质。
-            var talents = new TalentSet(
-                Inheritance.Attribute(husband.Talents.Agriculture, wife.Talents.Agriculture, random),
-                Inheritance.Attribute(husband.Talents.Commerce, wife.Talents.Commerce, random),
-                Inheritance.Attribute(husband.Talents.Officialdom, wife.Talents.Officialdom, random),
-                Inheritance.Attribute(husband.Talents.Craft, wife.Talents.Craft, random));
-            var study = Inheritance.Study(husband.Study, wife.Study, random);
-            var health = Inheritance.Health(husband.Health, wife.Health, random);
-
-            // ④ 寿数（照常 roll，无上限）。
-            var lifespan = AttributePolicy.NextLifespan(gender, random);
-
-            // ⑤ 姓名：冠家族姓氏。
-            var name = family.Name + names.NextGivenName(gender);
-
-            // ⑥ 入族（辈分 = 父母辈分 + 1；父亲为族内主轴）。
-            var child = new Person(
-                LifecycleIds.Next(family, "birth"),
-                name,
-                gender,
-                month,
-                talents,
-                lifespan,
-                husband.Generation + 1,
-                husband.Id,
-                wife.Id)
-            {
-                Study = study,
-                Health = health,
-            };
-
-            family.AddChild(child);
-
-            // ⑦ 出生事件条目（事件类、金额 0、不动资金池）。
-            state.Economy.Apply(LedgerCategory.ChildBorn, child.Id, Money.Zero, month);
+            // ②~⑦ 由 CreateChild 统一产出：性别 → 遗传 → 寿数 → 姓名 → 入族 → 出生事件。
+            var fact = CreateChild(state, husband, wife, random, names);
 
             // ⑧ 母亲死亡 ⇒ 其配偶的 SpouseId 置空（一夫一妻的婚姻关系解除）。
             if (motherDied)
@@ -131,11 +95,121 @@ public static class Childbirth
                 family.EndMarriage(wife.Id);
             }
 
-            facts.Add(new BirthFact(child.Id, gender, husband.Id, wife.Id));
+            facts.Add(fact);
         }
 
         family.Lifecycle.ConsumeBirths(month);
 
         return facts;
+    }
+
+    /// <summary>
+    /// 立即产下一名子女（调试控制台；不掷分娩死亡、不消费待分娩记录）。
+    /// </summary>
+    /// <param name="state">游戏状态。</param>
+    /// <param name="couple">夫妇键（夫在前）。</param>
+    /// <param name="random">随机来源。</param>
+    /// <param name="names">姓名生成器。</param>
+    /// <param name="gender">指定性别；<c>null</c> = 按正常分布掷骰。</param>
+    /// <param name="talents">指定四项天赋；<c>null</c> = 按父母遗传掷骰。</param>
+    /// <param name="study">指定学业；<c>null</c> = 按父母遗传掷骰。</param>
+    /// <param name="health">指定体质；<c>null</c> = 按父母遗传掷骰。</param>
+    /// <param name="lifespan">指定寿数；<c>null</c> = 按性别掷骰。</param>
+    /// <returns>出生事实；夫妇任一方已不在册或已亡故时为 <c>null</c>。</returns>
+    /// <remarks>
+    /// 与 <see cref="Run"/> 共用同一套随机次序（性别 → 天赋 ×4 → 学业 → 体质 → 寿数），
+    /// 只在被显式指定的项上跳过掷骰。正常月度结算 MUST NOT 调用本方法。
+    /// </remarks>
+    public static BirthFact? DeliverNow(
+        GameState state,
+        CoupleKey couple,
+        IRandomService random,
+        INameGenerator names,
+        Gender? gender = null,
+        TalentSet? talents = null,
+        int? study = null,
+        int? health = null,
+        int? lifespan = null)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(random);
+        ArgumentNullException.ThrowIfNull(names);
+
+        var family = state.Family;
+        var husband = family.TryGet(couple.HusbandId);
+        var wife = family.TryGet(couple.WifeId);
+
+        if (husband is null || wife is null
+            || !CountedMembers.IsRegistered(husband)
+            || !CountedMembers.IsRegistered(wife)
+            || husband.Gender != Gender.Male
+            || wife.Gender != Gender.Female
+            || husband.SpouseId != wife.Id
+            || wife.SpouseId != husband.Id)
+        {
+            return null;
+        }
+
+        return CreateChild(state, husband, wife, random, names, gender, talents, study, health, lifespan);
+    }
+
+    /// <summary>
+    /// 在已校验的父母上产出新生儿（正常 ⑧-b 与调试入口共用）。
+    /// </summary>
+    private static BirthFact CreateChild(
+        GameState state,
+        Person husband,
+        Person wife,
+        IRandomService random,
+        INameGenerator names,
+        Gender? gender = null,
+        TalentSet? talents = null,
+        int? study = null,
+        int? health = null,
+        int? lifespan = null)
+    {
+        var family = state.Family;
+        var month = state.CurrentDate;
+
+        // ② 性别：0 ⇒ 男、1 ⇒ 女。
+        var actualGender = gender ?? (random.Next(0, 2) == 0 ? Gender.Male : Gender.Female);
+
+        // ③ 遗传：天赋（农、商、仕、工）→ 学业 → 体质。
+        var actualTalents = talents ?? new TalentSet(
+            Inheritance.Attribute(husband.Talents.Agriculture, wife.Talents.Agriculture, random),
+            Inheritance.Attribute(husband.Talents.Commerce, wife.Talents.Commerce, random),
+            Inheritance.Attribute(husband.Talents.Officialdom, wife.Talents.Officialdom, random),
+            Inheritance.Attribute(husband.Talents.Craft, wife.Talents.Craft, random));
+        var actualStudy = study ?? Inheritance.Study(husband.Study, wife.Study, random);
+        var actualHealth = health ?? Inheritance.Health(husband.Health, wife.Health, random);
+
+        // ④ 寿数（照常 roll，无上限）。
+        var actualLifespan = lifespan ?? AttributePolicy.NextLifespan(actualGender, random);
+
+        // ⑤ 姓名：冠家族姓氏。
+        var name = family.Name + names.NextGivenName(actualGender);
+
+        // ⑥ 入族（辈分 = 父母辈分 + 1；父亲为族内主轴）。
+        var child = new Person(
+            LifecycleIds.Next(family, "birth"),
+            name,
+            actualGender,
+            month,
+            actualTalents,
+            actualLifespan,
+            husband.Generation + 1,
+            husband.Id,
+            wife.Id)
+        {
+            Study = actualStudy,
+            Health = actualHealth,
+        };
+
+        family.AddChild(child);
+
+        // ⑦ 出生事件条目（事件类、金额 0、不动资金池）。
+        state.Economy.Apply(LedgerCategory.ChildBorn, child.Id, Money.Zero, month);
+
+        return new BirthFact(child.Id, actualGender, husband.Id, wife.Id);
     }
 }

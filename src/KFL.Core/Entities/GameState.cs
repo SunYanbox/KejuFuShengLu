@@ -124,4 +124,15 @@ public sealed class GameState
             ? new GameDate(_currentDate.Year + 1, 1)
             : new GameDate(_currentDate.Year, _currentDate.Month + 1);
     }
+
+    /// <summary>
+    /// 调试专用：把当前年月直接设为指定值，**不推进结算、不触发任何月度逻辑**。
+    /// </summary>
+    /// <param name="date">目标年月。</param>
+    /// <remarks>
+    /// 这是 <see cref="CurrentDate"/> 除 <see cref="AdvanceMonth"/> 外的唯一写入通道，
+    /// 只允许调试控制台调用；正常游戏流程 MUST NOT 使用（R-03 的「1 回合 = 1 月」仍由
+    /// <see cref="AdvanceMonth"/> 保证）。
+    /// </remarks>
+    public void DebugSetDate(GameDate date) => _currentDate = date;
 }

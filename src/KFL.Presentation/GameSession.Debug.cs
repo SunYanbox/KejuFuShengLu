@@ -3,6 +3,7 @@ using KFL.Core.Enums;
 using KFL.Core.ValueObjects;
 using KFL.Rules.Achievements;
 using KFL.Rules.Config;
+using KFL.Rules.FamilyLifecycle;
 
 namespace KFL.Presentation;
 
@@ -17,6 +18,14 @@ public sealed partial class GameSession
         Changed?.Invoke();
         return string.Empty;
     }
+
+    /// <summary>
+    /// 记录一次「打开调试控制台」的唤醒，不写编年史。
+    /// </summary>
+    /// <remarks>
+    /// S-U-N-T-I-O-N 激活与反引号打开各调用一次（玩家需求：取代 <c>wake</c> 命令）。
+    /// </remarks>
+    public void DebugRecordWake() => AchievementCounters.ReportsDebugWake(State, 1);
 
     public string DebugMoney(Money amount)
     {
@@ -36,10 +45,179 @@ public sealed partial class GameSession
 
     public string DebugKill(Person person)
     {
-        person.Status |= StatusFlag.Deceased;
+        if ((person.Status & StatusFlag.Deceased) != StatusFlag.None)
+        {
+            return $"{person.Name} 已经死亡。";
+        }
+
+        var deaths = new DeathRegister();
+        deaths.Add(person, DeathCause.Illness);
+        DeathSettlement.Run(State, deaths, State.CurrentDate);
         Note($"（调试）{person.Name} 病故。");
         Changed?.Invoke();
-        return string.Empty;
+        return $"{person.Name} 已死亡。";
+    }
+
+    /// <summary>调试：复活选中成员（仅清除死亡标记，不恢复婚姻 / 官职）。</summary>
+    /// <param name="person">成员。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugRevive(Person person)
+    {
+        if ((person.Status & StatusFlag.Deceased) == StatusFlag.None)
+        {
+            return $"{person.Name} 尚未死亡。";
+        }
+
+        person.Status &= ~StatusFlag.Deceased;
+        Note($"（调试）{person.Name} 复活。");
+        Changed?.Invoke();
+        return $"{person.Name} 已复活。";
+    }
+
+    /// <summary>调试：令选中成员与其配偶立刻产下一名子女（不掷难产死亡）。</summary>
+    /// <param name="person">父或母。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugBirthNow(Person person)
+    {
+        if (!TryCoupleOf(person, out var couple, out var error))
+        {
+            return error;
+        }
+
+        var fact = Childbirth.DeliverNow(State, couple, _random, _names);
+        if (fact is null)
+        {
+            return "生育失败：夫妇任一方已不在族中。";
+        }
+
+        State.Achievements.RecordBirths(1);
+        var child = State.Family.TryGet(fact.PersonId);
+        Note($"（调试）{person.Name} 与配偶立刻得{(fact.Gender == Gender.Male ? "子" : "女")} {child?.Name ?? "（新生儿）"}。");
+        Changed?.Invoke();
+        return $"已出生：{child?.Name ?? "（新生儿）"}（{(fact.Gender == Gender.Male ? "男" : "女")}）。";
+    }
+
+    /// <summary>调试：令选中成员与其配偶立刻产下一名指定性别与属性的子女（不掷难产死亡）。</summary>
+    /// <param name="person">父或母。</param>
+    /// <param name="gender">指定性别。</param>
+    /// <param name="talents">指定四项天赋；<c>null</c> = 随父母遗传。</param>
+    /// <param name="study">指定学业；<c>null</c> = 随父母遗传。</param>
+    /// <param name="health">指定体质；<c>null</c> = 随父母遗传。</param>
+    /// <param name="lifespan">指定寿数；<c>null</c> = 按性别掷骰。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugBirthCustom(
+        Person person,
+        Gender gender,
+        TalentSet? talents,
+        int? study,
+        int? health,
+        int? lifespan)
+    {
+        if (!TryCoupleOf(person, out var couple, out var error))
+        {
+            return error;
+        }
+
+        var fact = Childbirth.DeliverNow(
+            State,
+            couple,
+            _random,
+            _names,
+            gender,
+            talents,
+            study is null ? null : Math.Clamp(study.Value, 0, 100),
+            health is null ? null : Math.Clamp(health.Value, 1, 100),
+            lifespan is null ? null : Math.Max(1, lifespan.Value));
+        if (fact is null)
+        {
+            return "生育失败：夫妇任一方已不在族中。";
+        }
+
+        State.Achievements.RecordBirths(1);
+        var child = State.Family.TryGet(fact.PersonId);
+        Note($"（调试）{person.Name} 与配偶立刻得{(fact.Gender == Gender.Male ? "子" : "女")} {child?.Name ?? "（新生儿）"}（指定属性）。");
+        Changed?.Invoke();
+        return $"已出生：{child?.Name ?? "（新生儿）"}（{(fact.Gender == Gender.Male ? "男" : "女")}）。";
+    }
+
+    /// <summary>调试：把选中成员的官阶直接设为指定级数；<c>null</c> = 罢为无官职。</summary>
+    /// <param name="person">成员。</param>
+    /// <param name="level">官阶级数 <c>1~18</c>（数字越小官越高）；<c>null</c> = 无官职。</param>
+    /// <returns>结果文本。</returns>
+    public string DebugSetRank(Person person, int? level)
+    {
+        if (level is not null and (< 1 or > 18))
+        {
+            return "用法：rank <1~18|none>";
+        }
+
+        if (level is null)
+        {
+            person.Rank = null;
+            Note($"（调试）{person.Name} 罢为无官职。");
+            Changed?.Invoke();
+            return $"{person.Name} 已无官职。";
+        }
+
+        // 待阙状态与既有官阶互斥：先清计时、再清途径、最后清状态位（顺序不可颠倒）。
+        if (person.Timers.AwaitingPostRemainingMonths is not null)
+        {
+            var timers = person.Timers;
+            person.Timers = new StatusTimers(
+                timers.SentenceRemainingMonths,
+                timers.ExamBanRemainingMonths,
+                timers.PromotionBanRemainingMonths,
+                awaitingPostRemainingMonths: null,
+                timers.IllnessSeverityBasisPoints,
+                timers.TreatmentRemainingMonths);
+        }
+
+        person.EntryTrack = null;
+        if ((person.Status & StatusFlag.AwaitingPost) != StatusFlag.None)
+        {
+            person.Status &= ~StatusFlag.AwaitingPost;
+        }
+
+        person.Rank = new OfficialRank(level.Value);
+        person.MonthsInOffice = 0;
+        Note($"（调试）{person.Name} 官阶设为 {level.Value} 级。");
+        Changed?.Invoke();
+        return $"{person.Name} 官阶 = {level.Value} 级。";
+    }
+
+    private bool TryCoupleOf(Person person, out CoupleKey couple, out string error)
+    {
+        couple = default;
+
+        if ((person.Status & StatusFlag.Deceased) != StatusFlag.None)
+        {
+            error = $"{person.Name} 已死亡，无法生育。";
+            return false;
+        }
+
+        if (person.SpouseId is not { } spouseId || State.Family.TryGet(spouseId) is not { } spouse)
+        {
+            error = $"{person.Name} 没有配偶。";
+            return false;
+        }
+
+        if ((spouse.Status & StatusFlag.Deceased) != StatusFlag.None)
+        {
+            error = $"{spouse.Name} 已死亡，无法生育。";
+            return false;
+        }
+
+        if (person.Gender == spouse.Gender)
+        {
+            error = "配偶性别相同，无法生育。";
+            return false;
+        }
+
+        couple = person.Gender == Gender.Male
+            ? new CoupleKey(person.Id, spouse.Id)
+            : new CoupleKey(spouse.Id, person.Id);
+        error = string.Empty;
+        return true;
     }
 
     /// <summary>调试：直接改写选中成员的某一项天赋（需求 17）。</summary>
