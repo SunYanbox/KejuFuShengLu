@@ -86,13 +86,13 @@ public static partial class StatsCharts
             series);
     }
 
-    /// <summary>第三张图：人口事件的当月发生数（或累计数）。</summary>
+    /// <summary>第三张图：人口事件的当月发生数（或累计数）+ 在世人口存量。</summary>
     private static ChartFrame PopulationFrame(GameState state, List<Bucket> buckets, bool cumulative)
     {
         var counts = PopulationCounts(state);
         var caseCounts = LedgerEventCounts(state);
 
-        var series = new List<LineSpec>(PopulationSeries.Length);
+        var series = new List<LineSpec>(PopulationSeries.Length + 1);
         for (var i = 0; i < PopulationSeries.Length; i++)
         {
             var (name, brushKey, category) = PopulationSeries[i];
@@ -110,13 +110,22 @@ public static partial class StatsCharts
                 monthly[month] = value;
             }
 
-            series.Add(new LineSpec(name, brushKey, cumulative ? Cumulative(monthly) : monthly));
+            // 累计口径下改名为「累计出生」等，避免把累计值误读成当月值（玩家反馈 3）。
+            series.Add(new LineSpec(
+                cumulative ? $"累计{name}" : name,
+                brushKey,
+                cumulative ? Cumulative(monthly) : monthly));
         }
 
-        var total = series.Sum(line => line.Values.Length > 0 ? line.Values[^1] : 0d);
+        var (alive, netChange) = LivingPopulation(state, buckets, caseCounts);
+        series.Add(new LineSpec(
+            cumulative ? "在世人口" : "新增在世", Brush8, cumulative ? alive : netChange));
+
         var summary = cumulative
-            ? FormattableString.Invariant($"累计口径：七类事件逐月累计，末月合计 {total:0} 人/次。")
-            : "当前口径：每类事件的当月发生数（出生 / 死亡 / 收养 / 入狱为账本事件，举人 / 贡士 / 进士取自功名变迁史）。";
+            ? "累计口径：出生 / 死亡 / 收养 / 入狱 / 功名为逐月累计；在世人口为当月末的在册存活人数"
+                + "（含开局人口，不含外嫁）。"
+            : "当前口径：出生 = 当月出生人数（一次分娩一条）；死亡 / 收养 / 入狱 / 功名 = 当月发生数；"
+                + "新增在世 = 当月净增（出生 + 收养 − 死亡 − 外嫁）。";
 
         return Frame(
             cumulative ? "人口与功名（累计）" : "人口与功名（当月）",
@@ -124,6 +133,43 @@ public static partial class StatsCharts
             summary,
             buckets,
             series);
+    }
+
+    /// <summary>
+    /// 逐月在册存活人口与净增。
+    /// </summary>
+    /// <remarks>
+    /// 从**当前**在册人数倒推，而不是给每位成员记「入族月」：外来配偶没有入族账本条目，
+    /// 正推会把她们算进开局人口。倒推只需四类事件（出生 / 收养 / 死亡 / 外嫁），
+    /// 且这些事件都必然生成账本条目、条目月份也必然在 <paramref name="buckets"/> 里。
+    /// </remarks>
+    private static (double[] Alive, double[] NetChange) LivingPopulation(
+        GameState state, List<Bucket> buckets, Dictionary<LedgerCategory, Dictionary<GameDate, double>> caseCounts)
+    {
+        var netChange = new double[buckets.Count];
+        for (var i = 0; i < buckets.Count; i++)
+        {
+            var month = buckets[i].Month;
+            netChange[i] = Count(LedgerCategory.ChildBorn)
+                + Count(LedgerCategory.PersonBought)
+                - Count(LedgerCategory.MemberDeceased)
+                - Count(LedgerCategory.MemberMarriedOut);
+
+            double Count(LedgerCategory category) =>
+                caseCounts.TryGetValue(category, out var events) && events.TryGetValue(month, out var hits)
+                    ? hits
+                    : 0d;
+        }
+
+        var alive = new double[buckets.Count];
+        var running = (double)state.Family.RegisteredMembers.Count;
+        for (var i = buckets.Count - 1; i >= 0; i--)
+        {
+            alive[i] = running;
+            running -= netChange[i];
+        }
+
+        return (alive, netChange);
     }
 
     /// <summary>功名事件：键是（系列名，月份），值是当月发生数。</summary>

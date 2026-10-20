@@ -506,3 +506,16 @@ Task: "T013 新建 src/KFL.Rules/Exam/ExamCalendar.cs（依赖 T005）"
 **门禁实测（2026-10-19）**：`dotnet build KejuFuShengLu.slnx -m:1 -nodeReuse:false` → 0 警告 0 错误；
 `dotnet test … -p:_MSTestEnableParentProcessQuery=false` → **1286 通过 / 0 失败 / 0 skipped**；
 `dotnet sln KejuFuShengLu.slnx list` → 恰好六个工程；`*.sln` 全树扫描 → 无输出。
+
+## 回写范围登记（2026-10-20，快进到科举停点判据 `HasRegistrable`）
+
+> 本节由第十轮玩家反馈（快进停点）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §3 的 2026-10-20 `§17 裁决回写` 块与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 新增纯查询 `ExamRegistration.HasRegistrable(Family, GameDate)`（窗口有效 ∧ 有人 `CanRegister` 或特奏名合格） | `科举浮生录规格书.md` §3；`specs/005-exam-cycle/spec.md` 增补 §1；`specs/005-exam-cycle/data-model.md` §3.2；`src/KFL.Rules/Exam/ExamRegistration.cs` |
+| U1「快进到科举」停点由「`LevelOf` 非空」改为本查询；界面仍不复制资格判定 | `specs/005-exam-cycle/contracts/exam-calendar.md` §7（查询 4）；`specs/005-exam-cycle/spec.md` 增补 §2；`src/KFL.Presentation/ViewModels/MainViewModel.FastForward.cs` |
+| 规则层覆盖 | `specs/005-exam-cycle/spec.md` 增补 §3；`tests/KFL.Tests/Rules/ExamRegistrationTests.cs`（+5 例） |
+
+**门禁实测（2026-10-20）**：见 `specs/003-.../tasks.md` 第十轮登记（build 0 警告 0 错误 / test 全绿 / 恰六工程 / 无 `*.sln`）。

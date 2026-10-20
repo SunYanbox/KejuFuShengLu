@@ -141,6 +141,28 @@ public static class ExamRegistration
         person.ApplyForExam(level);
     }
 
+    /// <summary>该月家族是否有**可报名**的在册成员（含可受特奏名者）。</summary>
+    /// <param name="family">家族。</param>
+    /// <param name="date">判定时点。</param>
+    /// <returns>
+    /// 报名窗口开在该月 ∧ 至少一名在册成员可报名（<see cref="CanRegister"/>）或可受特奏名
+    /// （<see cref="SpecialTributeEligible"/>）时为 <c>true</c>。
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="family"/> 为 <c>null</c>。</exception>
+    /// <remarks>
+    /// 这是「快进到科举」的停点判据（规格书 §3），与 <c>GameSession.HasPendingDecision</c> 的
+    /// 科举条件同源：只看报名窗口不够——窗口内若全族无人合格，停住也没有可做的操作。
+    /// 纯查询，不消耗随机、不写任何状态。
+    /// </remarks>
+    public static bool HasRegistrable(Family family, GameDate date)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+
+        return RegisterLevelOf(date) is not null
+            && CountedMembers.Registered(family).Any(person =>
+                CanRegister(person, date) || SpecialTributeEligible(person, date));
+    }
+
     /// <summary>该考试月**合格且未报名**者名单（契约十二 §5；FR-018③）。</summary>
     /// <param name="family">家族。</param>
     /// <param name="date">考试当月。</param>

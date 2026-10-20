@@ -154,9 +154,11 @@ public enum ExamLevel { JieShi = 1, ShengShi = 2, DianShi = 3 }
 | 1 | 某年月 → 该月考试级别（无 / 解试 / 省试 / 殿试） | `ExamCalendar.LevelOf(GameDate)` | U1 快进暂停、U4 跳至下一科举 |
 | 2 | 下一考试月（含跨年边界） | `ExamCalendar.NextExamMonth(GameDate)` | U1「跳至下一科举」 |
 | 3 | 该考试月合格且未报名者名单 | `ExamRegistration.EligibleUnapplied(Family, GameDate)` | U1 报名提示、U4 批量报名 |
+| 4 | 该月报名窗口是否「有人可报」（2026-10-20 追加） | `ExamRegistration.HasRegistrable(Family, GameDate)` | U1「快进到科举」的停点判据 |
 
-界面 MUST NOT 自行复制资格判定（§3.2）或日历推导（§1）；U1 的「快进在考试月停住」只需查询 1
-返回非 `null`。本特性 MUST NOT 实现快进循环本身（FR-029）。
+界面 MUST NOT 自行复制资格判定（§3.2）或日历推导（§1）；U1 的「快进到科举」停点 MUST 用查询 4
+（窗口有效 ∧ 有人可报名，含特奏名），MUST NOT 只看查询 1 返回非 `null`——全族未成年时窗口开着
+但无人能报，停住只会让玩家反复空点。本特性 MUST NOT 实现快进循环本身（FR-029）。
 
 ---
 

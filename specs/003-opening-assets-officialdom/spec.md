@@ -641,3 +641,45 @@ Q1~Q8；②本节；③`src/KFL.Rules/Career/PromotionForecast.cs`（新）、`s
 ②本节；③`src/KFL.App/Views/FamilyTabView.xaml`（+ `.xaml.cs`）、
 `src/KFL.Presentation/ViewModels/{RelationLink.cs,MainViewModel.cs,MainViewModel.Detail.cs,MainViewModel.Tree.cs}`；
 ④`tasks.md` 的回写范围登记。
+
+## 增补（2026-10-20，玩家反馈第十轮：快进到科举停点、统计图表悬停与人口口径）
+
+> 依据：规格书 §17 裁决块（2026-10-20，玩家反馈第十轮）与 §3 / §12.3 的回写。
+> 本轮**不改数值、不改随机次序、不新增持久化字段、不改账本与存档形状**；新增查询与测算一律为只读派生。
+
+1. **快进到科举的停点判据**：`ExamRegistration` 新增纯查询
+   `HasRegistrable(Family, GameDate) → bool` = 当月 `RegisterLevelOf` 非空 ∧ 至少一名在册成员
+   `CanRegister` 或 `SpecialTributeEligible`。它与 `GameSession.HasPendingDecision` 的科举条件**同源**，
+   界面 MUST NOT 复制资格判定；`CanRegister` 不检查 `AppliedExam`，故「持续报考已自动报名」的窗口仍会停。
+2. **快进实现**：`MainViewModel.FastForwardToExam()` 按月推进，每个停点先查 `HasRegistrable`，
+   为真才停；否则继续 `AdvanceMonth`。推进上限 = **240 个月（20 年）**（原 12 个月），
+   覆盖「新生儿长到 14 岁」并跨多个科年；途中遇到决策类事件仍按规格书 §3「决策类事件自动暂停」
+   停住（提亲应答 / 生育 / 疾病治疗等），交给玩家处理，仅家族绝嗣 / 局面结束才中止。
+   帮助浮窗 `HelpTexts.FastForwardExam` 与上述行为同口径。
+3. **统计图表悬停**：`src/KFL.App/Controls/StatChartCard.xaml` 的命中带 `Rectangle` 显式设
+   `ToolTipService.InitialShowDelay="200"`、`ToolTipService.BetweenShowDelay="100"`
+   （原 WPF 默认 400ms）；提示内容、命中带宽度与 `ChartHover` 形状不变。
+4. **人口与功名图的出生语义**：`StatsCharts.Frames.PopulationFrame` 的既有七条系列在累计口径下
+   名称统一加「累计」前缀（不再把累计值叫「出生」）；新增**第 8 条**系列
+   (`ChartBrush8` #C2185B)：当月口径 `新增在世` = 出生 + 收养 − 死亡 − 外嫁，
+   累计口径 `在世人口` = 当月末在册存活人数。实现见 `LivingPopulation(state, buckets, caseCounts)`：
+   净增直接由 `ChildBorn` / `PersonBought` / `MemberDeceased` / `MemberMarriedOut` 事件数合成；
+   在世存量从当前 `Family.RegisteredMembers.Count` **倒推**（`alive[i] = running; running -= netChange[i]`），
+   因为娶入配偶没有「入族」事件条目，正推会把她们算进开局人口。
+   「出生」严格只指当月出生（一条 `ChildBorn` = 一次分娩），收养另计 `PersonBought`，二者不混算。
+5. **局势速览增强**：`StatsCharts.BuildInsights` 在原 5 段后调用
+   `AppendStructureInsights(state, lines, cash, savings, loan, burn)`，追加：
+   人口结构（幼年 <14 / 青壮 14–49 / 老年 ≥50）；近 6 月人口（出生 / 死亡 / 收养 / 外嫁 / 净增）；
+   功名结构（白身 / 举人 / 贡士 / 进士 / 现任官 / 待阙）；科举倒计时（本月可报名人数，或
+   `MonthsToRegistrable` 给出的最早窗口与月数，或「未来 20 年没有可报名窗口」）；
+   风险提示（现银可支撑 <6 月、负债率 >50%、近 6 月人口净减、距可报名窗口 >6 月；均无则
+   「未发现明显风险」）。全部即时从状态与流水账计算，不另存汇总。
+6. **规则层覆盖**：`tests/KFL.Tests/Rules/ExamRegistrationTests.cs` 新增 5 例——
+   窗口内有人合格为真；窗口内无人合格为假；窗口外为假；已自动报名者仍为真；特奏名资格也算可报名。
+
+**回写登记（同一提交）**：①规格书 §3 的 2026-10-20 裁决块与 §12.3 的 2026-10-20 **第十轮**回写块；
+②本节；③`src/KFL.Rules/Exam/ExamRegistration.cs`、`src/KFL.Presentation/HelpTexts.cs`、
+`src/KFL.Presentation/StatsCharts.cs`、`src/KFL.Presentation/StatsCharts.Frames.cs`、
+`src/KFL.Presentation/ViewModels/MainViewModel.FastForward.cs`、`src/KFL.App/Controls/StatChartCard.xaml`、
+`src/KFL.App/Resources/Theme.xaml`；④`tests/KFL.Tests/Rules/ExamRegistrationTests.cs`；
+⑤`tasks.md` 的回写范围登记。

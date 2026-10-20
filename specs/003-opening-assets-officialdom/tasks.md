@@ -525,3 +525,18 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 
 **门禁实测（2026-10-19）**：0 警告 0 错误 / 1329 通过 0 失败 / 恰六工程 / 无 `*.sln`。
 
+## 回写范围登记（2026-10-20，玩家反馈第十轮：快进到科举停点、统计图表悬停与人口口径）
+
+> 本节由第十轮玩家反馈（4 条）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §3 / §12.3 的 2026-10-20 裁决块与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 快进到科举只停在「窗口有效且确有人可报名」的月份（含特奏名）；上限 12 → 240 个月；途中决策类事件仍按 §3 暂停 | 规格书 §3 + §17 2026-10-20 块；`spec.md` 第十轮增补 §1/§2；`src/KFL.Rules/Exam/ExamRegistration.cs`（`HasRegistrable`）、`src/KFL.Presentation/ViewModels/MainViewModel.FastForward.cs`、`src/KFL.Presentation/HelpTexts.cs` |
+| 统计图表悬停 `InitialShowDelay=200ms` / `BetweenShowDelay=100ms` | 规格书 §12.3 + §17 2026-10-20 块 Q1；`spec.md` 增补 §3；`src/KFL.App/Controls/StatChartCard.xaml` |
+| 人口图「出生」只指当月出生；新增第 8 系列「新增在世（当月）/ 在世人口（累计）」；累计口径七条系列加「累计」前缀 | 规格书 §12.3 + §17 2026-10-20 块 Q2；`spec.md` 增补 §4；`src/KFL.Presentation/StatsCharts.cs`（`Brush8`）、`src/KFL.Presentation/StatsCharts.Frames.cs`（`PopulationFrame` / `LivingPopulation`）、`src/KFL.App/Resources/Theme.xaml`（`ChartBrush8`） |
+| 局势速览追加人口结构 / 近 6 月人口 / 功名结构 / 科举倒计时 / 风险提示 | 规格书 §12.3 + §17 2026-10-20 块 Q3；`spec.md` 增补 §5；`src/KFL.Presentation/StatsCharts.cs`（`AppendStructureInsights` / `MonthsToRegistrable`） |
+| 规则层覆盖（快进停点判据） | `spec.md` 增补 §6；`tests/KFL.Tests/Rules/ExamRegistrationTests.cs`（+5 例：窗口内有人合格 / 无人合格 / 窗口外 / 已自动报名 / 特奏名） |
+
+**门禁实测（2026-10-20）**：build 0 警告 0 错误；test 1334 通过 0 失败；恰六工程；无 `*.sln`。
+

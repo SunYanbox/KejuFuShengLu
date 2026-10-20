@@ -87,7 +87,9 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Rectangle Width="{Binding Width}" Height="{Binding DataContext.Height, RelativeSource={RelativeSource AncestorType=Canvas}}"
-                                               Fill="Transparent" ToolTip="{Binding Text}" />
+                                               Fill="Transparent" ToolTip="{Binding Text}"
+                                               ToolTipService.InitialShowDelay="200"
+                                               ToolTipService.BetweenShowDelay="100" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

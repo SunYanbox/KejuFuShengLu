@@ -99,8 +99,10 @@ public static class HelpTexts
 
     /// <summary>「快进到科举」按钮。</summary>
     public static string FastForwardExam { get; } =
-        "快进到科举：连续推进月份，直到下一次解试 / 省试的报名窗口（考试当月及其前一月），"
-        + "到时停在窗口起点，便于先报名、再推进到考试月。";
+        "快进到科举：连续推进月份，直到家族中确实有成员可以报名的最近报名窗口"
+        + "（解试 / 省试的考试当月及其前一月），停在窗口起点，便于先报名、再推进到考试月。\n"
+        + "窗口内无人符合报考条件时会继续往后找，不会空停；途中遇到提亲、生育、疾病等决策会按规则暂停，"
+        + "处理后可再次点击继续，只有家族绝嗣才中止。";
 
     private static string Percent(decimal value)
         => (value * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";

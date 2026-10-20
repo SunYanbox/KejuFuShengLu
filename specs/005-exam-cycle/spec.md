@@ -513,3 +513,22 @@ US1 的判定没有输入。持续报考是规格书 §3 明写的玩家便利�
 `src/KFL.Rules/Exam/ExamRegistration.cs`、`src/KFL.Rules/Exam/ExamSeasonRunner.cs`；
 ⑤`tests/KFL.Tests/Rules/{SpecAnchorTests,ExamAdmissionTests,ExamRegistrationTests,ExamSeasonTests}.cs`
 的对应锚点。
+
+## 增补（2026-10-20，快进到科举的停点判据：`HasRegistrable`）
+
+> 依据：规格书 §3 的 2026-10-20 `§17 裁决回写` 块。本特性仍 MUST NOT 实现快进循环；
+> 只新增一个**纯查询**供 U1 消费，不改变报名、判定、随机次序与存档形状。
+
+1. **新查询**：`ExamRegistration.HasRegistrable(Family, GameDate) → bool` =
+   `RegisterLevelOf(date) is not null` ∧ 在册成员中存在
+   `CanRegister(person, date)` 或 `SpecialTributeEligible(person, date)` 者。
+   它是「该月是否值得停下」的唯一出处，UI MUST NOT 复制资格判定。
+2. **停点语义**：U1「快进到科举」原以 `LevelOf` / `RegisterLevelOf` 非空为停点，全族未成年时
+   会停在无人可报的空窗口；现改为以本查询为停点。`CanRegister` 不检查 `AppliedExam`，
+   故持续报考已自动报名的窗口仍返回 `true`（玩家仍可在该窗口选择手动报名/确认）。
+3. **纯函数**：与 `EligibleUnapplied` 同约束——不改状态、不消耗随机、不读写账本。
+
+**回写登记（同一提交）**：①规格书 §3 的 2026-10-20 `§17 裁决回写` 块；②本节；
+③`specs/005-exam-cycle/data-model.md` §3.2（签名 + 语义）；
+④`specs/005-exam-cycle/contracts/exam-calendar.md` §7（查询 4 与 U1 消费口径）；
+⑤`src/KFL.Rules/Exam/ExamRegistration.cs`；⑥`tests/KFL.Tests/Rules/ExamRegistrationTests.cs`（+5 例）。
