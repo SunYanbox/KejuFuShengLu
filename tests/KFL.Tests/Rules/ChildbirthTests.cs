@@ -225,6 +225,91 @@ public class ChildbirthTests
         Assert.Equal(Money.Zero, state.Economy.Ledger.Entries[0].Amount);
     }
 
+    /// <summary>
+    /// 调试入口 <see cref="Childbirth.DeliverNow"/>：显式指定性别与属性时 0 次随机、
+    /// 产出与指定值完全一致的新生儿，且不消费待分娩队列。
+    /// </summary>
+    [Fact]
+    public void 立即分娩在指定属性时零随机且不消费待产队列()
+    {
+        var (state, husband, wife) = Couple();
+        var couple = new CoupleKey(husband.Id, wife.Id);
+        var pending = new PendingBirth(couple, PreviousMonth(state.CurrentDate));
+        state.Family.Lifecycle.ScheduleBirth(pending);
+        var random = new ScriptedRandom();
+        var talents = new TalentSet(11, 22, 33, 44);
+
+        var fact = Childbirth.DeliverNow(
+            state,
+            couple,
+            random,
+            new FixedNameGenerator(),
+            Gender.Female,
+            talents,
+            55,
+            66,
+            77);
+
+        Assert.NotNull(fact);
+        Assert.Equal(0, random.DoublesRequested);
+        Assert.Equal(0, random.IntsRequested);
+        Assert.Single(state.Family.Lifecycle.PendingBirths);
+        Assert.Equal(pending, state.Family.Lifecycle.PendingBirths[0]);
+
+        var newborn = Assert.IsType<Person>(state.Family.TryGet(fact.PersonId));
+        Assert.Equal("测婉", newborn.Name);
+        Assert.Equal(Gender.Female, newborn.Gender);
+        Assert.Equal(talents, newborn.Talents);
+        Assert.Equal(55, newborn.Study);
+        Assert.Equal(66, newborn.Health);
+        Assert.Equal(77, newborn.Lifespan);
+        Assert.Equal(husband.Generation + 1, newborn.Generation);
+        Assert.Equal(husband.Id, newborn.FatherId);
+        Assert.Equal(wife.Id, newborn.MotherId);
+        Assert.Single(state.Economy.Ledger.Entries);
+        Assert.Equal(LedgerCategory.ChildBorn, state.Economy.Ledger.Entries[0].Category);
+    }
+
+    /// <summary>立即分娩：未指定项照常掷骰，只消费属性骰、不掷难产死亡（14 次 double + 1 次 int）。</summary>
+    [Fact]
+    public void 立即分娩未指定属性时只掷属性骰不掷难产死亡()
+    {
+        var (state, husband, wife) = Couple();
+        var random = new ScriptedRandom();
+
+        var fact = Childbirth.DeliverNow(
+            state,
+            new CoupleKey(husband.Id, wife.Id),
+            random,
+            new FixedNameGenerator());
+
+        Assert.NotNull(fact);
+        Assert.Equal(BirthDrawCount - 1, random.DoublesRequested);
+        Assert.Equal(1, random.IntsRequested);
+    }
+
+    /// <summary>立即分娩拒绝未登记、已丧偶或性别不匹配的夫妇，且不消费随机、不产子。</summary>
+    [Fact]
+    public void 立即分娩拒绝无效夫妇()
+    {
+        var (state, husband, wife) = Couple();
+        var random = new ScriptedRandom();
+
+        var membersBefore = state.Family.RegisteredMembers.Count;
+        state.Family.EndMarriage(wife.Id);
+
+        var fact = Childbirth.DeliverNow(
+            state,
+            new CoupleKey(husband.Id, wife.Id),
+            random,
+            new FixedNameGenerator());
+
+        Assert.Null(fact);
+        Assert.Equal(0, random.DoublesRequested);
+        Assert.Equal(0, random.IntsRequested);
+        Assert.Equal(membersBefore, state.Family.RegisteredMembers.Count);
+    }
+
     /// <summary>四项天赋按「农、商、仕、工」次序各自独立取样。</summary>
     [Fact]
     public void 四项天赋按农商仕工次序独立取样()

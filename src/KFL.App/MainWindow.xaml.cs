@@ -34,9 +34,17 @@ public partial class MainWindow : Window
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key is Key.Oem3 or Key.OemTilde)
+        var key = e.Key switch
         {
-            if (_consoleArmed && !IsTextInputFocused())
+            Key.System => e.SystemKey,
+            Key.ImeProcessed => e.ImeProcessedKey,
+            _ => e.Key,
+        };
+
+        if (key is Key.Oem3 or Key.OemTilde)
+        {
+            // 已激活后反引号是全局开关：焦点在输入框（含控制台自身）里也必须生效。
+            if (_consoleArmed && !e.IsRepeat)
             {
                 _viewModel.ToggleConsole();
                 e.Handled = true;
@@ -45,7 +53,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var pressed = KeyToLetter(e.Key);
+        var pressed = KeyToLetter(key);
         if (pressed is null)
         {
             return;

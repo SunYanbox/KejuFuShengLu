@@ -8,10 +8,11 @@
         <DockPanel Margin="8">
             <TextBlock DockPanel.Dock="Top" Text="调试控制台（反引号 ` 开关）" Foreground="#FFECD9A0" FontWeight="Bold" />
             <WrapPanel DockPanel.Dock="Bottom">
-                <Button Content="唤醒 ×1" Command="{Binding ConsoleQuickCommand}" CommandParameter="wake 1" />
                 <Button Content="+100 贯" Command="{Binding ConsoleQuickCommand}" CommandParameter="money 100" />
                 <Button Content="治愈" Command="{Binding ConsoleQuickCommand}" CommandParameter="heal" />
-                <Button Content="病故" Command="{Binding ConsoleQuickCommand}" CommandParameter="kill" />
+                <Button Content="杀死选中" Command="{Binding ConsoleQuickCommand}" CommandParameter="kill" />
+                <Button Content="复活" Command="{Binding ConsoleQuickCommand}" CommandParameter="revive" />
+                <Button Content="生子" Command="{Binding ConsoleQuickCommand}" CommandParameter="birth" />
                 <Button Content="清行贿" Command="{Binding ConsoleQuickCommand}" CommandParameter="bribe-reset" />
                 <Button Content="释放" Command="{Binding ConsoleQuickCommand}" CommandParameter="release" />
                 <Button Content="免死" Command="{Binding ConsoleQuickCommand}" CommandParameter="pardon" />
@@ -20,7 +21,9 @@
                 <Button Content="帮助" Command="{Binding ConsoleQuickCommand}" CommandParameter="help" />
                 <Button Content="隐藏" Command="{Binding DoCommand}" CommandParameter="console" />
             </WrapPanel>
-            <TextBox DockPanel.Dock="Bottom" Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}"
+            <TextBox x:Name="CommandInput" DockPanel.Dock="Bottom"
+                     Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}"
+                     PreviewKeyDown="OnCommandInputPreviewKeyDown"
                      Background="#FF101010" Foreground="#FFE8E8E8" FontFamily="Consolas">
                 <TextBox.InputBindings>
                     <KeyBinding Key="Enter" Command="{Binding ConsoleRunCommand}" />
