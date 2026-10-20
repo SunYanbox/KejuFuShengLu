@@ -129,6 +129,7 @@ public static class ExamRegistration
     public static bool CanRegister(Person person, GameDate date);
     public static void Register(Person person, GameDate date);
     public static IReadOnlyList<Person> EligibleUnapplied(Family family, GameDate date);
+    public static bool HasRegistrable(Family family, GameDate date);
     public static bool SpecialTributeEligible(Person person, GameDate date);
     public static void AcceptSpecialTribute(
         Person person, GameDate date, IRandomService random, GameState? state = null);
@@ -146,6 +147,11 @@ public static class ExamRegistration
   否则 `person.ApplyForExam(LevelOf(date)!.Value)`。MUST NOT 读写账本、MUST NOT 消耗随机。
 - `EligibleUnapplied`：`AppliedExam is null ∧ TargetLevelOf(p) == LevelOf(date) ∧ IsEligible(p, date)`，
   按 `PersonId` 升序；非解试/省试月或无人合格 ⇒ 空表。**纯函数**（FR-018③）。
+- `HasRegistrable`（2026-10-20 追加，供 U1「快进到科举」的停点判据）：
+  `RegisterLevelOf(date) is not null` ∧ 在册成员中至少一人 `CanRegister(person, date)` 或
+  `SpecialTributeEligible(person, date)`。纯查询，MUST NOT 改状态、MUST NOT 消耗随机。
+  判据与 `GameSession.HasPendingDecision` 的科举条件同源；`CanRegister` 不检查 `AppliedExam`，
+  故自动报名过的窗口仍返回 `true`。
 - `SpecialTributeEligible`：`AgeAt(date) >= ExamPolicy.SpecialTributeMinimumAge` ∧
   `ShengShiFailureCount >= ExamPolicy.SpecialTributeFailureThreshold` ∧ `Rank == null` ∧
   `AwaitingPost` 位为假（FR-012）。

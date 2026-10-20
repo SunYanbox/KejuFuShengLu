@@ -323,6 +323,63 @@ public class ExamRegistrationTests
         Assert.Equal(before, $"{Describe(first)}||{Describe(second)}||{family.Members.Count}");
     }
 
+    // ------------------------------------------------------------------ 快进停点：该月是否有人可报名
+
+    [Fact]
+    public void 报名窗口内且有合格成员时可报名()
+    {
+        var family = RulesHarness.FamilyOf(BaiShen(1));
+
+        Assert.True(ExamRegistration.HasRegistrable(family, JieShiMonth));
+        Assert.True(ExamRegistration.HasRegistrable(family, BeforeJieShi));
+    }
+
+    [Fact]
+    public void 报名窗口内但无人合格时不可报名()
+    {
+        // 窗口开着但全族未成年：快进到科举 MUST NOT 停在这种月份（否则玩家要反复点）。
+        var family = RulesHarness.FamilyOf(BaiShen(1, age: 10));
+
+        Assert.False(ExamRegistration.HasRegistrable(family, JieShiMonth));
+    }
+
+    [Fact]
+    public void 报名窗口外一律不可报名()
+    {
+        var family = RulesHarness.FamilyOf(BaiShen(1));
+
+        Assert.False(ExamRegistration.HasRegistrable(family, TwoMonthsBeforeJieShi));
+        Assert.False(ExamRegistration.HasRegistrable(family, AfterJieShi));
+    }
+
+    [Fact]
+    public void 已自动报名者仍算可报名()
+    {
+        // 持续报考在结算内自动报名后，CanRegister 仍为真（它不检查 AppliedExam），
+        // 因此快进停点不会因为「已经报过名」而跳过该窗口。
+        var person = BaiShen(1);
+        var family = RulesHarness.FamilyOf(person);
+        ExamRegistration.Register(person, JieShiMonth);
+
+        Assert.True(ExamRegistration.HasRegistrable(family, JieShiMonth));
+    }
+
+    [Fact]
+    public void 特奏名资格也算可报名()
+    {
+        // 进士无正常应考级别，但其特奏名资格同样需要停点让玩家选择「受 / 不受」。
+        var person = WithDegree(BaiShen(1, age: 55), DegreeLevel.JinShi);
+        for (var i = 0; i < ExamPolicy.SpecialTributeFailureThreshold; i++)
+        {
+            person.RecordExamFailure(ExamLevel.ShengShi);
+        }
+
+        var family = RulesHarness.FamilyOf(person);
+
+        Assert.True(ExamRegistration.SpecialTributeEligible(person, JieShiMonth));
+        Assert.True(ExamRegistration.HasRegistrable(family, JieShiMonth));
+    }
+
     // ------------------------------------------------------------------ 构造件
 
     /// <summary>白身成员（功名史为空）。</summary>

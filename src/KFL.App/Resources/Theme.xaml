@@ -27,7 +27,7 @@
     <SolidColorBrush x:Key="HeadHeirBrush" Color="#8B1A1A" />
     <SolidColorBrush x:Key="HeadHeirFill" Color="#FFF3D9" />
 
-    <!-- 统计图配色（ChartBrush1..7 供 ChartSeries.BrushKey 按名取用） -->
+    <!-- 统计图配色（ChartBrush1..8 供 ChartSeries.BrushKey 按名取用） -->
     <SolidColorBrush x:Key="ChartBrush1" Color="#C0392B" />
     <SolidColorBrush x:Key="ChartBrush2" Color="#1F5FA8" />
     <SolidColorBrush x:Key="ChartBrush3" Color="#1E8449" />
@@ -35,6 +35,7 @@
     <SolidColorBrush x:Key="ChartBrush5" Color="#7B2D8B" />
     <SolidColorBrush x:Key="ChartBrush6" Color="#5D4037" />
     <SolidColorBrush x:Key="ChartBrush7" Color="#00838F" />
+    <SolidColorBrush x:Key="ChartBrush8" Color="#C2185B" />
 
     <!-- 全局字号：玩家反馈「文字偏小」，整体上调一档 -->
     <Style TargetType="Button">
