@@ -110,7 +110,13 @@ public static partial class StatsCharts
 
             foreach (var line in lines)
             {
-                text.Add(FormattableString.Invariant($"{line.Name} {line.Values[i]:0.##} {unit}"));
+                var current = line.Values[i];
+                var yearOverYear = Rate(
+                    current, BaselineAt(months, line.Values, MonthOffset(months[i], -12), line.CarryForward));
+                var monthOverMonth = Rate(
+                    current, BaselineAt(months, line.Values, MonthOffset(months[i], -1), line.CarryForward));
+                text.Add(FormattableString.Invariant(
+                    $"{line.Name} {current:0.##} {unit}（同比 {FormatRate(yearOverYear)}；环比 {FormatRate(monthOverMonth)}）"));
             }
 
             hovers.Add(new ChartHover(left, column, string.Join(Environment.NewLine, text)));
@@ -176,6 +182,10 @@ public static partial class StatsCharts
         return result;
     }
 
-    /// <summary>一张图的输入线：名称、画刷键与逐月值。</summary>
-    private readonly record struct LineSpec(string Name, string BrushKey, double[] Values);
+    /// <summary>
+    /// 一张图的输入线：名称、画刷键与逐月值。
+    /// <paramref name="CarryForward"/> 为真表示累计 / 存量系列，缺失月份沿用最近一个桶的值。
+    /// </summary>
+    private readonly record struct LineSpec(
+        string Name, string BrushKey, double[] Values, bool CarryForward = false);
 }

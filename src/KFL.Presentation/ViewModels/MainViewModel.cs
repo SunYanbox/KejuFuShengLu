@@ -51,6 +51,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _moneyChartCumulative;
     private bool _populationChartCumulative;
     private string _statsInsights = string.Empty;
+    private string _overviewCaption = string.Empty;
     private string _moneyAmountText = "10";
     private readonly HashSet<Guid> _childbirthPending = [];
     private bool _showParentLinks = true;

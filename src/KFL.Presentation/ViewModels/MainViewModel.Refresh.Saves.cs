@@ -29,6 +29,8 @@ public sealed partial class MainViewModel : ObservableObject
         {
             StatisticsText = string.Empty;
             StatsInsights = string.Empty;
+            OverviewCaption = string.Empty;
+            OverviewCards.Clear();
             return;
         }
 
@@ -60,6 +62,14 @@ public sealed partial class MainViewModel : ObservableObject
 
         StatisticsText = string.Join(Environment.NewLine, lines);
         StatsInsights = StatsCharts.BuildInsights(state);
+
+        var overview = StatsCharts.BuildOverview(state);
+        OverviewCaption = overview.Caption;
+        OverviewCards.Clear();
+        foreach (var card in overview.Cards)
+        {
+            OverviewCards.Add(card);
+        }
 
         Charts.Clear();
         foreach (var frame in StatsCharts.Build(state, _moneyChartCumulative, _populationChartCumulative))
