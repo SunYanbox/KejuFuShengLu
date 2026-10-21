@@ -540,3 +540,18 @@ Task: "T011 INameGenerator 抽象（src/KFL.Infrastructure/Abstractions/INameGen
 
 **门禁实测（2026-10-20）**：build 0 警告 0 错误；test 1334 通过 0 失败；恰六工程；无 `*.sln`。
 
+## 回写范围登记（2026-10-21，玩家反馈第十一轮：统计页概览与同比/环比）
+
+> 本节由第十一轮玩家反馈（2 条）**追加登记**，不回改上文既有条目，不复用既有编号。
+> 授权落点 = 规格书 §12.3 的 2026-10-21 裁决块与 `spec.md` 末尾同名增补。
+
+| 变更 | 同步了哪些文件 |
+| --- | --- |
+| 统计页顶部新增概览区：月收入 / 月支出 / 月结余 / 在册人口 / 本月出生 / 本月死亡 6 卡，取最新有数据月并标注「截至 …」 | 规格书 §12.3 + §17 2026-10-21 块 Q1；`spec.md` 第十一轮增补 §1；`src/KFL.Presentation/StatsOverview.cs`（新）、`StatsCharts.Overview.cs`（新）、`src/KFL.App/Views/StatsTabView.xaml`、`src/KFL.Presentation/ViewModels/{MainViewModel.cs,MainViewModel.ViewState.cs,MainViewModel.Refresh.Saves.cs}` |
+| 同比 = 自然月 M−12、环比 = M−1；缺失月流量按 0 / 累计与存量按最近桶结转；基期 0 或早于首月显示「—」；负基期取绝对值 | 规格书 §12.3 + §17 2026-10-21 块 Q2；`spec.md` 增补 §2/§3；`src/KFL.Presentation/StatsCharts.Growth.cs`（新）、`StatsCharts.Overview.cs` |
+| 图表悬停每系列追加「（同比 …；环比 …）」；累计口径对同一累计系列计算 | 规格书 §12.3 + §17 2026-10-21 块 Q3；`spec.md` 增补 §4；`src/KFL.Presentation/StatsCharts.Render.cs`、`StatsCharts.Frames.cs` |
+| 公共 API 与视图接线：`StatsOverview` / `StatsOverviewCard` / `BuildOverview`，`LineSpec.CarryForward`，`OverviewCards` / `OverviewCaption`；图表滚动区上限 620 → 470 | `spec.md` 增补 §5/§6；`src/KFL.Presentation/{StatsOverview.cs,StatsCharts.Overview.cs,StatsCharts.Render.cs,StatsCharts.Frames.cs}`、`src/KFL.Presentation/ViewModels/{MainViewModel.cs,MainViewModel.ViewState.cs,MainViewModel.Refresh.Saves.cs}`、`src/KFL.App/Views/StatsTabView.xaml` |
+| 无界面冒烟：6 卡详情 + 悬停样例 + 卡数/文案断言 | `spec.md` 增补 §6；`src/KFL.App/Diagnostics/SmokeRunner.cs` |
+
+**门禁实测（2026-10-21）**：build 0 警告 0 错误；test 1338 通过 0 失败；恰六工程；无 `*.sln`。
+

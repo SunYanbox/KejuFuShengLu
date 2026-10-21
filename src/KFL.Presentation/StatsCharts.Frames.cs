@@ -36,9 +36,9 @@ public static partial class StatsCharts
             summary,
             buckets,
             [
-                new LineSpec($"{prefix}收入", Brush1, income),
-                new LineSpec($"{prefix}支出", Brush2, expense),
-                new LineSpec($"{prefix}结余", Brush3, net),
+                new LineSpec($"{prefix}收入", Brush1, income, cumulative),
+                new LineSpec($"{prefix}支出", Brush2, expense, cumulative),
+                new LineSpec($"{prefix}结余", Brush3, net, cumulative),
             ]);
     }
 
@@ -71,7 +71,7 @@ public static partial class StatsCharts
                 .ToArray());
 
             series.Add(new LineSpec(
-                Display.Category(category), BrushKeys[i], cumulative ? Cumulative(monthly) : monthly));
+                Display.Category(category), BrushKeys[i], cumulative ? Cumulative(monthly) : monthly, cumulative));
         }
 
         var scope = cumulative ? "各线是该类别净额的逐月累计。" : "各线是该类别当月净额。";
@@ -114,12 +114,13 @@ public static partial class StatsCharts
             series.Add(new LineSpec(
                 cumulative ? $"累计{name}" : name,
                 brushKey,
-                cumulative ? Cumulative(monthly) : monthly));
+                cumulative ? Cumulative(monthly) : monthly,
+                cumulative));
         }
 
         var (alive, netChange) = LivingPopulation(state, buckets, caseCounts);
         series.Add(new LineSpec(
-            cumulative ? "在世人口" : "新增在世", Brush8, cumulative ? alive : netChange));
+            cumulative ? "在世人口" : "新增在世", Brush8, cumulative ? alive : netChange, cumulative));
 
         var summary = cumulative
             ? "累计口径：出生 / 死亡 / 收养 / 入狱 / 功名为逐月累计；在世人口为当月末的在册存活人数"

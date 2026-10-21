@@ -9,6 +9,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>统计页图表（按月聚合自族流水账，可左右滚动）。</summary>
     public ObservableCollection<ChartFrame> Charts { get; } = [];
 
+    /// <summary>统计页顶部概览卡（最新有数据月份的收入 / 支出 / 结余 / 人口 / 出生 / 死亡）。</summary>
+    public ObservableCollection<StatsOverviewCard> OverviewCards { get; } = [];
+
     /// <summary>成员详情里的关系超链接（需求 7：父母 / 配偶 / 子女 / 兄弟姐妹点击跳转）。</summary>
     public ObservableCollection<RelationLink> RelationLinks { get; } = [];
 
@@ -74,6 +77,13 @@ public sealed partial class MainViewModel : ObservableObject
     {
         get => _statsInsights;
         private set => Set(ref _statsInsights, value);
+    }
+
+    /// <summary>统计页概览标题行：截至月份、同比 / 环比口径、无数据提示。</summary>
+    public string OverviewCaption
+    {
+        get => _overviewCaption;
+        private set => Set(ref _overviewCaption, value);
     }
 
     /// <summary>自由金额输入框（需求 13：储蓄 / 还贷 / 商本不再只能整存整取）。</summary>

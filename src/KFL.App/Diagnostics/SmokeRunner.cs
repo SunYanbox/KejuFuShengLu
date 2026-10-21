@@ -59,6 +59,24 @@ internal static class SmokeRunner
             log.Add($"考试条：{vm.ExamInfo}");
             log.Add($"成就条：{vm.AchievementSummary}");
             log.Add($"统计 {vm.StatisticsText.Length} 字；图表 {vm.Charts.Count} 张");
+            log.Add($"统计概览 {vm.OverviewCards.Count} 卡：{string.Join(" ｜ ", vm.OverviewCards.Select(card => $"{card.Title} {card.Value} {card.Unit}（{card.YearOverYear}；{card.MonthOverMonth}）"))}");
+            var hovers = vm.Charts.SelectMany(frame => frame.Hovers).ToList();
+            if (vm.OverviewCards.Count != 6)
+            {
+                throw new InvalidOperationException($"统计概览应为 6 卡，实际 {vm.OverviewCards.Count}");
+            }
+
+            if (hovers.Count == 0
+                || hovers.Any(hover =>
+                    !hover.Text.Contains("同比", StringComparison.Ordinal)
+                    || !hover.Text.Contains("环比", StringComparison.Ordinal)))
+            {
+                throw new InvalidOperationException("统计图悬停未逐条生成同比 / 环比文案");
+            }
+
+            var hoverSample = hovers.LastOrDefault(hover => hover.Text.Contains("月收入", StringComparison.Ordinal))
+                ?? hovers[^1];
+            log.Add("悬停样例：" + hoverSample.Text.Replace(Environment.NewLine, " ｜ "));
             log.Add($"成员筛选条：{vm.MemberCountText}");
             foreach (var filter in vm.MemberFilters)
             {

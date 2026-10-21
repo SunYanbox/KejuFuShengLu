@@ -683,3 +683,38 @@ Q1~Q8；②本节；③`src/KFL.Rules/Career/PromotionForecast.cs`（新）、`s
 `src/KFL.Presentation/ViewModels/MainViewModel.FastForward.cs`、`src/KFL.App/Controls/StatChartCard.xaml`、
 `src/KFL.App/Resources/Theme.xaml`；④`tests/KFL.Tests/Rules/ExamRegistrationTests.cs`；
 ⑤`tasks.md` 的回写范围登记。
+
+## 增补（2026-10-21，玩家反馈第十一轮：统计页概览与同比/环比）
+
+> 依据：规格书 §17 裁决块（2026-10-21，玩家反馈第十一轮）与 §12.3 的回写。
+> 本轮**不改数值、不改随机次序、不新增持久化字段、不改账本与存档形状**；概览与增长率均为只读派生。
+
+1. **概览区**：`StatsTabView.xaml` 在导出说明行与口径切换之间新增概览 Border，含标题「概览（同比 / 环比）」、
+   `OverviewCaption`、`ItemsControl`（`WrapPanel`）绑 `OverviewCards`。固定 6 卡（`StatsOverviewCard`）：
+   月收入（贯）、月支出（贯）、月结余（贯，带符号）、在册人口（人）、本月出生（人）、本月死亡（人）。
+   Caption 形如「截至 2 年 12 月 · 当月口径」；空流水时 6 卡仍在，收支/出生/死亡值为「—」，
+   在册人口取 `Family.RegisteredMembers.Count`，增长率全「—」。
+2. **基期定义**：`StatsCharts.Growth.MonthOffset(GameDate, int)` 做跨年加减；同比 `M−12`、环比 `M−1`。
+   `BaselineAt(months, values, target, carryForward)` 用二分找最近不晚于 `target` 的桶：
+   早于首桶返回 `null`；`carryForward` 为真或恰为目标月则返回该桶值，否则返回 **0**。
+   因此流量类缺失月按 0、累计与存量类按最近桶结转，和图表稀疏 x 轴解耦。
+3. **增长率**：`Rate(current, baseline)` → `(current − baseline) / |baseline|`；`baseline` 为 `null` 或 0
+   时返回 `null`，`FormatRate` 输出「—」；否则 `+0.00%;-0.00%;0.00%`。负基期用绝对值作分母，
+   百分比符号表示相对基期绝对规模的方向。概览卡分别写「同比 …」「环比 …」。
+4. **悬停详情**：`StatsCharts.Render.Hovers` 对每系列每行追加 `（同比 …；环比 …）`，
+   形如 `月收入 104.81 贯（同比 +13.12%；环比 -4.73%）`。累计口径下 `LineSpec.CarryForward`
+   为真（收支三条线、分类线、人口七条事件线、`在世人口` 在累计时），增长率对**图中同一累计系列**
+   计算；当月口径为假，对当月值计算。
+5. **公共 API**：新增 `StatsOverview(string caption, IReadOnlyList<StatsOverviewCard> cards)`、
+   `StatsOverviewCard(string title, string value, string unit, string yearOverYear, string monthOverMonth)`、
+   `StatsCharts.BuildOverview(GameState) → StatsOverview`。`LineSpec` 增第 4 位 `bool CarryForward = false`。
+   `ChartFrame` / `ChartHover` / `StatsCharts.Build(state, moneyCumulative, populationCumulative)` /
+   `StatsCharts.BuildInsights(state)` 的公共形状不变。
+6. **视图与冒烟**：`MainViewModel.ViewState` 新增 `ObservableCollection<StatsOverviewCard> OverviewCards`
+   与 `OverviewCaption`；`RefreshStatistics()` 同步刷新。图表滚动区 `MaxHeight` 620 → **470** 给概览让位。
+   `SmokeRunner` 输出 6 卡详情与悬停样例，并断言卡数 = 6、存在同时含「同比」「环比」的悬停文案。
+
+**回写登记（同一提交）**：①规格书 §12.3 的 2026-10-21 **第十一轮**回写块与 §17 同名裁决块 Q1~Q4；
+②本节；③`src/KFL.Presentation/{StatsCharts.Growth.cs,StatsCharts.Overview.cs,StatsOverview.cs,StatsCharts.Render.cs,StatsCharts.Frames.cs}`、
+`src/KFL.Presentation/ViewModels/{MainViewModel.cs,MainViewModel.ViewState.cs,MainViewModel.Refresh.Saves.cs}`、
+`src/KFL.App/Views/StatsTabView.xaml`、`src/KFL.App/Diagnostics/SmokeRunner.cs`；④`tasks.md` 的回写范围登记。
