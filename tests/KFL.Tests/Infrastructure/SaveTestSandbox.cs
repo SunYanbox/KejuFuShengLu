@@ -10,11 +10,22 @@ namespace KFL.Tests.Infrastructure;
 /// <para>
 /// <b>为什么必须只有这一个</b>：G-07 的扫描面覆盖 <c>tests\KFL.Tests\Infrastructure\</c>，
 /// 每一个文件系统调用行都要带**同行**豁免理由。把「造临时目录、读字节、
-/// 列文件、把备份复制回主档、清理」全收进一个类型，豁免行就是**可数尽**的（本文件共 12 行）——
+/// 列文件、把备份复制回主档、清理」全收进一个类型，豁免行就是**可数尽**的（本文件共 16 行）——
 /// 散在各测试里则会变成一笔没人能核对的账（SC-008）。
 /// </para>
 /// <para>
 /// <b>每个用例一个根</b>：根名带一个随机后缀，故并行跑测试类也不互相踩。
+/// </para>
+/// <para>
+/// <b>父目录是共享的，且 MUST NOT 在运行期被删除</b>：所有用例共用一个父目录
+/// （<c>&lt;temp&gt;/kfl-save-tests</c>，受限宿主下回落 <c>bin/…/save-tests</c>），构造函数确保它存在，
+/// 之后**谁都不删它**。早期版本在 <see cref="Dispose"/> 里「父目录空了就删掉」，这在并行用例之间是竞态：
+/// 一个用例删掉空父目录的瞬间，另一个用例正在建 <c>&lt;父&gt;/&lt;根&gt;</c>，
+/// 后者会抛 <c>DirectoryNotFoundException</c>（2026-10-21 CI 实测：1337 条用例里偶发 2 条失败，
+/// 报错为 <c>存档目录不可用：…\kfl-save-tests\&lt;guid&gt;</c>，见
+/// <see cref="SaveTestSandboxConcurrencyTests"/> 的回归用例）。删除共享目录本质上无法跨用例、
+/// 跨进程安全；空目录留在临时目录（或已被 <c>.gitignore</c> 忽略的 <c>bin/</c>）里不是产物，
+/// 不值得用非确定性换。
 /// </para>
 /// </remarks>
 public sealed class SaveTestSandbox : IDisposable
@@ -31,7 +42,7 @@ public sealed class SaveTestSandbox : IDisposable
     /// </para>
     /// <para>
     /// 回落位置同样不污染工作区、也不干扰架构守卫：守卫在**进入** <c>bin/obj</c> 之前就剪枝
-    /// （<c>RepositoryLocator</c>），<see cref="Dispose"/> 再尽力回收空的父目录（T051）。
+    /// （<c>RepositoryLocator</c>）。父目录一旦建好就**留在原地**——理由见类 remarks 的并行竞态一节。
     /// </para>
     /// </remarks>
     public SaveTestSandbox()
@@ -149,7 +160,7 @@ public sealed class SaveTestSandbox : IDisposable
         WriteBytes(primary, buffer.ToArray());
     }
 
-    /// <summary>删除沙箱根（递归），并尽力回收空的父目录。</summary>
+    /// <summary>删除本用例的沙箱根（递归）；**共享父目录不动**（见类 remarks）。</summary>
     public void Dispose()
     {
         if (_disposed)
@@ -167,8 +178,6 @@ public sealed class SaveTestSandbox : IDisposable
         {
             File.Delete(Root); // arch-guard:allow 测试沙箱：删掉挡路文件
         }
-
-        ReleaseParentDirectory();
     }
 
     /// <summary>父目录候选，按优先次序（见构造函数 remarks）。</summary>
@@ -186,9 +195,9 @@ public sealed class SaveTestSandbox : IDisposable
     /// </summary>
     /// <returns>父目录绝对路径。</returns>
     /// <remarks>
-    /// 每个候选**重试一次**：同一进程里并行跑的用例会在 <see cref="Dispose"/> 里回收空的父目录
-    /// （<see cref="ReleaseParentDirectory"/>），「建目录」与「删空目录」撞在一起时第一次可能拿到
-    /// <c>IOException</c>；重试即可建回（这曾表现为千分之一的偶发失败）。
+    /// 建目录本身是幂等的，且本类型不再删除该目录（类 remarks 的并行竞态一节），
+    /// 故每个候选**试一次**即可：失败只会是「该位置不可写」（受限宿主对系统临时目录正是如此），
+    /// 换下一个候选即可，不需要重试来掩盖与清理撞车的 <c>IOException</c>。
     /// </remarks>
     private static string EnsureParentDirectory()
     {
@@ -196,43 +205,20 @@ public sealed class SaveTestSandbox : IDisposable
 
         foreach (var candidate in ParentDirectoryCandidates)
         {
-            for (var attempt = 0; attempt < 2; attempt++)
+            try
             {
-                try
-                {
-                    Directory.CreateDirectory(candidate); // arch-guard:allow 测试沙箱：预建临时根的父目录（候选与次序见构造函数的 remarks）
-                    return candidate;
-                }
-                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
-                {
-                    lastFailure = ex;
-                }
+                Directory.CreateDirectory(candidate); // arch-guard:allow 测试沙箱：预建临时根的父目录（候选与次序见构造函数的 remarks）
+                return candidate;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            {
+                lastFailure = ex;
             }
         }
 
         throw new InvalidOperationException(
             $"测试沙箱：系统临时目录与测试程序集旁都建不出临时根父目录（最后失败：{lastFailure?.Message}）。",
             lastFailure);
-    }
-
-    /// <summary>
-    /// 尽力删掉**空**的父目录（否则测试跑完会在 <c>bin/</c> 下留一个空目录）。
-    /// 并发的用例还留着根时它非空、删不掉，那就留着——下一次建根时会连同父目录一起重建。
-    /// </summary>
-    private void ReleaseParentDirectory()
-    {
-        try
-        {
-            Directory.Delete(ParentDirectory); // arch-guard:allow 测试沙箱：只删**空**父目录，非空/不存在都会抛 IOException
-        }
-        catch (IOException)
-        {
-            // 并发用例还留着根（非空）或目录已不在：留着即可。
-        }
-        catch (UnauthorizedAccessException)
-        {
-            // 父目录被别的进程占住：留着即可（空目录不是残留产物）。
-        }
     }
 
     private static IReadOnlyList<string> ListFiles(string directory)
