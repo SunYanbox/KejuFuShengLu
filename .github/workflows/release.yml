@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  release:
+    types: [published] # 只在 Release 被发布时触发（不覆盖草稿）
+
+# 同一 Release 的重复发布不并发；后一次不取消前一次，避免产物上传一半被中断。
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  publish:
+    name: Publish win-x64 assets
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # release 事件的默认 ref 即该标签，显式写出避免歧义：
+          # 发布产物必须来自被打标签的那个提交。
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # 与 CI 共用同一套缓存键，Release 通常紧跟在 main 的 CI 之后，可命中同一份包缓存。
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'global.json', 'Directory.Build.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore KejuFuShengLu.slnx
+
+      # 发布闸门：标签未必指向跑过 CI 的提交，产物出厂前过一遍测试。
+      # 构建警告已由 Directory.Build.props 的 TreatWarningsAsErrors 拦下。
+      - name: Test
+        run: dotnet test KejuFuShengLu.slnx -c Release
+
+      # ---------- 不内置 Runtime（默认名称，体积最小，需预装 .NET 10 桌面运行时）----------
+      # 托管程序集（含引用工程的 dll）全部打进 exe，解压后只有一个可执行文件 + pdb。
+      # WPF 的原生库（wpfgfx_cor3、PresentationNative_cor3 等）来自共享框架，
+      # 不随发布输出，因此单文件在框架依赖模式下是完整的。
+      - name: Publish framework-dependent
+        run: >
+          dotnet publish src/KFL.App/KFL.App.csproj
+          -c Release
+          -r win-x64
+          --self-contained false
+          -p:PublishSingleFile=true
+          -p:DebugType=portable
+          -warnaserror
+          -o publish/framework-dependent
+
+      # ---------- 内置 Runtime（自包含）----------
+      # 这里刻意不做单文件：自包含 + WPF 时原生库默认不打进 bundle，要么散落在 exe 旁边、
+      # 要么靠 IncludeNativeLibrariesForSelfExtract 在首次运行时释放到临时目录。
+      # 前者凑不齐「一个可执行文件」，后者首次启动更慢且容易触发安全软件扫描，
+      # 因此改用完整目录发布后打包成 zip，产物确定性最高。
+      - name: Publish self-contained
+        run: >
+          dotnet publish src/KFL.App/KFL.App.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -warnaserror
+          -o publish/KFL.App-selfcontained
+
+      # 压缩整个目录，使 zip 内以 KFL.App-selfcontained/ 为根，
+      # 用户解压后不会把上百个文件散在当前目录。
+      - name: Bundle self-contained into zip
+        shell: pwsh
+        run: >
+          Compress-Archive
+          -Path publish/KFL.App-selfcontained
+          -DestinationPath publish/KFL.App-win-x64-selfcontained.zip
+          -CompressionLevel Optimal
+
+      # 符号文件（.pdb）在 DebugType=portable（默认）下必定生成；
+      # 万一缺失，fail_on_unmatched_files 会直接让发布失败，而不是悄悄少发一个文件。
+      - name: Upload assets to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          fail_on_unmatched_files: true
+          files: |
+            publish/framework-dependent/KFL.App.exe
+            publish/framework-dependent/KFL.App.pdb
+            publish/KFL.App-win-x64-selfcontained.zip

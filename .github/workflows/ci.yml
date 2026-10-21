@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # 允许在 Actions 页面手动重跑，便于排查环境问题
+  workflow_dispatch:
+
+# 同一分支的新提交会取消旧的正在运行的 CI，节省额度
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  checks:
+    name: Build / Test / Solution gate
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    # 门禁内容与仓库根 AGENTS.md「本仓库门禁」保持一致：
+    #   build 0 警告 0 错误 → test 全绿 → 解决方案恰好 6 个工程 → 无遗留 .sln
+    # 四个步骤串行跑在同一 job 内：本仓库体量小，拆 job 的并行收益
+    # 抵不过重复 checkout 与 restore 的开销。
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          # SDK 版本由 global.json（10.0.100，rollForward latestFeature）裁决；
+          # 这里只负责把 10.0 的 SDK 装进 runner，版本选择仍以 global.json 为准。
+          dotnet-version: '10.0.x'
+
+      # 缓存 NuGet 全局包目录，键基于 csproj / 构建基线文件的内容哈希；
+      # 依赖未变时直接命中缓存，跳过重复下载。
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'global.json', 'Directory.Build.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore KejuFuShengLu.slnx
+
+      # Directory.Build.props 已设 TreatWarningsAsErrors=true，警告即错误；
+      # AGENTS.md 里 `-m:1 -nodeReuse:false` 是受限宿主（Agent 沙箱）的绕行参数，
+      # GitHub Actions 不受该限制，无需带上，否则只会拖慢并行构建。
+      - name: Build
+        run: dotnet build KejuFuShengLu.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test KejuFuShengLu.slnx -c Release --no-build
+
+      # 对应 AGENTS.md 门禁第三条：.slnx 解析器不认识 <TestProject> 且不报错，
+      # 测试工程可能悄悄掉出解决方案，因此必须显式断言工程数为 6。
+      - name: Solution project count gate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $projects = @(
+            dotnet sln KejuFuShengLu.slnx list |
+              Where-Object { $_.Trim() -match '\.csproj$' } |
+              ForEach-Object { $_.Trim() }
+          )
+          $projects | ForEach-Object { Write-Host "  $_" }
+          if ($projects.Count -ne 6) {
+            throw "解决方案应恰好包含 6 个工程，实际 $($projects.Count) 个。"
+          }
+          Write-Host "解决方案工程数门禁通过：6 个。"
+
+      # 对应 AGENTS.md 门禁第四条：仓库只认 .slnx，出现 .sln 说明有人误生成。
+      - name: No stray .sln gate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $strays = @(
+            Get-ChildItem -Recurse -Filter *.sln |
+              Where-Object { $_.FullName -notmatch '\\\.git\\' }
+          )
+          if ($strays.Count -ne 0) {
+            throw "发现遗留 .sln 文件：`n$($strays.FullName -join "`n")"
+          }
+          Write-Host "无遗留 .sln 门禁通过。"
